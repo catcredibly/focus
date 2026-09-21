@@ -107,3 +107,48 @@ button { color: inherit; }
   .timer-shell--idle { grid-template-columns: 1fr; }
   .today-panel { display: none; }
 }
+
+.page { height: 100vh; overflow-y: auto; padding: 38px 42px 56px; background: #081521; }
+.page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; padding-bottom: 24px; border-bottom: 1px solid #173044; }
+.page-header h1 { margin: 0; font-size: 27px; letter-spacing: 0; }
+.page-header p { margin: 7px 0 0; color: #8fa4b7; }
+.primary-action { min-height: 40px; padding: 0 15px; border: 0; border-radius: 7px; background: #ff922b; color: #111820; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; }
+.primary-action:disabled, .start-button:disabled { opacity: .45; cursor: not-allowed; }
+.tabs { display: flex; gap: 24px; margin: 24px 0 8px; border-bottom: 1px solid #173044; }
+.tabs button { padding: 10px 4px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: #8fa4b7; cursor: pointer; }
+.tabs button.active { color: #f3f7fb; border-color: #ff922b; }
+.filter-bar { display: flex; gap: 14px; margin-top: 22px; }
+.filter-bar label, .form label { display: flex; flex-direction: column; gap: 7px; color: #8fa4b7; font-size: 12px; }
+select, input { color-scheme: dark; }
+.filter-bar select, .form input, .form select { min-width: 220px; height: 40px; padding: 0 11px; color: #eef5fb; background: #0c1b28; border: 1px solid #1b374b; border-radius: 6px; }
+.data-list { display: flex; flex-direction: column; margin-top: 12px; border-top: 1px solid #173044; }
+.data-row { min-height: 94px; display: flex; align-items: center; gap: 16px; padding: 14px 12px; border-bottom: 1px solid #173044; }
+.data-row > svg { color: #6baeff; }
+.row-main { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 5px; }
+.row-main strong { font-size: 15px; }
+.row-main span, .row-main small { color: #8da2b5; }
+.badge { display: inline-flex; width: fit-content; padding: 3px 7px; border: 1px solid #2b6a4f; border-radius: 5px; color: #66d69c !important; font-size: 11px; font-weight: 600; }
+.row-actions { display: flex; gap: 5px; }
+.row-actions button { width: 34px; height: 34px; display: grid; place-items: center; border: 0; border-radius: 6px; background: transparent; color: #96aabc; cursor: pointer; }
+.row-actions button:hover { color: #fff; background: #12283a; }
+.row-actions svg { width: 17px; height: 17px; }
+.list-dot { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+.empty-state { min-height: 250px; display: grid; place-content: center; text-align: center; color: #879bad; }
+.empty-state h1, .empty-state h2 { margin: 0 0 8px; color: #dce7f0; font-size: 19px; }
+.empty-state p { margin: 0; }
+.modal-backdrop { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; background: rgba(2, 8, 14, .72); }
+.modal { width: min(460px, calc(100vw - 32px)); padding: 22px; border: 1px solid #29465b; border-radius: 8px; background: #0a1926; box-shadow: 0 24px 70px rgba(0,0,0,.45); }
+.modal h2 { margin: 0 0 20px; font-size: 19px; }
+.form { display: flex; flex-direction: column; gap: 16px; }
+.form input, .form select { width: 100%; min-width: 0; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; }
+.modal-actions > button:not(.primary-action), .pagination button { height: 38px; padding: 0 14px; border: 1px solid #29465b; border-radius: 6px; background: #102333; cursor: pointer; }
+.history-filters { display: grid; grid-template-columns: repeat(3, minmax(180px, 260px)); margin-bottom: 20px; }
+.history-table { min-width: 940px; border: 1px solid #173044; border-radius: 7px; overflow: hidden; }
+.history-head, .history-row { display: grid; grid-template-columns: 120px 155px 110px minmax(140px,1fr) minmax(150px,1fr) 85px 110px; align-items: center; gap: 12px; padding: 11px 13px; }
+.history-head { color: #8fa4b7; background: #0d2030; font-size: 12px; }
+.history-row { min-height: 58px; border-top: 1px solid #173044; font-size: 13px; }
+.history-row > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pagination { display: flex; justify-content: flex-end; align-items: center; gap: 14px; margin-top: 18px; color: #8fa4b7; font-size: 13px; }
+.pagination button:disabled { opacity: .4; cursor: not-allowed; }

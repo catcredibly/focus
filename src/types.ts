@@ -1,8 +1,8 @@
 export type AcademicYear = {
   id: string;
   name: string;
-  startDate: string;
-  endDate: string;
+  startDate?: string;
+  endDate?: string;
   archived: boolean;
 };
 
@@ -19,5 +19,12 @@ export type FocusSession = {
   subjectId: string;
   startTime: number;
   endTime: number;
+  focusedDurationSeconds: number;
+  subjectName: string;
+  academicYearId: string;
+  academicYearName: string;
+  note?: string;
   archived: boolean;
 };
+
+export type AppSetting = { key: string; value: string };

@@ -2,6 +2,9 @@ import { Pause, Play, Square, Plus, MoreHorizontal, ExternalLink } from "lucide-
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useTimer } from "../hooks/useTimer";
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "../db";
+import { CURRENT_YEAR_KEY, formatDuration } from "../data";
 
 function pad(value: number) {
   return String(value).padStart(2, "0");
@@ -23,6 +26,12 @@ export function TimerPage() {
   const [minutes, setMinutes] = useState(15);
   const [seconds, setSeconds] = useState(0);
   const [extendOpen, setExtendOpen] = useState(false);
+  const currentYearId = useLiveQuery(async () => (await db.settings.get(CURRENT_YEAR_KEY))?.value ?? "", []) ?? "";
+  const currentYear = useLiveQuery(() => currentYearId ? db.academicYears.get(currentYearId) : undefined, [currentYearId]);
+  const subjects = useLiveQuery(async () => currentYearId ? (await db.subjects.where("academicYearId").equals(currentYearId).toArray()).filter((subject) => !subject.archived) : [], [currentYearId]) ?? [];
+  const recent = useLiveQuery(async () => (await db.sessions.orderBy("startTime").reverse().limit(12).toArray()).filter((session) => !session.archived), []) ?? [];
+  const [subjectId, setSubjectId] = useState("");
+  const selectedSubject = subjects.find((subject) => subject.id === subjectId) ?? subjects[0];
 
   const commitInput = () => {
     const value = normalise(hours, minutes, seconds);
@@ -114,14 +123,12 @@ export function TimerPage() {
           </label>
         </div>
 
-        <select className="subject-select" value={timer.state.subject} onChange={(e) => timer.setSubject(e.target.value)}>
-          <option>Physics</option>
-          <option>Mathematics</option>
-          <option>Chemistry</option>
-          <option>Economics</option>
+        <select className="subject-select" value={selectedSubject?.id ?? ""} onChange={(e) => setSubjectId(e.target.value)} disabled={!subjects.length}>
+          {!subjects.length && <option>Add a Subject for the current Academic Year</option>}
+          {subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}
         </select>
         <div className="note-field">Add a note (optional)…</div>
-        <button className="start-button" onClick={() => timer.start(commitInput())}><Play size={20} fill="currentColor" /> Start</button>
+        <button className="start-button" disabled={!selectedSubject || !currentYear} onClick={() => selectedSubject && currentYear && timer.start(commitInput(), selectedSubject, currentYear)}><Play size={20} fill="currentColor" /> Start</button>
       </section>
 
       <aside className="today-panel">
@@ -130,15 +137,10 @@ export function TimerPage() {
         <div className="metric-card"><span>Sessions</span><strong>4</strong></div>
         <div className="metric-card"><span>Current streak</span><strong>8 days</strong></div>
         <h3>Recent sessions</h3>
-        {[
-          ["Mathematics", "50 min", "16:00", "#ff4d57"],
-          ["Physics", "1 hr 15 min", "14:00", "#4da3ff"],
-          ["Chemistry", "30 min", "10:10", "#ffad3b"],
-          ["Economics", "25 min", "09:00", "#4dd39a"],
-        ].map(([name, duration, time, color]) => (
-          <div className="recent-row" key={name}>
-            <span className="recent-dot" style={{ background: color }} />
-            <span>{name}</span><strong>{duration}</strong><small>{time}</small>
+        {recent.slice(0, 4).map((session) => (
+          <div className="recent-row" key={session.id}>
+            <span className="recent-dot" />
+            <span>{session.subjectName}</span><strong>{formatDuration(session.focusedDurationSeconds)}</strong><small>{new Date(session.startTime).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})}</small>
           </div>
         ))}
       </aside>

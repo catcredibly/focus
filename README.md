@@ -1,8 +1,8 @@
-# Focus starter
+# Focus
 
 This is the first implementation scaffold for the Windows Focus timer.
 
-## Current milestone
+## Current milestone: V0.2
 
 - React + TypeScript + Vite
 - Tauri 2 desktop shell
@@ -16,8 +16,13 @@ This is the first implementation scaffold for the Windows Focus timer.
 - Popout controls appear on hover
 - Always-on-top can be toggled from the popout menu
 - Dexie / IndexedDB database schema is prepared
+- Academic Year creation, editing, current selection, archive, and restore
+- Subject management scoped by Academic Year
+- Current-year active Subjects integrated with the Timer
+- Completed and manual Session history with editing, archive, restore, and pagination
+- IndexedDB V1 to V2 migration preserving existing Sessions
 
-Analytics, History, Subjects, Academic Years, Import/Export and full Settings screens are the next milestones.
+Analytics, Import/Export, backup, and full Settings screens are later milestones.
 
 ## Windows prerequisites
 
@@ -33,10 +38,7 @@ Analytics, History, Subjects, Academic Years, Import/Export and full Settings sc
 
 ## Recommended build order
 
-1. Finish timer/session persistence.
-2. Subjects + Academic Years.
-3. History + archive/restore.
-4. Import/export (JSON + CSV).
-5. Analytics and percentile heatmap.
-6. Settings and popout polish.
-7. Windows installer build.
+1. Import/export (JSON + CSV) and backup/restore.
+2. Analytics and activity heatmap.
+3. Settings and popout polish.
+4. Windows installer build.

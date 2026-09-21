@@ -22,9 +22,11 @@ const items = [
 type Props = {
   collapsed: boolean;
   onToggle: () => void;
+  active: string;
+  onNavigate: (page: string) => void;
 };
 
-export function Sidebar({ collapsed, onToggle }: Props) {
+export function Sidebar({ collapsed, onToggle, active, onNavigate }: Props) {
   return (
     <aside className={`sidebar ${collapsed ? "sidebar--collapsed" : ""}`}>
       <div className="brand-row">
@@ -41,8 +43,8 @@ export function Sidebar({ collapsed, onToggle }: Props) {
       </div>
 
       <nav className="nav-list">
-        {items.map(([Icon, label], index) => (
-          <button key={label} className={`nav-item ${index === 0 ? "nav-item--active" : ""}`}>
+        {items.map(([Icon, label]) => (
+          <button key={label} onClick={() => onNavigate(label)} className={`nav-item ${active === label ? "nav-item--active" : ""}`}>
             <Icon size={20} />
             {!collapsed && <span>{label}</span>}
           </button>
