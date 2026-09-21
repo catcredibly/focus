@@ -112,6 +112,25 @@ Interaction notes:
 - Timeline and activity controls navigate ranges without changing the global scope unexpectedly.
 - Compare opens comparison options; the screenshot does not prescribe the final menu contents.
 
+Final V0.4 behavior:
+
+- Analytics contains Overview, Subjects, Academic Years, Time Trends, and Study Patterns sub-tabs. All Years is an Academic Year filter, not a tab.
+- The shared Academic Year and calendar-range filters apply consistently across relevant views.
+- All calculations use non-archived completed Sessions and `focusedDurationSeconds`. Wall-clock duration is not used as focus duration.
+- Date, day, month, and streak grouping use local calendar boundaries. Weeks run Monday through Sunday.
+- Subjects with the same display name remain separate records when they belong to different Academic Years.
+- Overlapping curriculum and Independent Study periods are additive. A Session's stored Subject and Academic Year association is authoritative; Academic Year date ranges are never used to infer ownership.
+- Long monthly timelines, cumulative trends, rolling-average trends, and daily activity heatmaps retain readable minimum widths and scroll horizontally.
+- Long timelines and activity heatmaps open at the latest available period and provide a compact Jump to latest action for returning after historical review.
+- The continuous All Years activity heatmap uses one consistent scale calculated from all currently filtered Sessions. Academic Year detail heatmaps calculate their scale independently and display the true P90 and clean interval.
+- Heatmap P90 uses active days only; zero-study days are excluded. Calculate `rawStep = P90 / 4`, then snap that single step to the nearest 5 minutes when under 30 minutes or the nearest 15 minutes otherwise. Thresholds are exactly 1x, 2x, 3x, and 4x the clean step; values above 4x remain at maximum intensity.
+- Heatmap cells expose local date, actual focused duration, and Session count. Visual intensity never replaces the authoritative duration shown in the tooltip.
+- Activity heatmaps show aligned month/year markers. Selecting or focusing a cell reveals the same date, duration, and Session count available on hover, with at most three Subject rows and a compact remaining-count indicator.
+- Analytics tables use bounded internal scrolling for large Subject collections, while long Subject and Academic Year names remain distinguishable through their paired labels and native title text.
+- Rolling 7-day and 30-day averages use calendar days, including zero-study days.
+- Time-of-day patterns distribute focused duration proportionally across each wall-clock bucket a Session crosses. This is an approximation because pause locations are not stored.
+- Analytics is read-only and presents factual measurements only; it does not generate productivity scores, advice, or subjective rankings.
+
 ## History
 
 Canonical reference:

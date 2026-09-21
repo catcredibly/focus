@@ -2,7 +2,7 @@
 
 This is the first implementation scaffold for the Windows Focus timer.
 
-## Current milestone: V0.2
+## Current milestone: V0.4
 
 - React + TypeScript + Vite
 - Tauri 2 desktop shell
@@ -21,8 +21,15 @@ This is the first implementation scaffold for the Windows Focus timer.
 - Current-year active Subjects integrated with the Timer
 - Completed and manual Session history with editing, archive, restore, and pagination
 - IndexedDB V1 to V2 migration preserving existing Sessions
+- Versioned, lossless JSON backup and transactional merge/replace restore
+- UTF-8 CSV Session export for Excel and flexible CSV import with column mapping
+- Import previews, validation, conflict handling, and duplicate detection
+- Native Windows open/save dialogs through official Tauri plugins
+- Five-view local Analytics with Academic Year and date-range filtering
+- Scrollable focus trends, cumulative totals, and rolling calendar-day averages
+- Adaptive P90 activity heatmaps and factual study-pattern summaries
 
-Analytics, Import/Export, backup, and full Settings screens are later milestones.
+Full Settings and final Windows polish are later milestones.
 
 ## Windows prerequisites
 
@@ -38,7 +45,5 @@ Analytics, Import/Export, backup, and full Settings screens are later milestones
 
 ## Recommended build order
 
-1. Import/export (JSON + CSV) and backup/restore.
-2. Analytics and activity heatmap.
-3. Settings and popout polish.
-4. Windows installer build.
+1. Settings and popout polish.
+2. Windows installer build.
