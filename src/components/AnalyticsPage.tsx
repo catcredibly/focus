@@ -406,7 +406,7 @@ function StudyPatterns({ sessions }: { sessions: FocusSession[] }) {
     labels = ["00-03", "03-06", "06-09", "09-12", "12-15", "15-18", "18-21", "21-24"],
     days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   return (
-    <div className="analytics-content">
+    <div className="analytics-content study-patterns-content">
       <div className="metric-strip metric-strip--five">
         <Metric icon={<CalendarDays />} label="Active days" value={String(activeDayCount(sessions))} />
         <Metric icon={<Layers3 />} label="Weeks with Sessions" value={String(new Set(weeklyTotals(sessions).map((p) => p.key)).size)} />

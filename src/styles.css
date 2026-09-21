@@ -226,6 +226,7 @@ select, input { color-scheme: dark; }
 .analytics-tabs button { padding: 11px 3px; border: 0; border-bottom: 2px solid transparent; background: none; color: #91a5b7; cursor: pointer; }
 .analytics-tabs button.active { color: #57b4ff; border-color: #3ca6ff; }
 .analytics-content { margin-top: 16px; }
+.study-patterns-content { display: grid; row-gap: 16px; }
 .analytics-loading, .analytics-empty { min-height: 430px; display: grid; place-content: center; justify-items: center; color: #8298aa; text-align: center; }
 .analytics-loading { grid-template-columns: repeat(3,80px); gap: 10px; }
 .analytics-loading span { height: 72px; border: 1px solid #173044; border-radius: 6px; background: #0b1c29; animation: loading-pulse 1.4s ease-in-out infinite alternate; }
