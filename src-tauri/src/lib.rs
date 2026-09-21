@@ -10,8 +10,8 @@ fn open_timer_popout(app: tauri::AppHandle) -> Result<(), String> {
 
     WebviewWindowBuilder::new(&app, "timer", WebviewUrl::App("index.html#/popout".into()))
         .title("Focus Timer")
-        .inner_size(260.0, 112.0)
-        .min_inner_size(220.0, 96.0)
+        .inner_size(360.0, 96.0)
+        .min_inner_size(320.0, 96.0)
         .resizable(false)
         .decorations(false)
         .always_on_top(true)
@@ -49,6 +49,19 @@ fn hide_timer_popout(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+fn set_timer_popout_expanded(app: tauri::AppHandle, expanded: bool) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("timer") {
+        window
+            .set_size(tauri::Size::Logical(tauri::LogicalSize::new(
+                360.0,
+                if expanded { 260.0 } else { 96.0 },
+            )))
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -58,7 +71,8 @@ pub fn run() {
             open_timer_popout,
             set_timer_always_on_top,
             focus_main_window,
-            hide_timer_popout
+            hide_timer_popout,
+            set_timer_popout_expanded
         ])
         .run(tauri::generate_context!())
         .expect("error while running Focus");

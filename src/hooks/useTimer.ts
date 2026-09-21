@@ -1,44 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { db } from "../db";
-import type { AcademicYear, FocusSession, Subject } from "../types";
-
-type TimerState = {
-  running: boolean;
-  paused: boolean;
-  subject: string;
-  subjectColor: string;
-  subjectId: string;
-  academicYearId: string;
-  academicYearName: string;
-  sessionId: string | null;
-  startedAt: number | null;
-  targetEnd: number | null;
-  remainingSeconds: number;
-};
+import type { AcademicYear, Subject } from "../types";
+import { ACTIVE_TIMER_STORAGE_KEY, completedSession, extendTimerState, idleTimerState, initialTimerState, startTimerState, type TimerState } from "../timerState";
 
 const CHANNEL = "focus-timer";
-const STORAGE_KEY = "focus.activeTimer";
-
-const initialState: TimerState = {
-  running: false,
-  paused: false,
-  subject: "Physics",
-  subjectColor: "#ff922b",
-  subjectId: "",
-  academicYearId: "",
-  academicYearName: "",
-  sessionId: null,
-  startedAt: null,
-  targetEnd: null,
-  remainingSeconds: 75 * 60,
-};
-
 function readStored(): TimerState {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? { ...initialState, ...JSON.parse(raw) } : initialState;
+    const raw = localStorage.getItem(ACTIVE_TIMER_STORAGE_KEY);
+    return raw ? { ...initialTimerState, ...JSON.parse(raw) } : initialTimerState;
   } catch {
-    return initialState;
+    return initialTimerState;
   }
 }
 
@@ -49,7 +20,7 @@ export function useTimer() {
 
   const commit = useCallback((next: TimerState) => {
     setState(next);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    localStorage.setItem(ACTIVE_TIMER_STORAGE_KEY, JSON.stringify(next));
     channelRef.current?.postMessage(next);
   }, []);
 
@@ -67,8 +38,8 @@ export function useTimer() {
       setState((current) => ({ ...current, remainingSeconds: remaining }));
       if (remaining <= 0 && !completingRef.current) {
         completingRef.current = true;
-        void persistCompleted(state, state.targetEnd!).finally(() => {
-          commit({ ...state, running: false, paused: false, targetEnd: null, startedAt: null, sessionId: null, remainingSeconds: 0 });
+        void persistCompleted({ ...state, remainingSeconds: 0 }, state.targetEnd!).finally(() => {
+          commit(idleTimerState({ ...state, remainingSeconds: 0 }));
           completingRef.current = false;
         });
       }
@@ -79,21 +50,7 @@ export function useTimer() {
   }, [state.running, state.paused, state.targetEnd, state, commit]);
 
   const start = useCallback((seconds: number, subject: Subject, year: AcademicYear) => {
-    const now = Date.now();
-    commit({
-      ...state,
-      subject: subject.name,
-      subjectId: subject.id,
-      subjectColor: subject.color,
-      academicYearId: year.id,
-      academicYearName: year.name,
-      sessionId: crypto.randomUUID(),
-      running: true,
-      paused: false,
-      startedAt: now,
-      targetEnd: now + seconds * 1000,
-      remainingSeconds: seconds,
-    });
+    commit(startTimerState(state, seconds, subject, year));
   }, [commit, state]);
 
   const pause = useCallback(() => {
@@ -110,18 +67,20 @@ export function useTimer() {
   }, [commit, state]);
 
   const stop = useCallback(async () => {
-    if (state.running) await persistCompleted(state, Date.now());
-    commit({ ...state, running: false, paused: false, startedAt: null, targetEnd: null, sessionId: null });
+    const now = Date.now();
+    const snapshot = state.running && !state.paused && state.targetEnd
+      ? { ...state, remainingSeconds: Math.max(0, Math.ceil((state.targetEnd - now) / 1000)) }
+      : state;
+    if (snapshot.running) await persistCompleted(snapshot, now);
+    commit(idleTimerState(snapshot));
   }, [commit, state]);
 
   const extend = useCallback((seconds: number) => {
     if (!state.running) return;
-    commit({
-      ...state,
-      remainingSeconds: state.remainingSeconds + seconds,
-      targetEnd: state.paused ? null : (state.targetEnd ?? Date.now()) + seconds * 1000,
-    });
+    commit(extendTimerState(state, seconds));
   }, [commit, state]);
+
+  const setNote = useCallback((note: string) => commit({ ...state, note }), [commit, state]);
 
   const display = useMemo(() => {
     const total = Math.max(0, state.remainingSeconds);
@@ -131,21 +90,10 @@ export function useTimer() {
     return { hours, minutes, seconds };
   }, [state.remainingSeconds]);
 
-  return { state, display, start, pause, stop, extend };
+  return { state, display, start, pause, stop, extend, setNote };
 }
 
 async function persistCompleted(state: TimerState, endTime: number) {
-  if (!state.sessionId || !state.subjectId || !state.startedAt || endTime <= state.startedAt) return;
-  const session: FocusSession = {
-    id: state.sessionId,
-    subjectId: state.subjectId,
-    subjectName: state.subject,
-    academicYearId: state.academicYearId,
-    academicYearName: state.academicYearName,
-    startTime: state.startedAt,
-    endTime,
-    focusedDurationSeconds: Math.max(1, Math.round((endTime - state.startedAt) / 1000)),
-    archived: false,
-  };
-  await db.sessions.put(session);
+  const session = completedSession(state, endTime);
+  if (session) await db.sessions.put(session);
 }

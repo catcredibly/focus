@@ -14,6 +14,14 @@ export function formatDuration(totalSeconds: number) {
   return `${total} sec`;
 }
 
+export function formatDurationAxis(totalSeconds: number) {
+  const total = Math.max(0, totalSeconds);
+  if (total < 60) return `${Math.round(total)} sec`;
+  if (total < 3600) return `${Math.round(total / 60)} min`;
+  const hours = total / 3600;
+  return `${hours < 10 && !Number.isInteger(hours) ? hours.toFixed(1) : Math.round(hours)} hr`;
+}
+
 export async function getCurrentAcademicYearId() {
   return (await db.settings.get(CURRENT_YEAR_KEY))?.value ?? "";
 }

@@ -2,7 +2,7 @@ import "fake-indexeddb/auto";
 import Dexie from "dexie";
 import { afterEach, describe, expect, it } from "vitest";
 import { FocusDatabase } from "./db";
-import { formatDuration } from "./data";
+import { formatDuration, formatDurationAxis } from "./data";
 
 const opened: Dexie[] = [];
 const database = () => {
@@ -41,6 +41,12 @@ describe("V0.2 data management", () => {
     const startTime = Date.UTC(2026, 8, 21, 10);
     const endTime = Date.UTC(2026, 8, 21, 11, 15);
     expect(Math.round((endTime - startTime) / 1000)).toBe(4500);
+  });
+
+  it("formats chart axes in seconds, minutes, and hours", () => {
+    expect(formatDurationAxis(21)).toBe("21 sec");
+    expect(formatDurationAxis(300)).toBe("5 min");
+    expect(formatDurationAxis(4500)).toBe("1.3 hr");
   });
 
   it("migrates V0.1 Sessions without deleting them", async () => {

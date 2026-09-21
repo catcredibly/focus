@@ -46,6 +46,8 @@ Intentionally excluded:
 Interaction notes:
 
 - Time values must be editable before starting.
+- The idle duration defaults to the most recently started base duration. Extensions to an active Session do not change that preference.
+- Today totals, streak, and recent Sessions contain persisted, non-archived Sessions only; no example values are shown in normal use.
 - Starting a session switches to the running layout rather than retaining the idle summary layout.
 
 ## Timer - Running
@@ -81,6 +83,7 @@ Interaction notes:
 - Pause toggles the active countdown state without ending the session.
 - Stop ends the active session through the application's completion flow.
 - Extend opens the duration menu; selecting an option immediately adds that duration.
+- The optional note is shared with the active timer state, survives pause, extension, popout use, and recovery, and is stored with the completed Session.
 
 ## Analytics
 
@@ -147,6 +150,8 @@ Interaction notes:
 
 - Filters combine and update the table.
 - Session rows remain manageable through the application's edit/archive workflow.
+- Archive remains reversible. Permanent deletion is a separate compact row action and always requires confirmation.
+- Session date editing uses the same local-calendar interpretation as the History row.
 
 ## Subjects
 
@@ -227,6 +232,7 @@ Interaction notes:
 
 - Hover reveals controls without changing the popout's outer dimensions.
 - Always-on-top, open Focus, hide timer, and close popout actions belong in the quick-actions menu.
+- Opening a popout menu temporarily expands the native utility window so its actions are not clipped; closing the menu restores the compact height.
 - Popout transparency and finish behaviour follow the corresponding Settings values.
 
 ## Reference Precedence

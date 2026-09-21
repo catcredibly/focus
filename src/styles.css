@@ -8,6 +8,11 @@
 }
 
 * { box-sizing: border-box; }
+* { scrollbar-color: #38556b #091722; scrollbar-width: auto; }
+*::-webkit-scrollbar { width: 11px; height: 11px; }
+*::-webkit-scrollbar-track { background: #091722; }
+*::-webkit-scrollbar-thumb { border: 2px solid #091722; border-radius: 8px; background: #38556b; }
+*::-webkit-scrollbar-thumb:hover { background: #4b6b82; }
 html, body, #root { width: 100%; height: 100%; margin: 0; overflow: hidden; }
 button, input, select { font: inherit; }
 button { color: inherit; }
@@ -59,7 +64,8 @@ button { color: inherit; }
 .time-entry b { color: #8fa5b8; font-size: 34px; transform: translateY(-13px); }
 .time-entry span, .running-labels { color: #9bb0c2; font-size: 13px; }
 .subject-select, .note-field { width: 100%; max-width: 470px; height: 48px; margin-top: 30px; color: #eaf2f9; background: #0c1b28; border: 1px solid #1a3346; border-radius: 8px; padding: 0 16px; }
-.note-field { display: flex; align-items: center; color: #8397aa; }
+.note-field { color: #eaf2f9; font: inherit; }
+.note-field::placeholder { color: #8397aa; }
 .start-button { margin-top: 28px; width: 280px; height: 52px; border: 0; border-radius: 10px; background: linear-gradient(90deg, #ff9b30, #ff7a22); color: #111820; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; box-shadow: 0 10px 30px rgba(255, 132, 35, 0.13); }
 .today-panel { align-self: center; background: rgba(9, 27, 42, 0.7); border: 1px solid #183449; border-radius: 12px; padding: 20px; opacity: 1; transform: translateX(0); transition: opacity 260ms ease, transform 260ms ease; }
 .today-panel h2, .today-panel h3 { margin: 0 0 14px; }
@@ -150,6 +156,12 @@ select, input { color-scheme: dark; }
 .history-head { color: #8fa4b7; background: #0d2030; font-size: 12px; }
 .history-row { min-height: 58px; border-top: 1px solid #173044; font-size: 13px; }
 .history-row > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.danger-icon { color: #ff7b83 !important; }
+.delete-confirmation { max-width: 410px; color: #9db0c0; line-height: 1.5; }
+.delete-confirmation p { margin: 8px 0; }
+.danger-action { border-color: #843c45 !important; background: #6d2932 !important; color: #fff !important; }
+.danger-action:hover { background: #82333d !important; }
+.recent-empty { margin: 12px 0; color: #8197aa; font-size: 12px; }
 .pagination { display: flex; justify-content: flex-end; align-items: center; gap: 14px; margin-top: 18px; color: #8fa4b7; font-size: 13px; }
 .pagination button:disabled { opacity: .4; cursor: not-allowed; }
 
@@ -240,7 +252,12 @@ select, input { color-scheme: dark; }
 .chart-scroll::-webkit-scrollbar-track, .heatmap-scroll::-webkit-scrollbar-track, .analytics-table::-webkit-scrollbar-track, .time-heatmap::-webkit-scrollbar-track { background: #0b1c29; }
 .scroll-region { position: relative; }
 .latest-button { position: absolute; right: 8px; bottom: 14px; padding: 5px 8px; border: 1px solid #29465b; border-radius: 5px; background: #0d2231; color: #9bb1c2; font-size: 10px; cursor: pointer; opacity: .85; }
-.chart-tooltip { display: flex; flex-direction: column; gap: 4px; padding: 10px; border: 1px solid #315168; border-radius: 6px; background: #081521; font-size: 12px; }
+.chart-tooltip { min-width: 132px; max-width: 280px; display: flex; flex-direction: column; gap: 7px; padding: 10px 11px; border: 1px solid #315168; border-radius: 6px; background: #071621; box-shadow: 0 8px 24px rgba(0,0,0,.35); color: #eaf2f9; font-size: 12px; }
+.chart-tooltip > strong { overflow: hidden; color: #fff; text-overflow: ellipsis; white-space: nowrap; }
+.chart-tooltip > span { min-width: 0; display: grid; grid-template-columns: 8px minmax(0,1fr) auto; gap: 7px; align-items: center; color: #b8c8d5; }
+.chart-tooltip i { width: 8px; height: 8px; border-radius: 50%; }
+.chart-tooltip em { overflow: hidden; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
+.chart-tooltip b { color: #f2f7fb; font-weight: 600; white-space: nowrap; }
 .breakdown-row { display: grid; grid-template-columns: 1fr auto; gap: 7px; margin: 13px 0; font-size: 13px; }
 .breakdown-row i { grid-column: 1 / -1; display: block; max-width: 100%; height: 7px; border-radius: 3px; }
 .donut-wrap { display: grid; grid-template-columns: minmax(180px,.8fr) minmax(160px,1fr); align-items: center; }
