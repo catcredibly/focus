@@ -6,12 +6,12 @@ This document records which supplied screenshots are authoritative and the UI de
 
 Canonical references:
 
-- `app-overview.png` for the shared Windows application frame and navigation.
+- `reference/app-overview.png` for the shared Windows application frame and navigation.
 - The screen-specific canonical image listed below for each content area.
 
 Supplementary references:
 
-- `analytics-all-years.png` and `timer-running-draft-1.png` show the shell at different window sizes.
+- `reference/analytics-all-years.png` and `reference/timer-running-draft-1.png` show the shell at different window sizes.
 
 Approved decisions:
 
@@ -24,11 +24,11 @@ Approved decisions:
 
 Canonical reference:
 
-- `timer-idle.png` when supplied as a standalone image.
+- `reference/timer-idle.png` when supplied as a standalone image.
 
 Supplementary reference:
 
-- The Timer panel in `app-overview.png` documents the idle controls and Today panel.
+- The Timer panel in `reference/app-overview.png` documents the idle controls and Today panel.
 
 Visible elements:
 
@@ -52,12 +52,12 @@ Interaction notes:
 
 Canonical reference:
 
-- `timer-running-draft-1.png`.
+- `reference/timer-running-draft-1.png`.
 
 Supplementary references:
 
-- `popout-timer.png` only for shared timer controls and extension choices.
-- The Timer panel in `app-overview.png` only for shared shell styling.
+- `reference/popout-timer.png` only for shared timer controls and extension choices.
+- The Timer panel in `reference/app-overview.png` only for shared shell styling.
 
 Visible elements:
 
@@ -86,15 +86,15 @@ Interaction notes:
 
 Canonical reference:
 
-- `analytics-all-years.png`.
+- `reference/analytics-all-years.png`.
 
 Supplementary reference:
 
-- `app-overview.png` may be used only for shared shell styling.
+- `reference/app-overview.png` may be used only for shared shell styling.
 
 Intentionally excluded:
 
-- The Analytics page shown inside `app-overview.png`. It is an obsolete iteration and must not guide the Analytics layout, information architecture, charts, or controls.
+- The Analytics page shown inside `reference/app-overview.png`. It is an obsolete iteration and must not guide the Analytics layout, information architecture, charts, or controls.
 
 Visible elements:
 
@@ -116,7 +116,7 @@ Interaction notes:
 
 Canonical reference:
 
-- The History panel in `app-overview.png`.
+- The History panel in `reference/app-overview.png`.
 
 Visible elements:
 
@@ -133,8 +133,8 @@ Interaction notes:
 
 Canonical reference:
 
-- The Subjects panel in `app-overview.png`.
-- Use `subjects-academic-years.png` if a standalone crop is supplied later.
+- The Subjects panel in `reference/app-overview.png`.
+- Use `reference/subjects-academic-years.png` if a standalone crop is supplied later.
 
 Visible elements:
 
@@ -146,8 +146,8 @@ Visible elements:
 
 Canonical reference:
 
-- The Academic Years panel in `app-overview.png`.
-- Use `subjects-academic-years.png` if a standalone crop is supplied later.
+- The Academic Years panel in `reference/app-overview.png`.
+- Use `reference/subjects-academic-years.png` if a standalone crop is supplied later.
 
 Visible elements:
 
@@ -158,7 +158,7 @@ Visible elements:
 
 Canonical reference:
 
-- The Import / Export panel in `app-overview.png`.
+- The Import / Export panel in `reference/app-overview.png`.
 
 Visible elements:
 
@@ -175,8 +175,8 @@ Interaction notes:
 
 Canonical reference:
 
-- The Settings panels in `app-overview.png`.
-- Use `settings.png` if a standalone composite is supplied later.
+- The Settings panels in `reference/app-overview.png`.
+- Use `reference/settings.png` if a standalone composite is supplied later.
 
 Visible sections:
 
@@ -191,12 +191,12 @@ Approved decisions:
 
 Canonical reference:
 
-- The popout timer states in `app-overview.png`.
-- Use `popout-timer.png` if a standalone crop is supplied later.
+- The popout timer states in `reference/app-overview.png`.
+- Use `reference/popout-timer.png` if a standalone crop is supplied later.
 
 Supplementary reference:
 
-- The compact timer in `analytics-all-years.png` shows how the timer may coexist with another page.
+- The compact timer in `reference/analytics-all-years.png` shows how the timer may coexist with another page.
 
 Visible elements and states:
 
@@ -219,4 +219,4 @@ When references disagree, use this order:
 3. The screen's canonical image.
 4. Supplementary images for shared styling only.
 
-The newer `analytics-all-years.png` supersedes every Analytics design visible in `app-overview.png`.
+The newer `reference/analytics-all-years.png` supersedes every Analytics design visible in `reference/app-overview.png`.

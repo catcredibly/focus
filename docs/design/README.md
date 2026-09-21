@@ -1,18 +1,16 @@
 # Design Reference Assets
 
-The screenshots supplied with the design brief were visible to Codex but were not exposed as image files in the attachment storage, so they could not be copied into this directory automatically.
+The supplied design screenshots are stored in `reference/`:
 
-Manually place the supplied images here using these filenames:
-
-- `app-overview.png` - the multi-screen overview image. Its Analytics panel is obsolete.
-- `analytics-all-years.png` - the newer full Analytics screen and canonical Analytics reference.
-- `timer-running-draft-1.png` - the running Timer screen and canonical running-state reference.
+- `reference/app-overview.png` - the multi-screen overview image. Its Analytics panel is obsolete.
+- `reference/analytics-all-years.png` - the newer full Analytics screen and canonical Analytics reference.
+- `reference/timer-running-draft-1.png` - the running Timer screen and canonical running-state reference.
 
 Optional standalone crops may also be added when available:
 
-- `timer-idle.png`
-- `subjects-academic-years.png`
-- `popout-timer.png`
-- `settings.png`
+- `reference/timer-idle.png`
+- `reference/subjects-academic-years.png`
+- `reference/popout-timer.png`
+- `reference/settings.png`
 
 Do not create runtime dependencies on these files. They are design documentation only. See `DESIGN.md` for precedence, exclusions, and interaction details.

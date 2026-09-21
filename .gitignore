@@ -1,0 +1,40 @@
+# Node
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+
+# Rust / Tauri build output
+src-tauri/target/
+target/
+src-tauri/gen/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Operating systems
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# IDE-local state
+.idea/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*~
+
+# Local packaged archives / ad-hoc backups
+*.zip
