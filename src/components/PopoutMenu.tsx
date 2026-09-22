@@ -34,7 +34,11 @@ export function PopoutMenu() {
   return <main className="popout-menu-window" data-accent={settings.accentColour} data-theme={settings.theme}>
     {view === "more" ? <>
       <button onClick={async () => { const next = !settings.popoutAlwaysOnTop; await setSetting("popoutAlwaysOnTop", next); await invoke("set_timer_always_on_top", { enabled: next }); close(); }}>{t("Always on top")} <span>{t(settings.popoutAlwaysOnTop ? "On" : "Off")}</span></button>
-      {docked && <button onClick={async () => { await setSetting("popoutDocked", false); close(); }}>{t("Undock")}</button>}
+      {docked && <button onClick={async () => {
+        await setSetting("popoutDocked", false);
+        await invoke("restore_timer_floating_position", { x: settings.popoutPositionX, y: settings.popoutPositionY });
+        close();
+      }}>{t("Undock")}</button>}
       <button onClick={() => setView("dock")}>{t("Dock to")}<ChevronRight/></button>
       <label className="popout-menu-select">{t("Monitor")}<select title={displays.find((display) => display.id === settings.popoutDockMonitor)?.label} value={settings.popoutDockMonitor} onChange={async (event) => { await setSetting("popoutDockMonitor", event.target.value as FocusSettings["popoutDockMonitor"]); close(); }}><option value="current">{t("Current monitor")}</option>{displays.map((display) => <option value={display.id} key={display.id}>{display.label}</option>)}</select></label>
       {docked && <button onClick={async () => { await setSetting("popoutDockAutoHide", !settings.popoutDockAutoHide); close(); }}>{t("Auto-hide")} <span>{t(settings.popoutDockAutoHide ? "On" : "Off")}</span></button>}

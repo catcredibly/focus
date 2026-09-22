@@ -5,6 +5,9 @@
   color: #edf5ff;
   background: #081521;
   font-synthesis: none;
+  --archived-border: #8b681d;
+  --archived-soft: rgba(217,164,52,.12);
+  --archived-text: #e5b94f;
 }
 
 * { box-sizing: border-box; }
@@ -271,6 +274,7 @@ select, input { color-scheme: dark; }
 .row-main strong { font-size: 15px; }
 .row-main span, .row-main small { color: #8da2b5; }
 .badge { display: inline-flex; width: fit-content; padding: 3px 7px; border: 1px solid #2b6a4f; border-radius: 5px; color: #66d69c !important; font-size: 11px; font-weight: 600; }
+.badge--archived { border-color: var(--archived-border,#8b681d); background: var(--archived-soft,rgba(217,164,52,.12)); color: var(--archived-text,#e5b94f) !important; }
 .row-actions { display: flex; gap: 5px; }
 .row-actions button { width: 34px; height: 34px; display: grid; place-items: center; border: 0; border-radius: 6px; background: transparent; color: #96aabc; cursor: pointer; }
 .row-actions button:hover { color: #fff; background: #12283a; }
@@ -316,13 +320,13 @@ select, input { color-scheme: dark; }
 .transfer-section h2, .preview-panel h2 { margin: 0 0 16px; font-size: 17px; }
 .transfer-item { display: grid; grid-template-columns: 38px 1fr auto; gap: 14px; align-items: center; min-height: 112px; padding: 18px 0; border-top: 1px solid #173044; }
 .transfer-item:first-of-type { border-top: 0; }
-.transfer-item > svg { color: #ff922b; }
+.transfer-item > svg { color: var(--accent,#ff922b); }
 .transfer-item h3, .drop-zone h3 { margin: 0 0 5px; font-size: 15px; }
 .transfer-item p, .drop-zone p, .preview-panel p { margin: 0; color: #8fa4b7; font-size: 13px; line-height: 1.5; }
 .secondary-action { min-height: 40px; padding: 0 14px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid #2b4a60; border-radius: 7px; background: #102333; cursor: pointer; }
 .secondary-action svg, .primary-action svg, .import-actions svg { width: 17px; height: 17px; }
 .drop-zone { min-height: 252px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 26px; border: 1px dashed #31546c; border-radius: 7px; text-align: center; }
-.drop-zone > svg { width: 34px; height: 34px; color: #6baeff; margin-bottom: 14px; }
+.drop-zone > svg { width: 34px; height: 34px; color: var(--accent,#ff922b); margin-bottom: 14px; }
 .drop-zone button { margin: 20px 0 12px; }
 .drop-zone small, .muted { color: #71899d; }
 .storage-note, .notice { display: flex; align-items: center; gap: 9px; margin-top: 18px; padding: 12px 14px; border: 1px solid #19364a; border-radius: 7px; color: #8fa4b7; font-size: 13px; }
@@ -535,7 +539,7 @@ select, input { color-scheme: dark; }
 @media (max-width: 1250px) { .analytics-page { padding-inline: 20px; }.analytics-header { flex-direction: column; }.analytics-filters { width: 100%; justify-content: space-between; }.metric-strip { grid-template-columns: repeat(3,1fr); }.subjects-layout,.years-layout,.overview-grid { grid-template-columns: 1fr; }.trend-grid,.patterns-grid { grid-template-columns: 1fr; }.trend-grid .analytics-panel:last-child { grid-column: auto; } }
 @media (max-width: 850px) { .analytics-tabs { gap: 20px; overflow-x: auto; }.analytics-filters { align-items: stretch; flex-direction: column; }.range-control { align-self: flex-start; }.metric-strip,.metric-strip--five { grid-template-columns: repeat(2,minmax(0,1fr)); }.analytics-goals,.analytics-insights-row { grid-template-columns: 1fr; }.detail-metrics { grid-template-columns: repeat(2,1fr); }.heatmap-detail { align-items: flex-start; flex-direction: column; gap: 4px; } }
 
-[data-theme="light"].app-shell { --chart-grid: #d9e2e8; color: #172431; background: #eef3f6; }
+[data-theme="light"].app-shell { --chart-grid: #d9e2e8; --archived-border: #a87916; --archived-soft: rgba(196,137,18,.13); --archived-text: #7c590f; color: #172431; background: #eef3f6; }
 [data-theme="light"] .sidebar { border-color: #cbd7df; background: #f8fafb; }
 [data-theme="light"] .nav-item { color: #334654; }
 [data-theme="light"] .nav-item:hover, [data-theme="light"] .icon-button:hover { background: #e4ebef; }

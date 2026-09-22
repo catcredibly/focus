@@ -8,6 +8,7 @@ export const POPOUT_SIZE: Size = { width: 360, height: 170 };
 export const DOCK_MARGIN = 12;
 export const SNAP_THRESHOLD = 52;
 export const AUTO_HIDE_TAB_THICKNESS = 14;
+export const AUTO_HIDE_TAB_INSET = 10;
 
 const clamp = (value: number, minimum: number, maximum: number) => Math.min(Math.max(value, minimum), Math.max(minimum, maximum));
 
@@ -60,8 +61,9 @@ export function nearestEdge(position: Point, workArea: WorkArea, size: Size): Do
 
 export function autoHidePosition(workArea: WorkArea, size: Size, edge: DockEdge, offset: number, hidden: boolean): Point {
   const normalized = clamp(offset, 0, 1);
-  const alongX = workArea.x + normalized * Math.max(0, workArea.width - size.width);
-  const alongY = workArea.y + normalized * Math.max(0, workArea.height - size.height);
+  const inset = hidden ? AUTO_HIDE_TAB_INSET : 0;
+  const alongX = workArea.x + inset + normalized * Math.max(0, workArea.width - size.width - inset * 2);
+  const alongY = workArea.y + inset + normalized * Math.max(0, workArea.height - size.height - inset * 2);
   if (!hidden) {
     if (edge === "left") return { x: workArea.x, y: alongY };
     if (edge === "right") return { x: workArea.x + workArea.width - size.width, y: alongY };

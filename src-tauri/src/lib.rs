@@ -143,9 +143,37 @@ fn list_monitor_work_areas(app: tauri::AppHandle) -> Result<Vec<MonitorWorkArea>
         .collect()
 }
 
+fn clamped_timer_position(window: &tauri::WebviewWindow, x: i32, y: i32) -> Result<tauri::PhysicalPosition<i32>, String> {
+    let monitors = window.available_monitors().map_err(|e| e.to_string())?;
+    let requested_monitor = monitors.iter().find(|monitor| {
+        let position = monitor.position();
+        let size = monitor.size();
+        x >= position.x && y >= position.y && x < position.x + size.width as i32 && y < position.y + size.height as i32
+    }).cloned();
+    let monitor = requested_monitor.clone()
+        .or(window.current_monitor().map_err(|e| e.to_string())?)
+        .or(window.primary_monitor().map_err(|e| e.to_string())?)
+        .ok_or_else(|| "No monitor is available".to_string())?;
+    let desired = if requested_monitor.is_some() { (x, y) } else { (monitor.position().x + 32, monitor.position().y + 32) };
+    #[cfg(windows)]
+    let area = work_area_at_point(monitor.position().x + monitor.size().width as i32 / 2, monitor.position().y + monitor.size().height as i32 / 2)?;
+    #[cfg(not(windows))]
+    let area = WorkArea { x: monitor.position().x, y: monitor.position().y, width: monitor.size().width, height: monitor.size().height };
+    let size = window.outer_size().map_err(|e| e.to_string())?;
+    let max_x = (area.x + area.width as i32 - size.width as i32).max(area.x);
+    let max_y = (area.y + area.height as i32 - size.height as i32).max(area.y);
+    Ok(tauri::PhysicalPosition::new(desired.0.clamp(area.x, max_x), desired.1.clamp(area.y, max_y)))
+}
+
+fn ensure_timer_on_screen(window: &tauri::WebviewWindow) -> Result<(), String> {
+    let position = window.outer_position().map_err(|e| e.to_string())?;
+    window.set_position(clamped_timer_position(window, position.x, position.y)?).map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 fn open_timer_popout(app: tauri::AppHandle) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("timer") {
+        ensure_timer_on_screen(&window)?;
         window.show().map_err(|e| e.to_string())?;
         window.set_focus().map_err(|e| e.to_string())?;
         return Ok(());
@@ -216,6 +244,7 @@ fn set_timer_size(app: tauri::AppHandle, size: String) -> Result<(), String> {
             _ => (380, 190),
         };
         window.set_size(tauri::LogicalSize::new(width, height)).map_err(|e| e.to_string())?;
+        ensure_timer_on_screen(&window)?;
     }
     Ok(())
 }
@@ -223,22 +252,16 @@ fn set_timer_size(app: tauri::AppHandle, size: String) -> Result<(), String> {
 #[tauri::command]
 fn set_timer_position(app: tauri::AppHandle, x: i32, y: i32) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("timer") {
-        let monitors = window.available_monitors().map_err(|e| e.to_string())?;
-        let visible = monitors.iter().any(|monitor| {
-            let position = monitor.position();
-            let size = monitor.size();
-            x >= position.x
-                && y >= position.y
-                && x < position.x + size.width as i32
-                && y < position.y + size.height as i32
-        });
-        let position = if visible {
-            tauri::PhysicalPosition::new(x, y)
-        } else if let Some(monitor) = window.primary_monitor().map_err(|e| e.to_string())? {
-            tauri::PhysicalPosition::new(monitor.position().x + 32, monitor.position().y + 32)
-        } else {
-            tauri::PhysicalPosition::new(32, 32)
-        };
+        window.set_position(clamped_timer_position(&window, x, y)?).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn restore_timer_floating_position(app: tauri::AppHandle, x: Option<i32>, y: Option<i32>) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("timer") {
+        let current = window.outer_position().map_err(|e| e.to_string())?;
+        let position = clamped_timer_position(&window, x.unwrap_or(current.x), y.unwrap_or(current.y))?;
         window.set_position(position).map_err(|e| e.to_string())?;
     }
     Ok(())
@@ -339,6 +362,7 @@ pub fn run() {
             set_timer_taskbar,
             set_timer_size,
             set_timer_position,
+            restore_timer_floating_position,
             set_timer_position_unchecked,
             get_timer_work_area,
             list_monitor_work_areas,

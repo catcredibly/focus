@@ -182,7 +182,7 @@ function decode<K extends keyof FocusSettings>(key: K, raw: string | undefined):
     if (raw === "null") return null as FocusSettings[K];
     let value = Number(raw);
     if (!Number.isFinite(value)) return DEFAULT_SETTINGS[key];
-    if (key === "popoutTransparency") value = Math.min(100, Math.max(10, value));
+    if (key === "popoutTransparency") value = Math.min(100, Math.max(0, value));
     if (key === "completionSoundVolume") value = Math.min(100, Math.max(0, value));
     if (key === "popoutAutoHideOffset") value = Math.min(1, Math.max(0, value));
     if (["lastTimerDurationSeconds", "fixedTimerDurationSeconds", "dailyGoalSeconds", "weeklyGoalSeconds"].includes(key)) value = Math.max(0, Math.floor(value));

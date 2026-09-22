@@ -482,7 +482,7 @@ export function HistoryPage() {
             <strong>{formatDuration(s.focusedDurationSeconds)}</strong>
             <span>{s.subjectName}</span>
             <span>{s.academicYearName}</span>
-            <span className="badge">{t(isSessionEffectivelyArchived(s, subjects, years) ? "Archived" : "Active")}</span>
+            <span className={`badge ${isSessionEffectivelyArchived(s, subjects, years) ? "badge--archived" : ""}`}>{t(isSessionEffectivelyArchived(s, subjects, years) ? "Archived" : "Active")}</span>
             <div className="row-actions">
               <button title={t("Edit")} onClick={() => setEditing(s)}>
                 <Pencil />

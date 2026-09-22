@@ -28,11 +28,13 @@ describe("application settings", () => {
     await saveSetting("displayName", "Alex", testDb);
     await saveSetting("accentColour", "miku", testDb);
     await saveSetting("popoutAlwaysOnTop", false, testDb);
+    await saveSetting("popoutTransparency", 0, testDb);
     await testDb.settings.put({ key: "uiScale", value: "enormous" });
     const settings = await loadSettings(testDb);
     expect(settings.displayName).toBe("Alex");
     expect(settings.accentColour).toBe("miku");
     expect(settings.popoutAlwaysOnTop).toBe(false);
+    expect(settings.popoutTransparency).toBe(0);
     expect(settings.uiScale).toBe("medium");
     expect(settings.allowDirectActiveDeletion).toBe(false);
     await saveSetting("allowDirectActiveDeletion", true, testDb);

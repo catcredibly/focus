@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AUTO_HIDE_TAB_THICKNESS, POPOUT_SIZE, autoHidePosition, clampFreePosition, cornerPosition, defaultEdgeForCorner, edgeOffset, nearestDockCorner, nearestEdge, tabOrientation, type WorkArea } from "./popoutPlacement";
+import { AUTO_HIDE_TAB_INSET, AUTO_HIDE_TAB_THICKNESS, POPOUT_SIZE, autoHidePosition, clampFreePosition, cornerPosition, defaultEdgeForCorner, edgeOffset, nearestDockCorner, nearestEdge, tabOrientation, type WorkArea } from "./popoutPlacement";
 
 const work: WorkArea = { x: 100, y: 50, width: 1200, height: 800 };
 
@@ -22,6 +22,8 @@ describe("popout placement", () => {
   it("keeps hidden windows outside the selected edge except for the minimal tab", () => {
     expect(autoHidePosition(work, POPOUT_SIZE, "right", 0.5, true)).toEqual({ x: 1286, y: 365 });
     expect(autoHidePosition(work, POPOUT_SIZE, "top", 0.5, true)).toEqual({ x: 520, y: 50 - POPOUT_SIZE.height + AUTO_HIDE_TAB_THICKNESS });
+    expect(autoHidePosition(work, POPOUT_SIZE, "left", 0, true).y).toBe(work.y + AUTO_HIDE_TAB_INSET);
+    expect(autoHidePosition(work, POPOUT_SIZE, "bottom", 1, true).x).toBe(work.x + work.width - POPOUT_SIZE.width - AUTO_HIDE_TAB_INSET);
     expect(autoHidePosition(work, POPOUT_SIZE, "left", 0, false)).toEqual({ x: 100, y: 50 });
   });
 

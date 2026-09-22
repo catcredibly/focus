@@ -141,7 +141,7 @@ function Popout({ settings, setSetting }: SettingsProps) {
     <Row label={t("Open popout automatically when a timer starts")}><Toggle label={t("Open popout automatically")} checked={settings.popoutAutoOpen} onChange={(v) => void setSetting("popoutAutoOpen", v)}/></Row>
     <Row label={t("Show popout in taskbar")}><Toggle label={t("Show popout in taskbar")} checked={settings.popoutShowInTaskbar} onChange={(v) => void setSetting("popoutShowInTaskbar", v)}/></Row>
     <Row label={t("Close popout when timer finishes")}><Toggle label={t("Close popout on completion")} checked={settings.popoutCloseOnCompletion} onChange={(v) => void setSetting("popoutCloseOnCompletion", v)}/></Row>
-    <Row label={t("Transparency")} hint={`${settings.popoutTransparency}%`}><input aria-label={t("Transparency")} type="range" min="10" max="100" step="5" value={settings.popoutTransparency} onChange={(event) => void setSetting("popoutTransparency", Number(event.target.value))}/></Row>
+    <Row label={t("Transparency")} hint={`${settings.popoutTransparency}%`}><input aria-label={t("Transparency")} type="range" min="0" max="100" step="5" value={settings.popoutTransparency} onChange={(event) => void setSetting("popoutTransparency", Number(event.target.value))}/></Row>
     <RestoreSection keys={["popoutAlwaysOnTop", "popoutRememberPosition", "popoutShowSubject", "popoutShowClock", "popoutSize", "popoutHideControls", "popoutAutoHide", "popoutAutoOpen", "popoutShowInTaskbar", "popoutCloseOnCompletion", "popoutTransparency", "popoutPositionX", "popoutPositionY", "popoutDockingEnabled", "popoutDockCorner", "popoutDockMonitor", "popoutDocked", "popoutDockAutoHide", "popoutAutoHideEdge", "popoutAutoHideOffset"]}/>
   </>;
 }
