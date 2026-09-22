@@ -498,6 +498,20 @@ function StudyPatterns({ sessions }: { sessions: FocusSession[] }) {
     max = Math.max(1, ...matrix.flat()),
     labels = ["00-03", "03-06", "06-09", "09-12", "12-15", "15-18", "18-21", "21-24"],
     days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const heatmapRef = useRef<HTMLDivElement>(null);
+  const [timeTooltip, setTimeTooltip] = useState<{ day: string; period: string; minutes: string; x: number; y: number }>();
+  const showTimeTooltip = (cell: HTMLElement, day: string, period: string, seconds: number) => {
+    const shell = heatmapRef.current?.getBoundingClientRect();
+    if (!shell) return;
+    const bounds = cell.getBoundingClientRect();
+    setTimeTooltip({
+      day,
+      period,
+      minutes: t("{{count}} minutes", { count: Math.round(seconds / 60) }),
+      x: Math.min(shell.width - 88, Math.max(88, bounds.left + bounds.width / 2 - shell.left)),
+      y: bounds.top - shell.top - 8,
+    });
+  };
   return (
     <div className="analytics-content study-patterns-content">
       <div className="metric-strip metric-strip--five">
@@ -520,29 +534,35 @@ function StudyPatterns({ sessions }: { sessions: FocusSession[] }) {
           </ResponsiveContainer>
         </Panel>
         <Panel title={t("Study time by weekday and time")} subtitle={t("Focused time is distributed across each three-hour period a Session crosses.")}>
-          <div className="time-heatmap">
-            <div className="time-heatmap-head">
-              <span />
-              {labels.map((label) => (
-                <span key={label}>{label}</span>
-              ))}
-            </div>
-            {matrix.map((row, i) => (
-              <div className="time-heatmap-row" key={days[i]}>
-                <b>{t(days[i])}</b>
-                {row.map((seconds, j) => (
-                  <i
-                    key={j}
-                    tabIndex={0}
-                    aria-label={`${t(days[i])} ${labels[j]}, ${formatDuration(seconds)}`}
-                    title={`${t(days[i])} ${labels[j]}: ${formatDuration(seconds)}`}
-                    style={{
-                      opacity: seconds ? Math.max(0.2, seconds / max) : 0.06,
-                    }}
-                  />
+          <div className="time-heatmap-shell" ref={heatmapRef}>
+            <div className="time-heatmap">
+              <div className="time-heatmap-head">
+                <span />
+                {labels.map((label) => (
+                  <span key={label}>{label}</span>
                 ))}
               </div>
-            ))}
+              {matrix.map((row, i) => (
+                <div className="time-heatmap-row" key={days[i]}>
+                  <b>{t(days[i])}</b>
+                  {row.map((seconds, j) => (
+                    <i
+                      key={j}
+                      tabIndex={0}
+                      aria-label={`${t(days[i])} ${labels[j]}, ${t("{{count}} minutes", { count: Math.round(seconds / 60) })}`}
+                      onMouseEnter={(event) => showTimeTooltip(event.currentTarget, t(days[i]), labels[j], seconds)}
+                      onMouseLeave={() => setTimeTooltip(undefined)}
+                      onFocus={(event) => showTimeTooltip(event.currentTarget, t(days[i]), labels[j], seconds)}
+                      onBlur={() => setTimeTooltip(undefined)}
+                      style={{
+                        opacity: seconds ? Math.max(0.2, seconds / max) : 0.06,
+                      }}
+                    />
+                  ))}
+                </div>
+              ))}
+            </div>
+            {timeTooltip && <div className="time-heatmap-tooltip" role="tooltip" style={{ left: timeTooltip.x, top: timeTooltip.y }}><strong>{timeTooltip.day} · {timeTooltip.period}</strong><span>{timeTooltip.minutes}</span></div>}
           </div>
         </Panel>
         <Panel title={t("Session length distribution")}>
