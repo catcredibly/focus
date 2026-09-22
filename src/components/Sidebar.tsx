@@ -9,7 +9,7 @@ import {
   Settings,
 } from "lucide-react";
 import { useSettings } from "../hooks/useSettings";
-import { greeting } from "../settings";
+import { useTranslation } from "react-i18next";
 
 const items = [
   [Clock3, "Timer"],
@@ -30,6 +30,10 @@ type Props = {
 
 export function Sidebar({ collapsed, onToggle, active, onNavigate }: Props) {
   const { settings } = useSettings();
+  const { t } = useTranslation();
+  const hour = new Date().getHours();
+  const greetingKey = hour < 12 ? "Good morning{{name}}" : hour < 18 ? "Good afternoon{{name}}" : "Good evening{{name}}";
+  const greetingName = settings.displayName.trim() ? `${settings.language === "zh-CN" ? "，" : ", "}${settings.displayName.trim()}` : "";
   return (
     <aside className={`sidebar ${collapsed ? "sidebar--collapsed" : ""}`}>
       <div className="brand-row">
@@ -37,10 +41,10 @@ export function Sidebar({ collapsed, onToggle, active, onNavigate }: Props) {
         {!collapsed && (
           <div>
             <div className="brand-name">Focus</div>
-            <div className="brand-subtitle">Study. Track. Improve.</div>
+            <div className="brand-subtitle">{t("Study. Track. Improve.")}</div>
           </div>
         )}
-        <button className="icon-button sidebar-toggle" onClick={onToggle} aria-label="Toggle sidebar">
+        <button className="icon-button sidebar-toggle" onClick={onToggle} aria-label={t("Toggle sidebar")}>
           <Menu size={18} />
         </button>
       </div>
@@ -49,7 +53,7 @@ export function Sidebar({ collapsed, onToggle, active, onNavigate }: Props) {
         {items.map(([Icon, label]) => (
           <button key={label} onClick={() => onNavigate(label)} className={`nav-item ${active === label ? "nav-item--active" : ""}`}>
             <Icon size={20} />
-            {!collapsed && <span>{label}</span>}
+            {!collapsed && <span>{t(label)}</span>}
           </button>
         ))}
       </nav>
@@ -58,8 +62,8 @@ export function Sidebar({ collapsed, onToggle, active, onNavigate }: Props) {
         <div className="sidebar-greeting">
           <div className="moon">◒</div>
           <div>
-            <div>{greeting(settings.displayName)}</div>
-            <span>Stay consistent.</span>
+            <div>{t(greetingKey, { name: greetingName })}</div>
+            <span>{t("Stay consistent.")}</span>
           </div>
         </div>
       )}

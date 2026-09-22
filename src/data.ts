@@ -1,26 +1,37 @@
 import { db } from "./db";
 import type { AcademicYear, FocusSession, Subject } from "./types";
+import { localeCode } from "./i18n";
 
 export const CURRENT_YEAR_KEY = "currentAcademicYearId";
 export const makeId = () => crypto.randomUUID();
 
-export function formatDuration(totalSeconds: number) {
+export function formatDurationForLocale(totalSeconds: number, locale = localeCode()) {
   const total = Math.max(0, Math.round(totalSeconds));
   const hours = Math.floor(total / 3600);
   const minutes = Math.floor((total % 3600) / 60);
+  if (locale === "zh-CN") {
+    if (hours && minutes) return `${hours} 小时 ${minutes} 分钟`;
+    if (hours) return `${hours} 小时`;
+    if (minutes) return `${minutes} 分钟`;
+    return `${total} 秒`;
+  }
   if (hours && minutes) return `${hours} hr ${minutes} min`;
   if (hours) return `${hours} hr`;
   if (minutes) return `${minutes} min`;
   return `${total} sec`;
 }
 
-export function formatDurationAxis(totalSeconds: number) {
+export function formatDuration(totalSeconds: number) { return formatDurationForLocale(totalSeconds); }
+
+export function formatDurationAxisForLocale(totalSeconds: number, locale = localeCode()) {
   const total = Math.max(0, totalSeconds);
-  if (total < 60) return `${Math.round(total)} sec`;
-  if (total < 3600) return `${Math.round(total / 60)} min`;
+  if (total < 60) return `${Math.round(total)} ${locale === "zh-CN" ? "秒" : "sec"}`;
+  if (total < 3600) return `${Math.round(total / 60)} ${locale === "zh-CN" ? "分钟" : "min"}`;
   const hours = total / 3600;
-  return `${hours < 10 && !Number.isInteger(hours) ? hours.toFixed(1) : Math.round(hours)} hr`;
+  return `${hours < 10 && !Number.isInteger(hours) ? hours.toFixed(1) : Math.round(hours)} ${locale === "zh-CN" ? "小时" : "hr"}`;
 }
+
+export function formatDurationAxis(totalSeconds: number) { return formatDurationAxisForLocale(totalSeconds); }
 
 export async function getCurrentAcademicYearId() {
   return (await db.settings.get(CURRENT_YEAR_KEY))?.value ?? "";

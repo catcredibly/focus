@@ -5,9 +5,13 @@ export type AccentColour = "orange" | "blue" | "green" | "purple";
 export type UiScale = "small" | "medium" | "large";
 export type TimerDurationMode = "remember" | "fixed";
 export type PopoutAutoHide = "500" | "1000" | "2000" | "never";
+export type Locale = "en" | "zh-CN";
+export type DockCorner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
+export type DockEdge = "top" | "right" | "bottom" | "left";
 
 export type FocusSettings = {
   displayName: string;
+  language: Locale;
   startMaximized: boolean;
   launchAtStartup: boolean;
   timerDurationMode: TimerDurationMode;
@@ -26,6 +30,12 @@ export type FocusSettings = {
   popoutTransparency: number;
   popoutPositionX: number | null;
   popoutPositionY: number | null;
+  popoutDockingEnabled: boolean;
+  popoutDockCorner: DockCorner;
+  popoutDocked: boolean;
+  popoutDockAutoHide: boolean;
+  popoutAutoHideEdge: DockEdge;
+  popoutAutoHideOffset: number;
   accentColour: AccentColour;
   uiScale: UiScale;
   lastBackupAt: string | null;
@@ -34,6 +44,7 @@ export type FocusSettings = {
 
 export const SETTINGS_KEYS: { [K in keyof FocusSettings]: string } = {
   displayName: "displayName",
+  language: "language",
   startMaximized: "startMaximized",
   launchAtStartup: "launchAtStartup",
   timerDurationMode: "timerDurationMode",
@@ -52,6 +63,12 @@ export const SETTINGS_KEYS: { [K in keyof FocusSettings]: string } = {
   popoutTransparency: "popoutTransparency",
   popoutPositionX: "popoutPositionX",
   popoutPositionY: "popoutPositionY",
+  popoutDockingEnabled: "popoutDockingEnabled",
+  popoutDockCorner: "popoutDockCorner",
+  popoutDocked: "popoutDocked",
+  popoutDockAutoHide: "popoutDockAutoHide",
+  popoutAutoHideEdge: "popoutAutoHideEdge",
+  popoutAutoHideOffset: "popoutAutoHideOffset",
   accentColour: "accentColour",
   uiScale: "uiScale",
   lastBackupAt: "lastBackupAt",
@@ -60,6 +77,7 @@ export const SETTINGS_KEYS: { [K in keyof FocusSettings]: string } = {
 
 export const DEFAULT_SETTINGS: FocusSettings = {
   displayName: "",
+  language: "en",
   startMaximized: true,
   launchAtStartup: false,
   timerDurationMode: "remember",
@@ -78,14 +96,20 @@ export const DEFAULT_SETTINGS: FocusSettings = {
   popoutTransparency: 100,
   popoutPositionX: null,
   popoutPositionY: null,
+  popoutDockingEnabled: false,
+  popoutDockCorner: "top-right",
+  popoutDocked: false,
+  popoutDockAutoHide: false,
+  popoutAutoHideEdge: "right",
+  popoutAutoHideOffset: 0,
   accentColour: "orange",
   uiScale: "medium",
   lastBackupAt: null,
   allowDirectActiveDeletion: false,
 };
 
-const booleans = new Set<keyof FocusSettings>(["startMaximized", "launchAtStartup", "completionSound", "completionNotification", "popoutAlwaysOnTop", "popoutRememberPosition", "popoutShowSubject", "popoutHideControls", "popoutAutoOpen", "popoutShowInTaskbar", "popoutCloseOnCompletion", "allowDirectActiveDeletion"]);
-const numbers = new Set<keyof FocusSettings>(["lastTimerDurationSeconds", "fixedTimerDurationSeconds", "popoutTransparency", "popoutPositionX", "popoutPositionY"]);
+const booleans = new Set<keyof FocusSettings>(["startMaximized", "launchAtStartup", "completionSound", "completionNotification", "popoutAlwaysOnTop", "popoutRememberPosition", "popoutShowSubject", "popoutHideControls", "popoutAutoOpen", "popoutShowInTaskbar", "popoutCloseOnCompletion", "popoutDockingEnabled", "popoutDocked", "popoutDockAutoHide", "allowDirectActiveDeletion"]);
+const numbers = new Set<keyof FocusSettings>(["lastTimerDurationSeconds", "fixedTimerDurationSeconds", "popoutTransparency", "popoutPositionX", "popoutPositionY", "popoutAutoHideOffset"]);
 
 function decode<K extends keyof FocusSettings>(key: K, raw: string | undefined): FocusSettings[K] {
   if (raw === undefined) return DEFAULT_SETTINGS[key];
@@ -97,7 +121,8 @@ function decode<K extends keyof FocusSettings>(key: K, raw: string | undefined):
   }
   if (key === "lastBackupAt") return (raw || null) as FocusSettings[K];
   const allowed: Partial<Record<keyof FocusSettings, readonly string[]>> = {
-    timerDurationMode: ["remember", "fixed"], popoutAutoHide: ["500", "1000", "2000", "never"],
+    language: ["en", "zh-CN"], timerDurationMode: ["remember", "fixed"], popoutAutoHide: ["500", "1000", "2000", "never"],
+    popoutDockCorner: ["top-left", "top-right", "bottom-left", "bottom-right"], popoutAutoHideEdge: ["top", "right", "bottom", "left"],
     accentColour: ["orange", "blue", "green", "purple"], uiScale: ["small", "medium", "large"],
   };
   return ((allowed[key] && !allowed[key]?.includes(raw)) ? DEFAULT_SETTINGS[key] : raw) as FocusSettings[K];

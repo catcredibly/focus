@@ -3,6 +3,7 @@ import { isPermissionGranted, requestPermission, sendNotification } from "@tauri
 import { formatDuration } from "./data";
 import { loadSettings } from "./settings";
 import type { TimerState } from "./timerState";
+import i18n from "./i18n";
 
 function playCompletionTone() {
   const context = new AudioContext();
@@ -25,7 +26,7 @@ export async function handleTimerCompletion(state: TimerState) {
     try {
       let granted = await isPermissionGranted();
       if (!granted) granted = await requestPermission() === "granted";
-      if (granted) sendNotification({ title: "Focus session complete", body: `${state.subject} - ${formatDuration(state.plannedDurationSeconds)}` });
+      if (granted) sendNotification({ title: i18n.t("Focus session complete"), body: i18n.t("{{subject}} - {{duration}}", { subject: state.subject, duration: formatDuration(state.plannedDurationSeconds) }) });
     } catch { /* Notification denial must not interrupt Session persistence. */ }
   }
   if (settings.popoutCloseOnCompletion && isTauri()) await invoke("hide_timer_popout").catch(() => undefined);

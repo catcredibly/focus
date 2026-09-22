@@ -7,6 +7,8 @@ import { formatDuration, formatDurationAxis } from "../data";
 import type { AcademicYear, FocusSession, Subject } from "../types";
 import { createDevelopmentAnalyticsDataset } from "../analytics/developmentDataset";
 import { academicYearTotals, activeDayCount, averageActiveDaySeconds, calendarDailySeries, calendarMonthlySeries, cumulativeTotals, dailyTotals, filterSessions, heatmapLevel, heatmapScale, localDayKey, longestStreak, medianSessionSeconds, monthlyTotals, rollingAverage, sessionLengthBuckets, subjectTotals, timeOfDayMatrix, totalFocusedSeconds, weekdayTotals, weeklyTotals } from "../analytics/analytics";
+import { useTranslation } from "react-i18next";
+import { localeCode } from "../i18n";
 
 const YEAR_COLORS = ["#4da3ff", "#a879ff", "#4dd39a", "#ffad3b", "#ff7eb6", "#8da2b5"];
 const ranges = ["7D", "30D", "3M", "1Y", "All"] as const;
@@ -23,6 +25,7 @@ const rangeStart = (range: Range) => {
 const durationTick = formatDurationAxis;
 
 export function AnalyticsPage() {
+  const { t } = useTranslation();
   const storedYears = useLiveQuery(() => db.academicYears.toArray(), []),
     storedSubjects = useLiveQuery(() => db.subjects.toArray(), []),
     storedSessions = useLiveQuery(() => db.sessions.orderBy("startTime").toArray(), []);
@@ -57,39 +60,39 @@ export function AnalyticsPage() {
       {demoEnabled && <div className="analytics-demo-banner">Development dataset · {sessions.length.toLocaleString()} generated Sessions · in memory only</div>}
       <header className="analytics-header">
         <div>
-          <h1>Analytics</h1>
-          <p>Explore your study habits across subjects, Academic Years, and self-study.</p>
+          <h1>{t("Analytics")}</h1>
+          <p>{t("Explore your study habits across subjects, Academic Years, and self-study.")}</p>
         </div>
         <div className="analytics-filters">
-          <select aria-label="Academic Year" value={yearId} onChange={(e) => setYearId(e.target.value)}>
-            <option value="">All Years</option>
+          <select aria-label={t("Academic Year")} value={yearId} onChange={(e) => setYearId(e.target.value)}>
+            <option value="">{t("All Years")}</option>
             {years.map((y) => (
               <option key={y.id} value={y.id}>
                 {y.name}
               </option>
             ))}
           </select>
-          <div className="range-control" aria-label="Date range">
+          <div className="range-control" aria-label={t("Date range")}>
             {ranges.map((r) => (
               <button key={r} className={range === r ? "active" : ""} onClick={() => setRange(r)}>
-                {r}
+                {t(r)}
               </button>
             ))}
           </div>
         </div>
       </header>
-      <nav className="analytics-tabs" aria-label="Analytics views">
+      <nav className="analytics-tabs" aria-label={t("Analytics views")}>
         {tabs.map((item) => (
           <button key={item} className={tab === item ? "active" : ""} onClick={() => setTab(item)}>
-            {item}
+            {t(item)}
           </button>
         ))}
       </nav>
       {!filtered.length ? (
         <div className="analytics-empty">
           <BarChart3 />
-          <h2>No Sessions in this range</h2>
-          <p>Try another date range or Academic Year.</p>
+          <h2>{t("No Sessions in this range")}</h2>
+          <p>{t("Try another date range or Academic Year.")}</p>
         </div>
       ) : tab === "Overview" ? (
         <Overview sessions={filtered} years={years} subjects={subjects} />
@@ -107,6 +110,7 @@ export function AnalyticsPage() {
 }
 
 function Overview({ sessions, years, subjects }: { sessions: FocusSession[]; years: AcademicYear[]; subjects: Subject[] }) {
+  const { t } = useTranslation();
   const subjectsData = subjectTotals(sessions, subjects),
     yearData = academicYearTotals(sessions, years, subjects),
     months = calendarMonthlySeries(sessions),
@@ -119,7 +123,7 @@ function Overview({ sessions, years, subjects }: { sessions: FocusSession[]; yea
   const monthRows = months.map((month) => {
       const date = new Date(month.start),
         row: Record<string, string | number> = {
-          label: date.toLocaleDateString(undefined, {
+          label: date.toLocaleDateString(localeCode(), {
             month: "short",
             year: "2-digit",
           }),
@@ -129,19 +133,19 @@ function Overview({ sessions, years, subjects }: { sessions: FocusSession[]; yea
     }),
     top = subjectsData.slice(0, 6),
     other = subjectsData.slice(6).reduce((n, s) => n + s.seconds, 0),
-    pie = [...top.map((s) => ({ name: s.name, value: s.seconds, color: s.color })), ...(other ? [{ name: "Other", value: other, color: "#71879d" }] : [])];
+    pie = [...top.map((s) => ({ name: s.name, value: s.seconds, color: s.color })), ...(other ? [{ name: t("Other"), value: other, color: "#71879d" }] : [])];
   return (
     <div className="analytics-content">
       <div className="metric-strip">
-        <Metric icon={<Clock3 />} label="Total focus time" value={formatDuration(totalFocusedSeconds(sessions))} />
-        <Metric icon={<Layers3 />} label="Total Sessions" value={sessions.length.toLocaleString()} />
-        <Metric icon={<Flame />} label="Longest streak" value={`${longestStreak(sessions)} days`} />
-        <Metric icon={<BarChart3 />} label="Average per active day" value={formatDuration(averageActiveDaySeconds(sessions))} />
-        <Metric icon={<BookOpen />} label="Most studied Subject" value={subjectsData[0]?.name ?? "-"} />
-        <Metric icon={<CalendarDays />} label="Academic Years" value={String(new Set(sessions.map((s) => s.academicYearId)).size)} />
+        <Metric icon={<Clock3 />} label={t("Total focus time")} value={formatDuration(totalFocusedSeconds(sessions))} />
+        <Metric icon={<Layers3 />} label={t("Total Sessions")} value={sessions.length.toLocaleString()} />
+        <Metric icon={<Flame />} label={t("Longest streak")} value={t("{{count}} days", { count: longestStreak(sessions) })} />
+        <Metric icon={<BarChart3 />} label={t("Average per active day")} value={formatDuration(averageActiveDaySeconds(sessions))} />
+        <Metric icon={<BookOpen />} label={t("Most studied Subject")} value={subjectsData[0]?.name ?? "-"} />
+        <Metric icon={<CalendarDays />} label={t("Academic Years")} value={String(new Set(sessions.map((s) => s.academicYearId)).size)} />
       </div>
       <div className="overview-grid">
-        <Panel className="wide" title="Focus time over time" subtitle="Monthly focused time. Latest months are shown first.">
+        <Panel className="wide" title={t("Focus time over time")} subtitle={t("Monthly focused time. Latest months are shown first.")}>
           <ScrollChart width={Math.max(760, monthRows.length * 48)}>
             <BarChart data={monthRows} accessibilityLayer>
               <CartesianGrid stroke="#173044" vertical={false} />
@@ -154,7 +158,7 @@ function Overview({ sessions, years, subjects }: { sessions: FocusSession[]; yea
             </BarChart>
           </ScrollChart>
         </Panel>
-        <Panel title="Focus time by Academic Year">
+        <Panel title={t("Focus time by Academic Year")}>
           {yearData.map((year, index) => (
             <div className="breakdown-row" key={year.academicYearId}>
               <span title={year.name}>{year.name}</span>
@@ -168,7 +172,7 @@ function Overview({ sessions, years, subjects }: { sessions: FocusSession[]; yea
             </div>
           ))}
         </Panel>
-        <Panel title="Focus time by Subject">
+        <Panel title={t("Focus time by Subject")}>
           <div className="donut-wrap">
             <ResponsiveContainer width="100%" height={220}>
               <PieChart accessibilityLayer>
@@ -191,10 +195,10 @@ function Overview({ sessions, years, subjects }: { sessions: FocusSession[]; yea
             </div>
           </div>
         </Panel>
-        <Panel className="wide" title="Study activity" subtitle="Daily focused time across the selected range.">
+        <Panel className="wide" title={t("Study activity")} subtitle={t("Daily focused time across the selected range.")}>
           <ActivityHeatmap sessions={sessions} />
         </Panel>
-        <Panel title="Session length distribution">
+        <Panel title={t("Session length distribution")}>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={sessionLengthBuckets(sessions)} accessibilityLayer>
               <CartesianGrid stroke="#173044" vertical={false} />
@@ -204,7 +208,7 @@ function Overview({ sessions, years, subjects }: { sessions: FocusSession[]; yea
               <Bar dataKey="count" fill="#6baeff" />
             </BarChart>
           </ResponsiveContainer>
-          <p className="panel-foot">Median Session: {formatDuration(medianSessionSeconds(sessions))}</p>
+          <p className="panel-foot">{t("Median Session")}: {formatDuration(medianSessionSeconds(sessions))}</p>
         </Panel>
       </div>
     </div>
@@ -212,20 +216,21 @@ function Overview({ sessions, years, subjects }: { sessions: FocusSession[]; yea
 }
 
 function SubjectsAnalytics({ sessions, subjects, years }: { sessions: FocusSession[]; subjects: Subject[]; years: AcademicYear[] }) {
+  const { t } = useTranslation();
   const rows = subjectTotals(sessions, subjects),
     [selected, setSelected] = useState("");
   const detail = rows.find((r) => r.subjectId === (selected || rows[0]?.subjectId));
   return (
     <div className="analytics-content subjects-layout">
-      <Panel title="Subjects" subtitle="Each Subject remains distinct within its Academic Year.">
+      <Panel title={t("Subjects")} subtitle={t("Each Subject remains distinct within its Academic Year.")}>
         <div className="analytics-table">
           <div className="analytics-table-head">
-            <span>Subject</span>
-            <span>Academic Year</span>
-            <span>Focus time</span>
-            <span>Sessions</span>
-            <span>Average</span>
-            <span>Active days</span>
+            <span>{t("Subject")}</span>
+            <span>{t("Academic Year")}</span>
+            <span>{t("Focus time")}</span>
+            <span>{t("Sessions")}</span>
+            <span>{t("Average")}</span>
+            <span>{t("Active days")}</span>
           </div>
           {rows.map((row) => (
             <button key={row.subjectId} className={detail?.subjectId === row.subjectId ? "selected" : ""} onClick={() => setSelected(row.subjectId)}>
@@ -246,17 +251,17 @@ function SubjectsAnalytics({ sessions, subjects, years }: { sessions: FocusSessi
         <Panel title={detail.name} subtitle={years.find((y) => y.id === detail.academicYearId)?.name}>
           <div className="detail-metrics">
             <span>
-              Total focus time<strong>{formatDuration(detail.seconds)}</strong>
+              {t("Total focus time")}<strong>{formatDuration(detail.seconds)}</strong>
             </span>
             <span>
-              Sessions<strong>{detail.sessions}</strong>
+              {t("Sessions")}<strong>{detail.sessions}</strong>
             </span>
             <span>
-              Average Session
+              {t("Average Session")}
               <strong>{formatDuration(detail.averageSessionSeconds)}</strong>
             </span>
             <span>
-              Active days<strong>{detail.activeDayCount}</strong>
+              {t("Active days")}<strong>{detail.activeDayCount}</strong>
             </span>
           </div>
           <SimpleTrend sessions={sessions.filter((s) => s.subjectId === detail.subjectId)} />
@@ -268,6 +273,7 @@ function SubjectsAnalytics({ sessions, subjects, years }: { sessions: FocusSessi
 }
 
 function YearsAnalytics({ sessions, years, subjects }: { sessions: FocusSession[]; years: AcademicYear[]; subjects: Subject[] }) {
+  const { t } = useTranslation();
   const rows = academicYearTotals(sessions, years, subjects),
     [selected, setSelected] = useState("");
   const detail = rows.find((r) => r.academicYearId === (selected || rows[0]?.academicYearId));
@@ -275,40 +281,40 @@ function YearsAnalytics({ sessions, years, subjects }: { sessions: FocusSession[
     detailSubjects = subjectTotals(detailSessions, subjects);
   return (
     <div className="analytics-content years-layout">
-      <Panel title="Academic Years">
+      <Panel title={t("Academic Years")}>
         {rows.map((row) => (
           <button className={`year-summary ${detail?.academicYearId === row.academicYearId ? "selected" : ""}`} key={row.academicYearId} onClick={() => setSelected(row.academicYearId)}>
             <strong>{row.name}</strong>
             <span>
-              {formatDuration(row.seconds)} · {row.sessions} Sessions · {row.activeDays} active days
+              {formatDuration(row.seconds)} · {t("{{count}} Sessions", { count: row.sessions })} · {t("{{count}} active days", { count: row.activeDays })}
             </span>
           </button>
         ))}
       </Panel>
       {detail && (
-        <Panel title={detail.name} subtitle="Activity and Subject detail">
+        <Panel title={detail.name} subtitle={t("Activity and Subject detail")}>
           <div className="detail-metrics">
             <span>
-              Focus time<strong>{formatDuration(detail.seconds)}</strong>
+              {t("Focus time")}<strong>{formatDuration(detail.seconds)}</strong>
             </span>
             <span>
-              Sessions<strong>{detail.sessions}</strong>
+              {t("Sessions")}<strong>{detail.sessions}</strong>
             </span>
             <span>
-              Active days<strong>{detail.activeDays}</strong>
+              {t("Active days")}<strong>{detail.activeDays}</strong>
             </span>
             <span>
-              Average active day
+              {t("Average active day")}
               <strong>{formatDuration(detail.averageActiveDaySeconds)}</strong>
             </span>
             <span>
-              90th percentile<strong>{formatDuration(detail.p90)}</strong>
+              {t("90th percentile")}<strong>{formatDuration(detail.p90)}</strong>
             </span>
             <span>
-              Heatmap interval<strong>{formatDuration(detail.step)}</strong>
+              {t("Heatmap interval")}<strong>{formatDuration(detail.step)}</strong>
             </span>
           </div>
-          <div className="compact-subjects" aria-label="Subject breakdown">
+          <div className="compact-subjects" aria-label={t("Subject breakdown")}>
             {detailSubjects.slice(0, 6).map((subject) => (
               <span key={subject.subjectId}>
                 <i style={{ background: subject.color }} />
@@ -326,6 +332,7 @@ function YearsAnalytics({ sessions, years, subjects }: { sessions: FocusSession[
 }
 
 function TimeTrends({ sessions, subjects }: { sessions: FocusSession[]; subjects: any[] }) {
+  const { t } = useTranslation();
   const [aggregation, setAggregation] = useState<"daily" | "weekly" | "monthly">("monthly"),
     [subjectId, setSubjectId] = useState("");
   const rows = sessions.filter((s) => !subjectId || s.subjectId === subjectId),
@@ -346,12 +353,12 @@ function TimeTrends({ sessions, subjects }: { sessions: FocusSession[]; subjects
         <div className="range-control">
           {(["daily", "weekly", "monthly"] as const).map((a) => (
             <button className={aggregation === a ? "active" : ""} onClick={() => setAggregation(a)} key={a}>
-              {a[0].toUpperCase() + a.slice(1)}
+              {t(a[0].toUpperCase() + a.slice(1))}
             </button>
           ))}
         </div>
         <select value={subjectId} onChange={(e) => setSubjectId(e.target.value)}>
-          <option value="">All Subjects</option>
+          <option value="">{t("All Subjects")}</option>
           {subjects.map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}
@@ -360,18 +367,18 @@ function TimeTrends({ sessions, subjects }: { sessions: FocusSession[]; subjects
         </select>
       </div>
       <div className="trend-grid">
-        <Panel title="Focus trend">
+        <Panel title={t("Focus trend")}>
           <ScrollChart width={Math.max(760, points.length * 44)}>
             <AreaChart data={points}>
               <CartesianGrid stroke="#173044" />
               <XAxis dataKey="label" stroke="#7890a4" fontSize={10} />
               <YAxis tickFormatter={durationTick} stroke="#7890a4" />
               <Tooltip content={<DurationTooltip />} />
-              <Area dataKey="seconds" name="Focus time" stroke="#4da3ff" fill="#1f5f95" fillOpacity={0.45} />
+              <Area dataKey="seconds" name={t("Focus time")} stroke="#4da3ff" fill="#1f5f95" fillOpacity={0.45} />
             </AreaChart>
           </ScrollChart>
         </Panel>
-        <Panel title="Cumulative Focus Time">
+        <Panel title={t("Cumulative Focus Time")}>
           <ScrollChart width={Math.max(760, cumulative.length * 44)}>
             <LineChart data={cumulative}>
               <CartesianGrid stroke="#173044" />
@@ -382,15 +389,15 @@ function TimeTrends({ sessions, subjects }: { sessions: FocusSession[]; subjects
             </LineChart>
           </ScrollChart>
         </Panel>
-        <Panel title="Rolling calendar-day averages" subtitle="Zero-study calendar days are included.">
+        <Panel title={t("Rolling calendar-day averages")} subtitle={t("Zero-study calendar days are included.")}>
           <ScrollChart width={Math.max(760, rolling.length * 12)}>
             <LineChart data={rolling}>
               <CartesianGrid stroke="#173044" />
               <XAxis dataKey="label" stroke="#7890a4" fontSize={10} />
               <YAxis tickFormatter={durationTick} stroke="#7890a4" />
               <Tooltip content={<DurationTooltip />} />
-              <Line dataKey="avg7" name="7-day average" stroke="#4da3ff" dot={false} />
-              <Line dataKey="avg30" name="30-day average" stroke="#ff7eb6" dot={false} />
+              <Line dataKey="avg7" name={t("7-day average")} stroke="#4da3ff" dot={false} />
+              <Line dataKey="avg30" name={t("30-day average")} stroke="#ff7eb6" dot={false} />
             </LineChart>
           </ScrollChart>
         </Panel>
@@ -400,6 +407,7 @@ function TimeTrends({ sessions, subjects }: { sessions: FocusSession[]; subjects
 }
 
 function StudyPatterns({ sessions }: { sessions: FocusSession[] }) {
+  const { t } = useTranslation();
   const weekdays = weekdayTotals(sessions),
     matrix = timeOfDayMatrix(sessions),
     max = Math.max(1, ...matrix.flat()),
@@ -408,14 +416,14 @@ function StudyPatterns({ sessions }: { sessions: FocusSession[] }) {
   return (
     <div className="analytics-content study-patterns-content">
       <div className="metric-strip metric-strip--five">
-        <Metric icon={<CalendarDays />} label="Active days" value={String(activeDayCount(sessions))} />
-        <Metric icon={<Layers3 />} label="Weeks with Sessions" value={String(new Set(weeklyTotals(sessions).map((p) => p.key)).size)} />
-        <Metric icon={<Clock3 />} label="Average active day" value={formatDuration(averageActiveDaySeconds(sessions))} />
-        <Metric icon={<BarChart3 />} label="Median Session" value={formatDuration(medianSessionSeconds(sessions))} />
-        <Metric icon={<Flame />} label="Longest streak" value={`${longestStreak(sessions)} days`} />
+        <Metric icon={<CalendarDays />} label={t("Active days")} value={String(activeDayCount(sessions))} />
+        <Metric icon={<Layers3 />} label={t("Weeks with Sessions")} value={String(new Set(weeklyTotals(sessions).map((p) => p.key)).size)} />
+        <Metric icon={<Clock3 />} label={t("Average active day")} value={formatDuration(averageActiveDaySeconds(sessions))} />
+        <Metric icon={<BarChart3 />} label={t("Median Session")} value={formatDuration(medianSessionSeconds(sessions))} />
+        <Metric icon={<Flame />} label={t("Longest streak")} value={t("{{count}} days", { count: longestStreak(sessions) })} />
       </div>
       <div className="patterns-grid">
-        <Panel title="Focus time by weekday">
+        <Panel title={t("Focus time by weekday")}>
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={weekdays} accessibilityLayer>
               <CartesianGrid stroke="#173044" vertical={false} />
@@ -426,7 +434,7 @@ function StudyPatterns({ sessions }: { sessions: FocusSession[] }) {
             </BarChart>
           </ResponsiveContainer>
         </Panel>
-        <Panel title="Study time by weekday and time" subtitle="Focused time is distributed across each three-hour period a Session crosses.">
+        <Panel title={t("Study time by weekday and time")} subtitle={t("Focused time is distributed across each three-hour period a Session crosses.")}>
           <div className="time-heatmap">
             <div className="time-heatmap-head">
               <span />
@@ -436,13 +444,13 @@ function StudyPatterns({ sessions }: { sessions: FocusSession[] }) {
             </div>
             {matrix.map((row, i) => (
               <div className="time-heatmap-row" key={days[i]}>
-                <b>{days[i]}</b>
+                <b>{t(days[i])}</b>
                 {row.map((seconds, j) => (
                   <i
                     key={j}
                     tabIndex={0}
-                    aria-label={`${days[i]} ${labels[j]}, ${formatDuration(seconds)}`}
-                    title={`${days[i]} ${labels[j]}: ${formatDuration(seconds)}`}
+                    aria-label={`${t(days[i])} ${labels[j]}, ${formatDuration(seconds)}`}
+                    title={`${t(days[i])} ${labels[j]}: ${formatDuration(seconds)}`}
                     style={{
                       opacity: seconds ? Math.max(0.2, seconds / max) : 0.06,
                     }}
@@ -452,7 +460,7 @@ function StudyPatterns({ sessions }: { sessions: FocusSession[] }) {
             ))}
           </div>
         </Panel>
-        <Panel title="Session length distribution">
+        <Panel title={t("Session length distribution")}>
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={sessionLengthBuckets(sessions)} accessibilityLayer>
               <CartesianGrid stroke="#173044" vertical={false} />
@@ -491,6 +499,7 @@ function Panel({ title, subtitle, children, className = "" }: { title: string; s
   );
 }
 function ScrollChart({ width, children }: { width: number; children: React.ReactElement }) {
+  const { t } = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const node = scrollRef.current;
@@ -514,7 +523,7 @@ function ScrollChart({ width, children }: { width: number; children: React.React
           })
         }
       >
-        Jump to latest
+        {t("Jump to latest")}
       </button>
     </div>
   );
@@ -537,13 +546,14 @@ function DurationTooltip({ active, payload, label }: any) {
   );
 }
 function CountTooltip({ active, payload, label }: any) {
+  const { t } = useTranslation();
   if (!active || !payload?.length) return null;
   return (
     <div className="chart-tooltip">
       <strong>{label}</strong>
       <span>
         <i style={{ background: payload[0].color }} />
-        <em>Sessions</em>
+        <em>{t("Sessions")}</em>
         <b>{Number(payload[0].value).toLocaleString()}</b>
       </span>
     </div>
@@ -567,6 +577,7 @@ function SimpleTrend({ sessions }: { sessions: FocusSession[] }) {
 }
 type HeatmapDay = { key: string; date: Date; seconds: number; count: number };
 function ActivityHeatmap({ sessions, explainScale = false }: { sessions: FocusSession[]; explainScale?: boolean }) {
+  const { t } = useTranslation();
   const points = dailyTotals(sessions),
     scale = heatmapScale(sessions),
     scrollRef = useRef<HTMLDivElement>(null),
@@ -606,11 +617,11 @@ function ActivityHeatmap({ sessions, explainScale = false }: { sessions: FocusSe
             index,
             label:
               date.getMonth() === 0 || !previous
-                ? date.toLocaleDateString(undefined, {
+                ? date.toLocaleDateString(localeCode(), {
                     month: "short",
                     year: "numeric",
                   })
-                : date.toLocaleDateString(undefined, { month: "short" }),
+                : date.toLocaleDateString(localeCode(), { month: "short" }),
           }
         : undefined;
     })
@@ -621,10 +632,10 @@ function ActivityHeatmap({ sessions, explainScale = false }: { sessions: FocusSe
     <>
       <div className="heatmap-shell">
         <div className="weekday-labels">
-          <span>Mon</span>
-          <span>Wed</span>
-          <span>Fri</span>
-          <span>Sun</span>
+          <span>{t("Mon")}</span>
+          <span>{t("Wed")}</span>
+          <span>{t("Fri")}</span>
+          <span>{t("Sun")}</span>
         </div>
         <div className="heatmap-scroll" ref={scrollRef}>
           <div className="heatmap-months" style={{ width: weeks.length * 14 }}>
@@ -638,7 +649,7 @@ function ActivityHeatmap({ sessions, explainScale = false }: { sessions: FocusSe
             {weeks.map((days, index) => (
               <div className="heatmap-week" key={index}>
                 {days.map((day) => (
-                  <button aria-label={`${day.date.toDateString()}, ${formatDuration(day.seconds)}, ${day.count} sessions`} aria-pressed={selected?.key === day.key} title={`${day.date.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}\n${formatDuration(day.seconds)}\n${day.count} Sessions`} onClick={() => setSelected(day)} onFocus={() => setSelected(day)} key={day.key} className={`heat-${heatmapLevel(day.seconds, scale.step)}`} />
+                  <button aria-label={`${day.date.toLocaleDateString(localeCode())}, ${formatDuration(day.seconds)}, ${t("{{count}} sessions", { count: day.count })}`} aria-pressed={selected?.key === day.key} title={`${day.date.toLocaleDateString(localeCode(), { weekday: "short", day: "numeric", month: "short", year: "numeric" })}\n${formatDuration(day.seconds)}\n${t("{{count}} Sessions", { count: day.count })}`} onClick={() => setSelected(day)} onFocus={() => setSelected(day)} key={day.key} className={`heat-${heatmapLevel(day.seconds, scale.step)}`} />
                 ))}
               </div>
             ))}
@@ -648,7 +659,7 @@ function ActivityHeatmap({ sessions, explainScale = false }: { sessions: FocusSe
       {selected && (
         <div className="heatmap-detail" role="status">
           <strong>
-            {selected.date.toLocaleDateString(undefined, {
+            {selected.date.toLocaleDateString(localeCode(), {
               weekday: "short",
               day: "numeric",
               month: "short",
@@ -663,13 +674,13 @@ function ActivityHeatmap({ sessions, explainScale = false }: { sessions: FocusSe
               {name}: {formatDuration(seconds)}
             </span>
           ))}
-          {breakdown.length > 3 && <span>+{breakdown.length - 3} more</span>}
+          {breakdown.length > 3 && <span>{t("+{{count}} more", { count: breakdown.length - 3 })}</span>}
         </div>
       )}
       <div className="heatmap-legend">
         <span>
           <i className="heat-0" />
-          No study
+          {t("No study")}
         </span>
         {scale.thresholds.map((threshold, index) => (
           <span key={threshold}>

@@ -8,11 +8,13 @@ import { localDateInputValue } from "../timerState";
 import { canDeleteManagedRecord, deleteAcademicYearCascade, deleteSession, deleteSessions, deleteSubjectCascade, setAcademicYearArchived } from "../management";
 import { managementViewState } from "../managementViewState";
 import { useSettings } from "../hooks/useSettings";
+import { useTranslation } from "react-i18next";
+import { localeCode } from "../i18n";
 
 const COLORS = ["#4da3ff", "#ff4d57", "#ffad3b", "#4dd39a", "#a879ff", "#ff7eb6"];
 const dateText = (value?: string) =>
   value
-    ? new Date(`${value}T00:00:00`).toLocaleDateString(undefined, {
+    ? new Date(`${value}T00:00:00`).toLocaleDateString(localeCode(), {
         day: "numeric",
         month: "short",
         year: "numeric",
@@ -43,21 +45,23 @@ function Modal({ title, children, onClose }: { title: string; children: React.Re
 }
 
 function DeleteConfirmation({ title, children, onCancel, onDelete, deleteLabel = "Delete" }: { title: string; children: React.ReactNode; onCancel: () => void; onDelete: () => Promise<void>; deleteLabel?: string }) {
+  const { t } = useTranslation();
   return (
     <Modal title={title} onClose={onCancel}>
       <div className="delete-confirmation">
         <p>{children}</p>
-        <p>This action cannot be undone.</p>
+        <p>{t("This action cannot be undone.")}</p>
       </div>
       <div className="modal-actions">
-        <button type="button" onClick={onCancel}>Cancel</button>
-        <button type="button" className="danger-action" onClick={onDelete}>{deleteLabel}</button>
+        <button type="button" onClick={onCancel}>{t("Cancel")}</button>
+        <button type="button" className="danger-action" onClick={onDelete}>{t(deleteLabel)}</button>
       </div>
     </Modal>
   );
 }
 
 export function AcademicYearsPage() {
+  const { t } = useTranslation();
   const { settings } = useSettings();
   const years = useLiveQuery(() => db.academicYears.orderBy("name").toArray(), []) ?? [];
   const currentId = useLiveQuery(async () => (await db.settings.get(CURRENT_YEAR_KEY))?.value ?? "", []) ?? "";
@@ -87,20 +91,20 @@ export function AcademicYearsPage() {
   return (
     <main className="page">
       <PageHeader
-        title="Academic Years"
-        subtitle="Organise subjects without forcing calendar ranges to be exclusive."
+        title={t("Academic Years")}
+        subtitle={t("Organise subjects without forcing calendar ranges to be exclusive.")}
         action={
           <button className="primary-action" onClick={() => setEditing(null)}>
-            <Plus size={17} /> Add Academic Year
+            <Plus size={17} /> {t("Add Academic Year")}
           </button>
         }
       />
       <div className="tabs">
         <button className={!archived ? "active" : ""} onClick={() => setArchived(false)}>
-          Active
+          {t("Active")}
         </button>
         <button className={archived ? "active" : ""} onClick={() => setArchived(true)}>
-          Archived
+          {t("Archived")}
         </button>
       </div>
       <div className="data-list">
@@ -115,32 +119,32 @@ export function AcademicYearsPage() {
                 <CalendarDays />
                 <div className="row-main">
                   <strong>
-                    {year.name} {currentId === year.id && <span className="badge">Current</span>}
+                    {year.name} {currentId === year.id && <span className="badge">{t("Current")}</span>}
                   </strong>
-                  <span>{year.startDate ? `${dateText(year.startDate)} - ${dateText(year.endDate)}` : "Flexible dates"}</span>
+                  <span>{year.startDate ? `${dateText(year.startDate)} - ${dateText(year.endDate)}` : t("Flexible dates")}</span>
                   <small>
-                    {yearSubjects.length} subjects · {formatDuration(total)}
+                    {t("{{count}} subjects", { count: yearSubjects.length })} · {formatDuration(total)}
                   </small>
                 </div>
                 <div className="row-actions">
-                  <button title="Edit" onClick={() => setEditing(year)}>
+                  <button title={t("Edit")} onClick={() => setEditing(year)}>
                     <Pencil />
                   </button>
                   {!year.archived && currentId !== year.id && (
-                    <button title="Set current" onClick={() => setCurrentAcademicYear(year.id)}>
+                    <button title={t("Set current")} onClick={() => setCurrentAcademicYear(year.id)}>
                       <Check />
                     </button>
                   )}
                   <button
-                    title={year.archived ? "Restore" : "Archive"}
+                    title={t(year.archived ? "Restore" : "Archive")}
                     onClick={async () => {
-                      if (!year.archived && currentId === year.id) return alert("Choose another current Academic Year before archiving this one.");
+                      if (!year.archived && currentId === year.id) return alert(t("Choose another current Academic Year before archiving this one."));
                       await setAcademicYearArchived(year.id, !year.archived);
                     }}
                   >
                     {year.archived ? <RotateCcw /> : <Archive />}
                   </button>
-                  {canDeleteManagedRecord(year.archived, settings.allowDirectActiveDeletion) && <button className="danger-icon" disabled={academicYearIsRunning(year.id)} title={academicYearIsRunning(year.id) ? "Stop the active timer first" : "Delete permanently"} onClick={() => setDeleting(year)}><Trash2/></button>}
+                  {canDeleteManagedRecord(year.archived, settings.allowDirectActiveDeletion) && <button className="danger-icon" disabled={academicYearIsRunning(year.id)} title={t(academicYearIsRunning(year.id) ? "Stop the active timer first" : "Delete permanently")} onClick={() => setDeleting(year)}><Trash2/></button>}
                 </div>
               </article>
             );
@@ -148,42 +152,43 @@ export function AcademicYearsPage() {
       </div>
       {!years.some((y) => y.archived === archived) && (
         <div className="empty-state">
-          <h2>{archived ? "No archived Academic Years" : "Create your first Academic Year"}</h2>
-          <p>{archived ? "Archived Academic Years will remain available here." : "Add a year, course period, or Independent Study."}</p>
+          <h2>{t(archived ? "No archived Academic Years" : "Create your first Academic Year")}</h2>
+          <p>{t(archived ? "Archived Academic Years will remain available here." : "Add a year, course period, or Independent Study.")}</p>
         </div>
       )}
       {editing !== undefined && (
-        <Modal title={editing ? "Edit Academic Year" : "New Academic Year"} onClose={() => setEditing(undefined)}>
+        <Modal title={t(editing ? "Edit Academic Year" : "New Academic Year")} onClose={() => setEditing(undefined)}>
           <form action={save} className="form">
             <label>
-              Name
+              {t("Name")}
               <input name="name" defaultValue={editing?.name} required autoFocus />
             </label>
             <div className="form-grid">
               <label>
-                Start date
+                {t("Start date")}
                 <input type="date" name="startDate" defaultValue={editing?.startDate} />
               </label>
               <label>
-                End date
+                {t("End date")}
                 <input type="date" name="endDate" defaultValue={editing?.endDate} />
               </label>
             </div>
             <div className="modal-actions">
               <button type="button" onClick={() => setEditing(undefined)}>
-                Cancel
+                {t("Cancel")}
               </button>
-              <button className="primary-action">Save</button>
+              <button className="primary-action">{t("Save")}</button>
             </div>
           </form>
         </Modal>
       )}
-      {deleting && (() => { const affectedSubjects = subjects.filter((subject) => subject.academicYearId === deleting.id); const ids = new Set(affectedSubjects.map((subject) => subject.id)); const affectedSessions = sessions.filter((session) => session.academicYearId === deleting.id || ids.has(session.subjectId)); const total = affectedSessions.reduce((sum, session) => sum + session.focusedDurationSeconds, 0); return <DeleteConfirmation title="Delete Academic Year?" deleteLabel="Delete Academic Year and Data" onCancel={() => setDeleting(undefined)} onDelete={async () => { await deleteAcademicYearCascade(deleting.id); setDeleting(undefined); }}>Permanently delete "{deleting.name}"? This will also permanently delete all {affectedSubjects.length} Subjects and {affectedSessions.length} Sessions ({formatDuration(total)}) associated with this Academic Year.</DeleteConfirmation>; })()}
+      {deleting && (() => { const affectedSubjects = subjects.filter((subject) => subject.academicYearId === deleting.id); const ids = new Set(affectedSubjects.map((subject) => subject.id)); const affectedSessions = sessions.filter((session) => session.academicYearId === deleting.id || ids.has(session.subjectId)); const total = affectedSessions.reduce((sum, session) => sum + session.focusedDurationSeconds, 0); return <DeleteConfirmation title={t("Delete Academic Year?")} deleteLabel="Delete Academic Year and Data" onCancel={() => setDeleting(undefined)} onDelete={async () => { await deleteAcademicYearCascade(deleting.id); setDeleting(undefined); }}>{t("Permanently delete Academic Year with data", { name: deleting.name, subjects: affectedSubjects.length, sessions: affectedSessions.length, duration: formatDuration(total) })}</DeleteConfirmation>; })()}
     </main>
   );
 }
 
 export function SubjectsPage() {
+  const { t } = useTranslation();
   const { settings } = useSettings();
   const years = useLiveQuery(() => db.academicYears.toArray(), []) ?? [];
   const subjects = useLiveQuery(() => db.subjects.orderBy("name").toArray(), []) ?? [];
@@ -220,24 +225,24 @@ export function SubjectsPage() {
   return (
     <main className="page">
       <PageHeader
-        title="Subjects"
-        subtitle="Manage lightweight subjects within each Academic Year."
+        title={t("Subjects")}
+        subtitle={t("Manage lightweight subjects within each Academic Year.")}
         action={
           <button className="primary-action" disabled={!years.some((y) => !y.archived)} onClick={() => setEditing(null)}>
-            <Plus /> Add Subject
+            <Plus /> {t("Add Subject")}
           </button>
         }
       />
       <div className="filter-bar">
         <label>
-          Academic Year
+          {t("Academic Year")}
           <select value={yearId} onChange={(e) => setYearId(e.target.value)}>
-            <option value="current">Current Academic Year</option>
-            <option value="all">All Academic Years</option>
+            <option value="current">{t("Current Academic Year")}</option>
+            <option value="all">{t("All Academic Years")}</option>
             {years.map((y) => (
               <option key={y.id} value={y.id}>
                 {y.name}
-                {y.id === currentId ? " (Current)" : ""}
+                {y.id === currentId ? ` (${t("Current")})` : ""}
               </option>
             ))}
           </select>
@@ -245,10 +250,10 @@ export function SubjectsPage() {
       </div>
       <div className="tabs">
         <button className={!archived ? "active" : ""} onClick={() => setArchived(false)}>
-          Active
+          {t("Active")}
         </button>
         <button className={archived ? "active" : ""} onClick={() => setArchived(true)}>
-          Archived
+          {t("Archived")}
         </button>
       </div>
       <div className="data-list">
@@ -261,18 +266,18 @@ export function SubjectsPage() {
               <span className="list-dot" style={{ background: subject.color }} />
               <div className="row-main">
                 <strong>{subject.name}</strong>
-                <span>{years.find((y) => y.id === subject.academicYearId)?.name ?? "Unknown Academic Year"}</span>
+                <span>{years.find((y) => y.id === subject.academicYearId)?.name ?? t("Unknown Academic Year")}</span>
                 <small>
-                  {used.length} sessions · {formatDuration(total)}
+                  {t("{{count}} sessions", { count: used.length })} · {formatDuration(total)}
                 </small>
               </div>
               <div className="row-actions">
-                <button title="Edit" onClick={() => setEditing(subject)}>
+                <button title={t("Edit")} onClick={() => setEditing(subject)}>
                   <Pencil />
                 </button>
                 <button
                   disabled={running}
-                  title={running ? "Stop the active timer first" : subject.archived ? "Restore" : "Archive"}
+                  title={t(running ? "Stop the active timer first" : subject.archived ? "Restore" : "Archive")}
                   onClick={() =>
                     db.subjects.update(subject.id, {
                       archived: !subject.archived,
@@ -282,7 +287,7 @@ export function SubjectsPage() {
                   {subject.archived ? <RotateCcw /> : <Archive />}
                 </button>
                 {canDeleteManagedRecord(subject.archived, settings.allowDirectActiveDeletion) && (
-                  <button className="danger-icon" disabled={running} title={running ? "Stop the active timer first" : "Delete permanently"} onClick={() => setDeleting(subject)}>
+                  <button className="danger-icon" disabled={running} title={t(running ? "Stop the active timer first" : "Delete permanently")} onClick={() => setDeleting(subject)}>
                     <Trash2 />
                   </button>
                 )}
@@ -293,18 +298,18 @@ export function SubjectsPage() {
       </div>
       {!visible.length && (
         <div className="empty-state">
-          <h2>{archived ? "No archived Subjects" : "Add a Subject to start tracking focus time"}</h2>
+          <h2>{t(archived ? "No archived Subjects" : "Add a Subject to start tracking focus time")}</h2>
         </div>
       )}
       {editing !== undefined && (
-        <Modal title={editing ? "Edit Subject" : "New Subject"} onClose={() => setEditing(undefined)}>
+        <Modal title={t(editing ? "Edit Subject" : "New Subject")} onClose={() => setEditing(undefined)}>
           <form action={save} className="form">
             <label>
-              Name
+              {t("Name")}
               <input name="name" defaultValue={editing?.name} required autoFocus />
             </label>
             <label>
-              Academic Year
+              {t("Academic Year")}
               <select name="year" defaultValue={editing?.academicYearId || currentId} required>
                 {years
                   .filter((y) => !y.archived || y.id === editing?.academicYearId)
@@ -317,19 +322,20 @@ export function SubjectsPage() {
             </label>
             <div className="modal-actions">
               <button type="button" onClick={() => setEditing(undefined)}>
-                Cancel
+                {t("Cancel")}
               </button>
-              <button className="primary-action">Save</button>
+              <button className="primary-action">{t("Save")}</button>
             </div>
           </form>
         </Modal>
       )}
-      {deleting && (() => { const affected = sessions.filter((session) => session.subjectId === deleting.id); const total = affected.reduce((sum, session) => sum + session.focusedDurationSeconds, 0); return <DeleteConfirmation title="Delete Subject?" deleteLabel="Delete Subject and Data" onCancel={() => setDeleting(undefined)} onDelete={async () => { await deleteSubjectCascade(deleting.id); setDeleting(undefined); }}>Permanently delete "{deleting.name}"? This will also permanently delete {affected.length} Sessions ({formatDuration(total)}) and all study history associated with this Subject.</DeleteConfirmation>; })()}
+      {deleting && (() => { const affected = sessions.filter((session) => session.subjectId === deleting.id); const total = affected.reduce((sum, session) => sum + session.focusedDurationSeconds, 0); return <DeleteConfirmation title={t("Delete Subject?")} deleteLabel="Delete Subject and Data" onCancel={() => setDeleting(undefined)} onDelete={async () => { await deleteSubjectCascade(deleting.id); setDeleting(undefined); }}>{t("Permanently delete Subject with data", { name: deleting.name, sessions: affected.length, duration: formatDuration(total) })}</DeleteConfirmation>; })()}
     </main>
   );
 }
 
 export function HistoryPage() {
+  const { t } = useTranslation();
   const years = useLiveQuery(() => db.academicYears.toArray(), []) ?? [];
   const subjects = useLiveQuery(() => db.subjects.toArray(), []) ?? [];
   const sessions = useLiveQuery(() => db.sessions.orderBy("startTime").reverse().toArray(), []) ?? [];
@@ -378,19 +384,19 @@ export function HistoryPage() {
         });
       setEditing(undefined);
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Invalid session");
+      alert(t(error instanceof Error ? error.message : "Invalid session"));
     }
   };
   return (
     <main className="page">
       <PageHeader
-        title="History"
-        subtitle="Review and correct completed focus sessions."
-        action={<div className="header-actions"><button className="secondary-action" onClick={() => { setSelecting((value) => !value); setSelected(new Set()); }}>{selecting ? "Cancel" : "Select"}</button><button className="primary-action" disabled={!subjects.length} onClick={() => setEditing(null)}><Plus /> Add Session</button></div>}
+        title={t("History")}
+        subtitle={t("Review and correct completed focus sessions.")}
+        action={<div className="header-actions"><button className="secondary-action" onClick={() => { setSelecting((value) => !value); setSelected(new Set()); }}>{t(selecting ? "Cancel" : "Select")}</button><button className="primary-action" disabled={!subjects.length} onClick={() => setEditing(null)}><Plus /> {t("Add Session")}</button></div>}
       />
       <div className="filter-bar history-filters">
         <label>
-          Academic Year
+          {t("Academic Year")}
           <select
             value={yearId}
             onChange={(e) => {
@@ -398,7 +404,7 @@ export function HistoryPage() {
               setPage(0);
             }}
           >
-            <option value="">All Academic Years</option>
+            <option value="">{t("All Academic Years")}</option>
             {years.map((y) => (
               <option key={y.id} value={y.id}>
                 {y.name}
@@ -407,7 +413,7 @@ export function HistoryPage() {
           </select>
         </label>
         <label>
-          Subject
+          {t("Subject")}
           <select
             value={subjectId}
             onChange={(e) => {
@@ -415,7 +421,7 @@ export function HistoryPage() {
               setPage(0);
             }}
           >
-            <option value="">All Subjects</option>
+            <option value="">{t("All Subjects")}</option>
             {subjects
               .filter((s) => !yearId || s.academicYearId === yearId)
               .map((s) => (
@@ -426,7 +432,7 @@ export function HistoryPage() {
           </select>
         </label>
         <label>
-          Status
+          {t("Status")}
           <select
             value={status}
             onChange={(e) => {
@@ -434,39 +440,39 @@ export function HistoryPage() {
               setPage(0);
             }}
           >
-            <option value="active">Active</option>
-            <option value="archived">Archived</option>
-            <option value="all">All</option>
+            <option value="active">{t("Active")}</option>
+            <option value="archived">{t("Archived")}</option>
+            <option value="all">{t("All")}</option>
           </select>
         </label>
       </div>
-      {selecting && <div className="selection-toolbar"><strong>{selected.size} selected</strong><button onClick={() => setSelected(new Set(filtered.map((session) => session.id)))}>Select all</button><button className="danger-outline" disabled={!selected.size} onClick={() => setConfirmBulk(true)}><Trash2/> Delete</button><button onClick={() => { setSelecting(false); setSelected(new Set()); }}>Cancel</button></div>}
+      {selecting && <div className="selection-toolbar"><strong>{t("{{count}} selected", { count: selected.size })}</strong><button onClick={() => setSelected(new Set(filtered.map((session) => session.id)))}>{t("Select all")}</button><button className="danger-outline" disabled={!selected.size} onClick={() => setConfirmBulk(true)}><Trash2/> {t("Delete")}</button><button onClick={() => { setSelecting(false); setSelected(new Set()); }}>{t("Cancel")}</button></div>}
       <div className="history-table">
         <div className="history-head">
-          <span>Date</span>
-          <span>Time</span>
-          <span>Duration</span>
-          <span>Subject</span>
-          <span>Academic Year</span>
-          <span>Status</span>
+          <span>{t("Date")}</span>
+          <span>{t("Time")}</span>
+          <span>{t("Duration")}</span>
+          <span>{t("Subject")}</span>
+          <span>{t("Academic Year")}</span>
+          <span>{t("Status")}</span>
           <span />
         </div>
         {filtered.slice(page * pageSize, (page + 1) * pageSize).map((s) => (
           <div className="history-row" key={s.id}>
             <span>
-              {selecting && <input className="history-checkbox" type="checkbox" aria-label={`Select Session ${s.id}`} checked={selected.has(s.id)} onChange={() => setSelected((current) => { const next = new Set(current); if (next.has(s.id)) next.delete(s.id); else next.add(s.id); return next; })}/>} {new Date(s.startTime).toLocaleDateString(undefined, {
+              {selecting && <input className="history-checkbox" type="checkbox" aria-label={t("Select Session {{id}}", { id: s.id })} checked={selected.has(s.id)} onChange={() => setSelected((current) => { const next = new Set(current); if (next.has(s.id)) next.delete(s.id); else next.add(s.id); return next; })}/>} {new Date(s.startTime).toLocaleDateString(localeCode(), {
                 day: "numeric",
                 month: "short",
                 year: "numeric",
               })}
             </span>
             <span>
-              {new Date(s.startTime).toLocaleTimeString([], {
+              {new Date(s.startTime).toLocaleTimeString(localeCode(), {
                 hour: "2-digit",
                 minute: "2-digit",
               })}{" "}
               -{" "}
-              {new Date(s.endTime).toLocaleTimeString([], {
+              {new Date(s.endTime).toLocaleTimeString(localeCode(), {
                 hour: "2-digit",
                 minute: "2-digit",
               })}
@@ -474,15 +480,15 @@ export function HistoryPage() {
             <strong>{formatDuration(s.focusedDurationSeconds)}</strong>
             <span>{s.subjectName}</span>
             <span>{s.academicYearName}</span>
-            <span className="badge">{s.archived ? "Archived" : "Active"}</span>
+            <span className="badge">{t(s.archived ? "Archived" : "Active")}</span>
             <div className="row-actions">
-              <button title="Edit" onClick={() => setEditing(s)}>
+              <button title={t("Edit")} onClick={() => setEditing(s)}>
                 <Pencil />
               </button>
-              <button title={s.archived ? "Restore" : "Archive"} onClick={() => db.sessions.update(s.id, { archived: !s.archived })}>
+              <button title={t(s.archived ? "Restore" : "Archive")} onClick={() => db.sessions.update(s.id, { archived: !s.archived })}>
                 {s.archived ? <RotateCcw /> : <Archive />}
               </button>
-              <button className="danger-icon" title="Delete permanently" onClick={() => setDeleting(s)}>
+              <button className="danger-icon" title={t("Delete permanently")} onClick={() => setDeleting(s)}>
                 <Trash2 />
               </button>
             </div>
@@ -491,25 +497,25 @@ export function HistoryPage() {
       </div>
       {!filtered.length && (
         <div className="empty-state">
-          <h2>{status === "archived" ? "No archived sessions" : "Completed focus sessions will appear here"}</h2>
+          <h2>{t(status === "archived" ? "No archived sessions" : "Completed focus sessions will appear here")}</h2>
         </div>
       )}
       <div className="pagination">
         <button disabled={!page} onClick={() => setPage(page - 1)}>
-          Previous
+          {t("Previous")}
         </button>
         <span>
-          Page {page + 1} of {Math.max(1, Math.ceil(filtered.length / pageSize))}
+          {t("Page {{page}} of {{pages}}", { page: page + 1, pages: Math.max(1, Math.ceil(filtered.length / pageSize)) })}
         </span>
         <button disabled={(page + 1) * pageSize >= filtered.length} onClick={() => setPage(page + 1)}>
-          Next
+          {t("Next")}
         </button>
       </div>
       {editing !== undefined && (
-        <Modal title={editing ? "Edit Session" : "Add Session"} onClose={() => setEditing(undefined)}>
+        <Modal title={t(editing ? "Edit Session" : "Add Session")} onClose={() => setEditing(undefined)}>
           <form action={save} className="form">
             <label>
-              Subject
+              {t("Subject")}
               <select name="subject" defaultValue={editing?.subjectId} required>
                 {subjects
                   .filter((s) => !s.archived || s.id === editing?.subjectId)
@@ -521,34 +527,34 @@ export function HistoryPage() {
               </select>
             </label>
             <label>
-              Date
+              {t("Date")}
               <input type="date" name="date" required defaultValue={localDateInputValue(editing?.startTime ?? Date.now())} />
             </label>
             <div className="form-grid">
               <label>
-                Start
+                {t("Start")}
                 <input type="time" name="start" required defaultValue={editing ? new Date(editing.startTime).toTimeString().slice(0, 5) : "09:00"} />
               </label>
               <label>
-                End
+                {t("End")}
                 <input type="time" name="end" required defaultValue={editing ? new Date(editing.endTime).toTimeString().slice(0, 5) : "10:00"} />
               </label>
             </div>
             <label>
-              Note
-              <input name="note" placeholder="Add a note (optional)..." defaultValue={editing?.note ?? ""} />
+              {t("Note")}
+              <input name="note" placeholder={t("Add a note (optional)...")} defaultValue={editing?.note ?? ""} />
             </label>
             <div className="modal-actions">
               <button type="button" onClick={() => setEditing(undefined)}>
-                Cancel
+                {t("Cancel")}
               </button>
-              <button className="primary-action">Save</button>
+              <button className="primary-action">{t("Save")}</button>
             </div>
           </form>
         </Modal>
       )}
-      {deleting && <DeleteConfirmation title="Delete Session?" onCancel={() => setDeleting(undefined)} onDelete={async () => { await deleteSession(deleting.id); setDeleting(undefined); }}>This permanently removes this Session.</DeleteConfirmation>}
-      {confirmBulk && <DeleteConfirmation title={`Delete ${selected.size} Sessions?`} deleteLabel={`Delete ${selected.size} Sessions`} onCancel={() => setConfirmBulk(false)} onDelete={async () => { await deleteSessions([...selected]); setSelected(new Set()); setSelecting(false); setConfirmBulk(false); }}>These Sessions will be permanently removed.</DeleteConfirmation>}
+      {deleting && <DeleteConfirmation title={t("Delete Session?")} onCancel={() => setDeleting(undefined)} onDelete={async () => { await deleteSession(deleting.id); setDeleting(undefined); }}>{t("This permanently removes this Session.")}</DeleteConfirmation>}
+      {confirmBulk && <DeleteConfirmation title={t("Delete {{count}} Sessions?", { count: selected.size })} deleteLabel={t("Delete {{count}} Sessions", { count: selected.size })} onCancel={() => setConfirmBulk(false)} onDelete={async () => { await deleteSessions([...selected]); setSelected(new Set()); setSelecting(false); setConfirmBulk(false); }}>{t("These Sessions will be permanently removed.")}</DeleteConfirmation>}
     </main>
   );
 }
