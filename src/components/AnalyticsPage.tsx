@@ -8,6 +8,8 @@ import type { AcademicYear, FocusSession, Subject } from "../types";
 import { createDevelopmentAnalyticsDataset } from "../analytics/developmentDataset";
 import { academicYearTotals, activeDayCount, averageActiveDaySeconds, calendarDailySeries, calendarMonthlySeries, cumulativeTotals, dailyTotals, filterSessions, heatmapLevel, heatmapScale, localDayKey, longestStreak, medianSessionSeconds, monthlyTotals, rollingAverage, sessionLengthBuckets, subjectTotals, timeOfDayMatrix, totalFocusedSeconds, weekdayTotals, weeklyTotals } from "../analytics/analytics";
 import { useTranslation } from "react-i18next";
+import { goalProgress } from "../goals";
+import { useSettings } from "../hooks/useSettings";
 import { localeCode } from "../i18n";
 
 const YEAR_COLORS = ["#4da3ff", "#a879ff", "#4dd39a", "#ffad3b", "#ff7eb6", "#8da2b5"];
@@ -109,8 +111,16 @@ export function AnalyticsPage() {
   );
 }
 
+function GoalSummary({ label, current, target }: { label: string; current: number; target: number }) {
+  const { t } = useTranslation();
+  const reached = target > 0 && current >= target;
+  return <section><div><strong>{label}</strong><span>{reached ? t("Goal reached") : t("{{duration}} left", { duration: formatDuration(Math.max(0, target - current)) })}</span></div><progress max={Math.max(1, target)} value={Math.min(current, target)}/><small>{formatDuration(current)} / {formatDuration(target)}</small></section>;
+}
+
 function Overview({ sessions, years, subjects }: { sessions: FocusSession[]; years: AcademicYear[]; subjects: Subject[] }) {
   const { t } = useTranslation();
+  const { settings } = useSettings();
+  const goals = goalProgress(sessions);
   const subjectsData = subjectTotals(sessions, subjects),
     yearData = academicYearTotals(sessions, years, subjects),
     months = calendarMonthlySeries(sessions),
@@ -144,6 +154,10 @@ function Overview({ sessions, years, subjects }: { sessions: FocusSession[]; yea
         <Metric icon={<BookOpen />} label={t("Most studied Subject")} value={subjectsData[0]?.name ?? "-"} />
         <Metric icon={<CalendarDays />} label={t("Academic Years")} value={String(new Set(sessions.map((s) => s.academicYearId)).size)} />
       </div>
+      {(settings.dailyGoalEnabled || settings.weeklyGoalEnabled) && <div className="analytics-goals">
+        {settings.dailyGoalEnabled && <GoalSummary label={t("Daily goal")} current={goals.dailySeconds} target={settings.dailyGoalSeconds}/>}
+        {settings.weeklyGoalEnabled && <GoalSummary label={t("Weekly goal")} current={goals.weeklySeconds} target={settings.weeklyGoalSeconds}/>}
+      </div>}
       <div className="overview-grid">
         <Panel className="wide" title={t("Focus time over time")} subtitle={t("Monthly focused time. Latest months are shown first.")}>
           <ScrollChart width={Math.max(760, monthRows.length * 48)}>

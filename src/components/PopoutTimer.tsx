@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { useTimer } from "../hooks/useTimer";
 import { useSettings } from "../hooks/useSettings";
 import { autoHidePosition, cornerPosition, defaultEdgeForCorner, edgeOffset, nearestDockCorner, nearestEdge, tabOrientation, type Point, type Size, type WorkArea } from "../popoutPlacement";
-import type { DockCorner } from "../settings";
+import type { DockCorner, FocusSettings } from "../settings";
 import { TimerExtendMenu } from "./TimerExtendMenu";
 
 function parts(total: number) {
@@ -25,6 +25,8 @@ export function PopoutTimer() {
   const [menu, setMenu] = useState<"extend" | "more" | "dock" | null>(null);
   const [onTop, setOnTop] = useState(settings.popoutAlwaysOnTop);
   const [revealed, setRevealed] = useState(false);
+  const [stopping, setStopping] = useState(false);
+  const [displays, setDisplays] = useState<{ id: string; label: string }[]>([]);
   const appliedDefaultRef = useRef(false);
   const draggingRef = useRef(false);
   const programmaticUntilRef = useRef(0);
@@ -32,13 +34,14 @@ export function PopoutTimer() {
   const tabHoverTimerRef = useRef(0);
   const suppressTabClickRef = useRef(false);
   const dockedActive = settings.popoutDockingEnabled && settings.popoutDocked;
-  const autoHideActive = dockedActive && settings.popoutDockAutoHide;
+  const selectedMonitorAvailable = settings.popoutDockMonitor === "current" || displays.some((display) => display.id === settings.popoutDockMonitor);
+  const autoHideActive = dockedActive && settings.popoutDockAutoHide && selectedMonitorAvailable;
 
   const geometry = useCallback(async () => {
     const window = getCurrentWindow();
-    const [workArea, size] = await Promise.all([invoke<WorkArea>("get_timer_work_area"), window.outerSize()]);
+    const [workArea, size] = await Promise.all([invoke<WorkArea>("get_timer_work_area", { monitorId: selectedMonitorAvailable ? settings.popoutDockMonitor : "current" }), window.outerSize()]);
     return { workArea, size: { width: size.width, height: size.height } as Size };
-  }, []);
+  }, [selectedMonitorAvailable, settings.popoutDockMonitor]);
 
   const move = useCallback(async (position: Point, unchecked = false) => {
     programmaticUntilRef.current = Date.now() + 500;
@@ -48,9 +51,9 @@ export function PopoutTimer() {
   const placeDocked = useCallback(async (hidden: boolean, edge = settings.popoutAutoHideEdge, offset = settings.popoutAutoHideOffset) => {
     if (!isTauri()) return;
     const { workArea, size } = await geometry();
-    const position = settings.popoutDockAutoHide ? autoHidePosition(workArea, size, edge, offset, hidden) : cornerPosition(workArea, size, settings.popoutDockCorner);
+    const position = settings.popoutDockAutoHide && selectedMonitorAvailable ? autoHidePosition(workArea, size, edge, offset, hidden) : cornerPosition(workArea, size, settings.popoutDockCorner);
     await move(position, hidden);
-  }, [geometry, move, settings.popoutAutoHideEdge, settings.popoutAutoHideOffset, settings.popoutDockAutoHide, settings.popoutDockCorner]);
+  }, [geometry, move, selectedMonitorAvailable, settings.popoutAutoHideEdge, settings.popoutAutoHideOffset, settings.popoutDockAutoHide, settings.popoutDockCorner]);
 
   const clearHideTimer = () => window.clearTimeout(hideTimerRef.current);
   const scheduleReveal = () => {
@@ -106,6 +109,11 @@ export function PopoutTimer() {
     }
   };
 
+  const chooseMonitor = async (monitorId: FocusSettings["popoutDockMonitor"]) => {
+    await setSetting("popoutDockMonitor", monitorId);
+    setMenu(null);
+  };
+
   const settleDrag = async (tabDrag: boolean) => {
     if (!isTauri()) return;
     const window = getCurrentWindow();
@@ -130,12 +138,23 @@ export function PopoutTimer() {
 
   const startDrag = async (event: ReactPointerEvent, tabDrag = false) => {
     if (!isTauri() || event.button !== 0 || (event.target as HTMLElement).closest("[data-no-drag]")) return;
-    event.preventDefault(); clearHideTimer(); window.clearTimeout(tabHoverTimerRef.current); setMenu(null); draggingRef.current = true;
-    if (tabDrag) suppressTabClickRef.current = true;
-    try { await getCurrentWindow().startDragging(); } finally {
-      draggingRef.current = false; await settleDrag(tabDrag);
-      if (tabDrag) window.setTimeout(() => { suppressTabClickRef.current = false; }, 100);
-    }
+    event.preventDefault(); clearHideTimer(); window.clearTimeout(tabHoverTimerRef.current); setMenu(null);
+    const perform = async () => {
+      draggingRef.current = true;
+      if (tabDrag) suppressTabClickRef.current = true;
+      try { await getCurrentWindow().startDragging(); } finally {
+        draggingRef.current = false; await settleDrag(tabDrag);
+        if (tabDrag) window.setTimeout(() => { suppressTabClickRef.current = false; }, 100);
+      }
+    };
+    if (!tabDrag) { await perform(); return; }
+    const start = { x: event.clientX, y: event.clientY };
+    const cleanup = () => { window.removeEventListener("pointermove", movePointer); window.removeEventListener("pointerup", cleanup); window.removeEventListener("pointercancel", cleanup); };
+    const movePointer = (pointer: PointerEvent) => {
+      if (Math.hypot(pointer.clientX - start.x, pointer.clientY - start.y) < 5) return;
+      cleanup(); void perform();
+    };
+    window.addEventListener("pointermove", movePointer); window.addEventListener("pointerup", cleanup); window.addEventListener("pointercancel", cleanup);
   };
 
   useEffect(() => {
@@ -145,10 +164,24 @@ export function PopoutTimer() {
 
   useEffect(() => {
     if (!loaded || !settings.popoutDockingEnabled || !settings.popoutDocked) return;
-    setRevealed(!settings.popoutDockAutoHide); void placeDocked(settings.popoutDockAutoHide);
-  }, [loaded, placeDocked, settings.popoutDockAutoHide, settings.popoutDocked, settings.popoutDockingEnabled]);
+    setRevealed(!settings.popoutDockAutoHide || !selectedMonitorAvailable); void placeDocked(settings.popoutDockAutoHide && selectedMonitorAvailable);
+  }, [loaded, placeDocked, selectedMonitorAvailable, settings.popoutDockAutoHide, settings.popoutDocked, settings.popoutDockingEnabled]);
 
   useEffect(() => { void invoke("set_timer_taskbar", { visible: settings.popoutShowInTaskbar }).catch(() => undefined); }, [settings.popoutShowInTaskbar]);
+
+  useEffect(() => {
+    if (!isTauri()) return;
+    let alive = true;
+    const refresh = () => void invoke<{ id: string; label: string }[]>("list_monitor_work_areas").then((value) => { if (alive) setDisplays(value); }).catch(() => undefined);
+    refresh(); const interval = window.setInterval(refresh, 2500);
+    return () => { alive = false; window.clearInterval(interval); };
+  }, []);
+
+  useEffect(() => {
+    if (!loaded || selectedMonitorAvailable || !dockedActive || !isTauri()) return;
+    setRevealed(true);
+    void geometry().then(({ workArea, size }) => move(cornerPosition(workArea, size, settings.popoutDockCorner))).catch(() => undefined);
+  }, [dockedActive, geometry, loaded, move, selectedMonitorAvailable, settings.popoutDockCorner]);
 
   useEffect(() => {
     const pointerDown = (event: PointerEvent) => { if (menu && !(event.target as HTMLElement).closest("[data-popout-overlay], [data-popout-menu-button]")) setMenu(null); };
@@ -176,27 +209,29 @@ export function PopoutTimer() {
   return <main className={`popout-root ${settings.popoutHideControls ? "popout-root--hover-controls" : ""} ${hidden ? "popout-root--auto-hidden" : ""}`} data-accent={settings.accentColour} data-scale={settings.uiScale} data-edge={settings.popoutAutoHideEdge} style={{ "--controls-hide-delay": controlsDelay, "--popout-opacity": settings.popoutTransparency / 100 } as CSSProperties} onPointerDown={(event) => void startDrag(event)} onMouseEnter={clearHideTimer} onMouseLeave={scheduleHide}>
     {hidden && <button className={`auto-hide-tab auto-hide-tab--${tabOrientation(settings.popoutAutoHideEdge)}`} aria-label={t("Open Focus")} onPointerDown={(event) => { event.stopPropagation(); void startDrag(event, true); }} onMouseEnter={scheduleReveal} onMouseLeave={() => window.clearTimeout(tabHoverTimerRef.current)} onClick={() => { if (!suppressTabClickRef.current) void reveal(); }}><span/></button>}
     <div className="popout-content">
-      {settings.popoutShowSubject && <div className="popout-subject"><span className="subject-dot" style={{ background: timer.state.subjectColor }}/>{timer.state.subject || t("No Subject")}</div>}
+      {settings.popoutShowSubject && <div className="popout-subject subject-overflow" tabIndex={0} title={timer.state.subject || t("No Subject")}><span className="subject-dot" style={{ background: timer.state.subjectColor }}/>{timer.state.subject || t("No Subject")}</div>}
       <div className="popout-time"><span>{time[0]}</span><b>:</b><span>{time[1]}</span><b>:</b><span>{time[2]}</span></div>
       <div className="popout-labels"><span>{t("Hours")}</span><span>{t("Minutes")}</span><span>{t("Seconds")}</span></div>
       <div className="popout-status">{timer.state.finished ? t("Finished") : timer.state.paused ? t("Paused") : ""}</div>
-      <button data-no-drag className="popout-close" title={t("Close popout")} aria-label={t("Close popout")} onClick={() => invoke("hide_timer_popout")}><X/></button>
+      <button data-no-drag className="popout-close tooltip-button" aria-label={t("Close popout")} data-tooltip={t("Close popout")} onClick={() => invoke("hide_timer_popout")}><X/></button>
       <div className="popout-controls" data-no-drag>
-        <button title={timer.state.finished ? t("Finish") : timer.state.paused ? t("Resume") : t("Pause")} onClick={timer.state.finished ? timer.finish : timer.pause}>{timer.state.finished ? <Check/> : timer.state.paused ? <Play fill="currentColor"/> : <Pause fill="currentColor"/>}</button>
-        <button title={t("Extend")} onClick={() => setMenu((value) => value === "extend" ? null : "extend")}><Plus size={18}/></button>
-        <button title={t("Stop")} onClick={timer.stop}><Square size={15} fill="currentColor"/></button>
-        <button data-popout-menu-button title={t("More")} onClick={() => setMenu((value) => value === "more" || value === "dock" ? null : "more")}><MoreHorizontal size={18}/></button>
+        <button className="tooltip-button" aria-label={timer.state.finished ? t("Finish") : timer.state.paused ? t("Resume") : t("Pause")} data-tooltip={timer.state.finished ? t("Finish") : timer.state.paused ? t("Resume") : t("Pause")} onClick={timer.state.finished ? timer.finish : timer.pause}>{timer.state.finished ? <Check/> : timer.state.paused ? <Play fill="currentColor"/> : <Pause fill="currentColor"/>}</button>
+        <button className="tooltip-button" aria-label={t("Extend")} data-tooltip={t("Extend")} onClick={() => setMenu((value) => value === "extend" ? null : "extend")}><Plus size={18}/></button>
+        <button className="tooltip-button" aria-label={t("Stop")} data-tooltip={t("Stop")} onClick={() => setStopping(true)}><Square size={15} fill="currentColor"/></button>
+        <button className="tooltip-button" aria-label={t("More")} data-tooltip={t("More")} data-popout-menu-button onClick={() => setMenu((value) => value === "more" || value === "dock" ? null : "more")}><MoreHorizontal size={18}/></button>
       </div>
       {menu === "extend" && <div data-no-drag data-popout-overlay><TimerExtendMenu compact onClose={() => setMenu(null)} onExtend={(seconds) => { timer.extend(seconds); setMenu(null); }}/></div>}
       {menu === "more" && <div data-no-drag data-popout-overlay className="popout-menu">
         <button onClick={() => void toggleOnTop()}>{t("Always on top")} <span>{t(onTop ? "On" : "Off")}</span></button>
         {dockedActive && <button onClick={() => void undock()}>{t("Undock")}</button>}
         <button onClick={() => setMenu("dock")}>{t("Dock to")}<ChevronRight/></button>
+        <label className="popout-menu-select">{t("Monitor")}<select value={settings.popoutDockMonitor} onChange={(event) => void chooseMonitor(event.target.value as FocusSettings["popoutDockMonitor"])}><option value="current">{t("Current monitor")}</option>{displays.map((display) => <option value={display.id} key={display.id}>{display.label}</option>)}</select></label>
         {dockedActive && <button onClick={() => void toggleDockAutoHide()}>{t("Auto-hide")} <span>{t(settings.popoutDockAutoHide ? "On" : "Off")}</span></button>}
         <button onClick={() => { setMenu(null); void invoke("focus_main_window"); }}>{t("Open Focus")}</button>
         <button onClick={() => invoke("hide_timer_popout")}>{t("Close popout")}</button>
       </div>}
       {menu === "dock" && <div data-no-drag data-popout-overlay className="popout-menu popout-menu--dock"><button onClick={() => setMenu("more")}><ChevronLeft/>{t("Dock to")}</button>{cornerLabels.map(([corner, label]) => <button key={corner} onClick={() => void dock(corner)}>{t(label)}{dockedActive && settings.popoutDockCorner === corner ? <Check/> : null}</button>)}</div>}
+      {stopping && <div data-no-drag data-popout-overlay className="popout-menu popout-stop-confirm"><strong>{t("Stop timer?")}</strong><span>{t("Elapsed focus time will be saved.")}</span><button onClick={() => setStopping(false)}>{t("Cancel")}</button><button className="danger-action" onClick={async () => { setStopping(false); await timer.stop(); }}>{t("Stop and save")}</button></div>}
     </div>
   </main>;
 }

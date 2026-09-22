@@ -35,6 +35,21 @@ export async function deleteSessions(ids: string[], database: FocusDatabase = db
   await database.transaction("rw", database.sessions, () => database.sessions.bulkDelete(ids));
 }
 
+export async function moveSessions(ids: string[], subjectId: string, database: FocusDatabase = db) {
+  await database.transaction("rw", database.academicYears, database.subjects, database.sessions, async () => {
+    const subject = await database.subjects.get(subjectId);
+    if (!subject || subject.archived) throw new Error("Choose an active Subject.");
+    const academicYear = await database.academicYears.get(subject.academicYearId);
+    if (!academicYear || academicYear.archived) throw new Error("Choose a Subject in an active Academic Year.");
+    await database.sessions.where("id").anyOf(ids).modify({
+      subjectId: subject.id,
+      subjectName: subject.name,
+      academicYearId: academicYear.id,
+      academicYearName: academicYear.name,
+    });
+  });
+}
+
 export function canDeleteManagedRecord(archived: boolean, allowDirectActiveDeletion: boolean) {
   return archived || allowDirectActiveDeletion;
 }

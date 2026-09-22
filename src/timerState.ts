@@ -19,6 +19,14 @@ export type TimerState = {
   note: string;
   finished?: boolean;
   finishedAt?: number | null;
+  accumulatedFocusedSeconds: number;
+  runningSince: number | null;
+  focusIntervals: { startTime: number; endTime: number }[];
+  checkpointAt: number | null;
+  checkpointRemainingSeconds: number;
+  checkpointFocusedSeconds: number;
+  checkpointIntervals: { startTime: number; endTime: number }[];
+  saveFailed?: boolean;
 };
 
 export const initialTimerState: TimerState = {
@@ -37,26 +45,66 @@ export const initialTimerState: TimerState = {
   note: "",
   finished: false,
   finishedAt: null,
+  accumulatedFocusedSeconds: 0,
+  runningSince: null,
+  focusIntervals: [],
+  checkpointAt: null,
+  checkpointRemainingSeconds: 75 * 60,
+  checkpointFocusedSeconds: 0,
+  checkpointIntervals: [],
+  saveFailed: false,
 };
 
+export function normalizeTimerState(value: Partial<TimerState> | null | undefined): TimerState {
+  const state = { ...initialTimerState, ...value };
+  state.focusIntervals = Array.isArray(value?.focusIntervals) ? value.focusIntervals : [];
+  state.checkpointIntervals = Array.isArray(value?.checkpointIntervals) ? value.checkpointIntervals : [];
+  state.accumulatedFocusedSeconds = Number.isFinite(value?.accumulatedFocusedSeconds) ? Math.max(0, value!.accumulatedFocusedSeconds!) : Math.max(0, state.plannedDurationSeconds - state.remainingSeconds);
+  state.runningSince = value?.runningSince ?? (state.running && !state.paused && !state.finished ? state.startedAt : null);
+  state.checkpointRemainingSeconds = Number.isFinite(value?.checkpointRemainingSeconds) ? Math.max(0, value!.checkpointRemainingSeconds!) : state.remainingSeconds;
+  state.checkpointFocusedSeconds = Number.isFinite(value?.checkpointFocusedSeconds) ? Math.max(0, value!.checkpointFocusedSeconds!) : state.accumulatedFocusedSeconds;
+  return state;
+}
+
 export function startTimerState(state: TimerState, seconds: number, subject: Subject, year: AcademicYear, now = Date.now(), sessionId: string = crypto.randomUUID()): TimerState {
-  return { ...state, subject: subject.name, subjectId: subject.id, subjectColor: subject.color, academicYearId: year.id, academicYearName: year.name, sessionId, running: true, paused: false, finished: false, finishedAt: null, startedAt: now, targetEnd: now + seconds * 1000, remainingSeconds: seconds, plannedDurationSeconds: seconds };
+  return { ...state, subject: subject.name, subjectId: subject.id, subjectColor: subject.color, academicYearId: year.id, academicYearName: year.name, sessionId, running: true, paused: false, finished: false, finishedAt: null, startedAt: now, targetEnd: now + seconds * 1000, remainingSeconds: seconds, plannedDurationSeconds: seconds, accumulatedFocusedSeconds: 0, runningSince: now, focusIntervals: [], checkpointAt: now, checkpointRemainingSeconds: seconds, checkpointFocusedSeconds: 0, checkpointIntervals: [], saveFailed: false };
+}
+
+export function focusedSecondsAt(state: TimerState, now: number) {
+  if (!state.runningSince || state.paused || state.finished) return state.accumulatedFocusedSeconds;
+  const end = state.targetEnd ? Math.min(now, state.targetEnd) : now;
+  return state.accumulatedFocusedSeconds + Math.max(0, Math.round((end - state.runningSince) / 1000));
+}
+
+export function closeRunningInterval(state: TimerState, endTime: number): TimerState {
+  if (!state.runningSince) return state;
+  const end = state.targetEnd ? Math.min(endTime, state.targetEnd) : endTime;
+  if (end <= state.runningSince) return { ...state, runningSince: null };
+  return { ...state, accumulatedFocusedSeconds: focusedSecondsAt(state, end), runningSince: null, focusIntervals: [...state.focusIntervals, { startTime: state.runningSince, endTime: end }] };
+}
+
+export function finishTimerState(state: TimerState, endTime: number): TimerState {
+  const closed = closeRunningInterval(state, endTime);
+  return { ...closed, remainingSeconds: 0, targetEnd: null, finished: true, finishedAt: endTime, paused: false };
 }
 
 export function extendTimerState(state: TimerState, seconds: number, now = Date.now()): TimerState {
   if (!state.running) return state;
   if (seconds <= 0) return state;
-  return { ...state, paused: state.finished ? false : state.paused, finished: false, finishedAt: null, remainingSeconds: state.remainingSeconds + seconds, plannedDurationSeconds: state.plannedDurationSeconds + seconds, targetEnd: state.paused && !state.finished ? null : (state.targetEnd ?? now) + seconds * 1000 };
+  const fromFinished = Boolean(state.finished);
+  return { ...state, paused: fromFinished ? false : state.paused, finished: false, finishedAt: null, remainingSeconds: state.remainingSeconds + seconds, plannedDurationSeconds: state.plannedDurationSeconds + seconds, targetEnd: state.paused && !fromFinished ? null : (state.targetEnd ?? now) + seconds * 1000, runningSince: fromFinished ? now : state.runningSince, saveFailed: false };
 }
 
 export function completedSession(state: TimerState, endTime: number): FocusSession | undefined {
   if (!state.sessionId || !state.subjectId || !state.startedAt || endTime <= state.startedAt) return;
-  const focusedDurationSeconds = Math.max(1, state.plannedDurationSeconds - state.remainingSeconds);
-  return { id: state.sessionId, subjectId: state.subjectId, subjectName: state.subject, academicYearId: state.academicYearId, academicYearName: state.academicYearName, startTime: state.startedAt, endTime, focusedDurationSeconds, note: state.note.trim() || undefined, archived: false };
+  const closed = closeRunningInterval(state, endTime);
+  const focusedDurationSeconds = Math.max(0, closed.accumulatedFocusedSeconds);
+  if (!focusedDurationSeconds) return;
+  return { id: state.sessionId, subjectId: state.subjectId, subjectName: state.subject, academicYearId: state.academicYearId, academicYearName: state.academicYearName, startTime: state.startedAt, endTime, focusedDurationSeconds, note: state.note.trim() || undefined, archived: false, focusIntervals: closed.focusIntervals };
 }
 
 export function idleTimerState(state: TimerState): TimerState {
-  return { ...state, running: false, paused: false, finished: false, finishedAt: null, startedAt: null, targetEnd: null, sessionId: null, remainingSeconds: state.plannedDurationSeconds, note: "" };
+  return { ...state, running: false, paused: false, finished: false, finishedAt: null, startedAt: null, targetEnd: null, sessionId: null, remainingSeconds: state.plannedDurationSeconds, note: "", accumulatedFocusedSeconds: 0, runningSince: null, focusIntervals: [], checkpointAt: null, checkpointRemainingSeconds: state.plannedDurationSeconds, checkpointFocusedSeconds: 0, checkpointIntervals: [], saveFailed: false };
 }
 
 export function localDateInputValue(stamp: number) {

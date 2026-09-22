@@ -1,108 +1,179 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { db } from "../db";
 import type { AcademicYear, Subject } from "../types";
-import { ACTIVE_TIMER_STORAGE_KEY, completedSession, extendTimerState, idleTimerState, initialTimerState, startTimerState, type TimerState } from "../timerState";
+import { ACTIVE_TIMER_STORAGE_KEY, closeRunningInterval, completedSession, extendTimerState, finishTimerState, focusedSecondsAt, idleTimerState, initialTimerState, normalizeTimerState, startTimerState, type TimerState } from "../timerState";
 import { handleTimerCompletion } from "../timerCompletion";
 
 const CHANNEL = "focus-timer";
+const TIMER_INITIALIZED_KEY = "focus.timerInitialized";
+
 function readStored(): TimerState {
   try {
     const raw = localStorage.getItem(ACTIVE_TIMER_STORAGE_KEY);
-    return raw ? { ...initialTimerState, ...JSON.parse(raw) } : initialTimerState;
-  } catch {
-    return initialTimerState;
-  }
+    return raw ? normalizeTimerState(JSON.parse(raw)) : initialTimerState;
+  } catch { return initialTimerState; }
 }
 
+function stateAt(state: TimerState, now = Date.now()) {
+  if (!state.running || state.paused || state.finished || !state.targetEnd) return state;
+  return { ...state, remainingSeconds: Math.max(0, Math.ceil((state.targetEnd - now) / 1000)) };
+}
+
+export type TimerRecovery = "checking" | "running" | "relationship" | "save-failed" | null;
+
 export function useTimer() {
-  const [state, setState] = useState<TimerState>(() => readStored());
+  const isPopout = window.location.hash.includes("popout");
+  const firstMainMount = !isPopout && sessionStorage.getItem(TIMER_INITIALIZED_KEY) !== "true";
+  const initial = useRef(readStored());
+  const [state, setState] = useState<TimerState>(initial.current);
+  const [recovery, setRecovery] = useState<TimerRecovery>(() => firstMainMount && initial.current.running && !initial.current.paused ? "checking" : null);
+  const [saveError, setSaveError] = useState(false);
+  const stateRef = useRef(state);
   const channelRef = useRef<BroadcastChannel | null>(null);
   const completingRef = useRef(false);
+  const noteTimerRef = useRef(0);
+  const startupHandledRef = useRef(false);
 
-  const commit = useCallback((next: TimerState) => {
-    setState(next);
-    localStorage.setItem(ACTIVE_TIMER_STORAGE_KEY, JSON.stringify(next));
-    channelRef.current?.postMessage(next);
+  const persist = useCallback((next: TimerState) => {
+    if (next.running) localStorage.setItem(ACTIVE_TIMER_STORAGE_KEY, JSON.stringify(next));
+    else localStorage.removeItem(ACTIVE_TIMER_STORAGE_KEY);
   }, []);
+
+  const commit = useCallback((next: TimerState, shouldPersist = true) => {
+    stateRef.current = next; setState(next);
+    if (shouldPersist) persist(next);
+    channelRef.current?.postMessage(next);
+  }, [persist]);
+
+  const saveAndClear = useCallback(async (snapshot: TimerState, endTime: number) => {
+    const session = completedSession(snapshot, endTime);
+    try {
+      if (session) await db.transaction("rw", db.sessions, async () => { await db.sessions.put(session); });
+      setSaveError(false); setRecovery(null); commit(idleTimerState(snapshot));
+      return true;
+    } catch {
+      const preserved = { ...snapshot, saveFailed: true, finished: true, finishedAt: endTime, targetEnd: null, remainingSeconds: 0 };
+      setSaveError(true); setRecovery("save-failed"); commit(preserved);
+      return false;
+    }
+  }, [commit]);
 
   useEffect(() => {
     const channel = new BroadcastChannel(CHANNEL);
-    channel.onmessage = (event) => setState(event.data as TimerState);
+    channel.onmessage = (event) => { const next = normalizeTimerState(event.data as TimerState); stateRef.current = next; setState(next); };
     channelRef.current = channel;
     return () => channel.close();
   }, []);
 
   useEffect(() => {
-    if (!state.running || state.paused || state.finished || !state.targetEnd) return;
-    const tick = () => {
-      const remaining = Math.max(0, Math.ceil((state.targetEnd! - Date.now()) / 1000));
-      setState((current) => ({ ...current, remainingSeconds: remaining }));
-      if (remaining <= 0 && !completingRef.current) {
-        completingRef.current = true;
-        const completed = { ...state, remainingSeconds: 0, targetEnd: null, finished: true, finishedAt: state.targetEnd };
-        commit(completed);
-        const effects = window.location.hash.includes("popout") ? Promise.resolve() : handleTimerCompletion(completed);
-        void effects.finally(() => {
-          completingRef.current = false;
-        });
+    if (!firstMainMount || startupHandledRef.current) return;
+    startupHandledRef.current = true; sessionStorage.setItem(TIMER_INITIALIZED_KEY, "true");
+    if (!initial.current.running) return;
+    const stored = initial.current;
+    void (async () => {
+      if (stored.sessionId && await db.sessions.get(stored.sessionId)) { commit(idleTimerState(stored)); setRecovery(null); return; }
+      if (stored.saveFailed) { setSaveError(true); setRecovery("save-failed"); return; }
+      const [subject, year] = await Promise.all([db.subjects.get(stored.subjectId), db.academicYears.get(stored.academicYearId)]);
+      if (!subject || subject.archived || !year || year.archived || subject.academicYearId !== year.id) { setRecovery("relationship"); return; }
+      if (stored.paused) { setRecovery(null); return; }
+      const intendedEnd = stored.finishedAt ?? stored.targetEnd;
+      if (stored.finished || (intendedEnd !== null && intendedEnd <= Date.now())) {
+        const completed = finishTimerState(stored, intendedEnd ?? Date.now());
+        if (await saveAndClear(completed, intendedEnd ?? Date.now())) await handleTimerCompletion(completed);
+        return;
       }
-    };
-    tick();
-    const id = window.setInterval(tick, 250);
-    return () => window.clearInterval(id);
-  }, [state.running, state.paused, state.targetEnd, state, commit]);
+      setRecovery("running");
+    })();
+  }, [commit, firstMainMount, saveAndClear]);
 
-  const start = useCallback((seconds: number, subject: Subject, year: AcademicYear) => {
-    commit(startTimerState(state, seconds, subject, year));
-  }, [commit, state]);
+  const reconcile = useCallback(() => {
+    const current = stateRef.current;
+    if (recovery || !current.running || current.paused || current.finished || !current.targetEnd) return;
+    const now = Date.now();
+    const remaining = Math.max(0, Math.ceil((current.targetEnd - now) / 1000));
+    if (remaining > 0) { setState((value) => ({ ...value, remainingSeconds: remaining })); return; }
+    if (completingRef.current) return;
+    completingRef.current = true;
+    const completed = finishTimerState(current, current.targetEnd);
+    commit(completed);
+    const effects = isPopout ? Promise.resolve() : handleTimerCompletion(completed);
+    void effects.finally(() => { completingRef.current = false; });
+  }, [commit, isPopout, recovery]);
+
+  useEffect(() => {
+    reconcile();
+    const id = window.setInterval(reconcile, 250);
+    const wake = () => reconcile();
+    window.addEventListener("focus", wake); document.addEventListener("visibilitychange", wake);
+    return () => { window.clearInterval(id); window.removeEventListener("focus", wake); document.removeEventListener("visibilitychange", wake); };
+  }, [reconcile]);
+
+  useEffect(() => {
+    if (isPopout || recovery) return;
+    const checkpoint = () => {
+      const current = stateRef.current;
+      if (!current.running || current.paused || current.finished || !current.runningSince) return;
+      const now = Date.now(), snapshot = stateAt(current, now), focused = focusedSecondsAt(current, now);
+      const intervals = now > current.runningSince ? [...current.focusIntervals, { startTime: current.runningSince, endTime: Math.min(now, current.targetEnd ?? now) }] : current.focusIntervals;
+      commit({ ...snapshot, checkpointAt: now, checkpointRemainingSeconds: snapshot.remainingSeconds, checkpointFocusedSeconds: focused, checkpointIntervals: intervals });
+    };
+    const id = window.setInterval(checkpoint, 60_000);
+    return () => window.clearInterval(id);
+  }, [commit, isPopout, recovery]);
+
+  useEffect(() => {
+    const beforeUnload = () => persist(stateAt(stateRef.current));
+    window.addEventListener("beforeunload", beforeUnload);
+    return () => window.removeEventListener("beforeunload", beforeUnload);
+  }, [persist]);
+
+  const start = useCallback((seconds: number, subject: Subject, year: AcademicYear) => { if (seconds > 0 && Number.isFinite(seconds)) commit(startTimerState(stateRef.current, seconds, subject, year)); }, [commit]);
 
   const pause = useCallback(() => {
-    if (!state.running || state.finished) return;
-    if (state.paused) {
-      commit({
-        ...state,
-        paused: false,
-        targetEnd: Date.now() + state.remainingSeconds * 1000,
-      });
-    } else {
-      commit({ ...state, paused: true, targetEnd: null });
-    }
-  }, [commit, state]);
+    const current = stateAt(stateRef.current), now = Date.now();
+    if (!current.running || current.finished) return;
+    if (current.paused) commit({ ...current, paused: false, runningSince: now, targetEnd: now + current.remainingSeconds * 1000, checkpointAt: now, checkpointRemainingSeconds: current.remainingSeconds, checkpointFocusedSeconds: current.accumulatedFocusedSeconds, checkpointIntervals: current.focusIntervals });
+    else commit({ ...closeRunningInterval(current, now), paused: true, targetEnd: null });
+  }, [commit]);
 
   const stop = useCallback(async () => {
-    const now = Date.now();
-    const snapshot = state.running && !state.paused && state.targetEnd
-      ? { ...state, remainingSeconds: Math.max(0, Math.ceil((state.targetEnd - now) / 1000)) }
-      : state;
-    if (snapshot.running) await persistCompleted(snapshot, snapshot.finishedAt ?? now);
-    commit(idleTimerState(snapshot));
-  }, [commit, state]);
+    const current = stateAt(stateRef.current), now = Date.now();
+    if (current.running) await saveAndClear(current, current.finishedAt ?? now);
+  }, [saveAndClear]);
 
   const finish = useCallback(async () => {
-    if (!state.running || !state.finished) return;
-    await persistCompleted(state, state.finishedAt ?? Date.now());
-    commit(idleTimerState(state));
-  }, [commit, state]);
+    const current = stateRef.current;
+    if (current.running && current.finished) await saveAndClear(current, current.finishedAt ?? Date.now());
+  }, [saveAndClear]);
 
-  const extend = useCallback((seconds: number) => {
-    if (!state.running) return;
-    commit(extendTimerState(state, seconds));
-  }, [commit, state]);
+  const retrySave = useCallback(async () => {
+    const current = stateRef.current;
+    await saveAndClear(current, current.finishedAt ?? Date.now());
+  }, [saveAndClear]);
 
-  const setNote = useCallback((note: string) => commit({ ...state, note }), [commit, state]);
+  const extend = useCallback((seconds: number) => { const current = stateRef.current; if (current.running) commit(extendTimerState(current, seconds)); }, [commit]);
+  const setNote = useCallback((note: string) => {
+    const next = { ...stateRef.current, note };
+    stateRef.current = next; setState(next); channelRef.current?.postMessage(next);
+    window.clearTimeout(noteTimerRef.current); noteTimerRef.current = window.setTimeout(() => persist(stateRef.current), 350);
+  }, [persist]);
+
+  const continueRecovery = useCallback(() => { const next = stateAt(stateRef.current); setRecovery(null); commit(next); }, [commit]);
+  const resumeCheckpoint = useCallback(() => {
+    const current = stateRef.current, now = Date.now();
+    const next = { ...current, paused: false, finished: false, finishedAt: null, remainingSeconds: current.checkpointRemainingSeconds, accumulatedFocusedSeconds: current.checkpointFocusedSeconds, focusIntervals: current.checkpointIntervals, runningSince: now, targetEnd: now + current.checkpointRemainingSeconds * 1000, checkpointAt: now };
+    setRecovery(null); commit(next);
+  }, [commit]);
+  const discard = useCallback(() => { setRecovery(null); setSaveError(false); commit(idleTimerState(stateRef.current)); }, [commit]);
+  const reassign = useCallback((subject: Subject, year: AcademicYear) => {
+    const next = { ...stateRef.current, subjectId: subject.id, subject: subject.name, subjectColor: subject.color, academicYearId: year.id, academicYearName: year.name };
+    setRecovery(null); commit(stateAt(next));
+  }, [commit]);
 
   const display = useMemo(() => {
     const total = Math.max(0, state.remainingSeconds);
-    const hours = Math.floor(total / 3600);
-    const minutes = Math.floor((total % 3600) / 60);
-    const seconds = total % 60;
-    return { hours, minutes, seconds };
+    return { hours: Math.floor(total / 3600), minutes: Math.floor((total % 3600) / 60), seconds: total % 60 };
   }, [state.remainingSeconds]);
 
-  return { state, display, start, pause, stop, finish, extend, setNote };
-}
-
-async function persistCompleted(state: TimerState, endTime: number) {
-  const session = completedSession(state, endTime);
-  if (session) await db.sessions.put(session);
+  return { state, display, start, pause, stop, finish, extend, setNote, recovery, saveError, retrySave, continueRecovery, resumeCheckpoint, discard, reassign };
 }

@@ -1,5 +1,23 @@
 # Focus Architecture
 
+## Current runtime guarantees
+
+- Focus is single-instance. A second launch focuses the existing main window.
+- The main window and compact popout share one authoritative active Timer through persisted state and cross-window updates.
+- Running, Paused, Finished, recovery, checkpoint, note, and save-failure state is kept in the active Timer record until it is finalized or explicitly discarded.
+- Completed Sessions may include focus intervals so daily and weekly goals allocate focused time correctly across local day and Monday-based week boundaries.
+- The popout can target the current monitor or an explicit display. Native Windows work-area coordinates keep docking clear of the taskbar and support negative multi-monitor coordinates.
+- English, Simplified Chinese, Traditional Chinese, and Japanese are selectable persisted locales. User-created names and notes are never translated.
+
+## Current runtime guarantees
+
+- Focus is single-instance. A second launch focuses the existing main window.
+- The main window and compact popout share one authoritative active Timer through persisted state and cross-window updates.
+- Running, Paused, Finished, recovery, checkpoint, note, and save-failure state is kept in the active Timer record until it is finalized or explicitly discarded.
+- Completed Sessions may include focus intervals so daily and weekly goals allocate focused time correctly across local day and Monday-based week boundaries.
+- The popout can target the current monitor or an explicit display. Native Windows work-area coordinates keep docking clear of the taskbar and support negative multi-monitor coordinates.
+- English, Simplified Chinese, Traditional Chinese, and Japanese are selectable persisted locales. User-created names and notes are never translated.
+
 ## Technology stack
 
 - **Tauri 2 and Rust** provide the Windows desktop shell and native integrations.

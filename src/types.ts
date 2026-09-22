@@ -25,6 +25,7 @@ export type FocusSession = {
   academicYearName: string;
   note?: string;
   archived: boolean;
+  focusIntervals?: { startTime: number; endTime: number }[];
 };
 
 export type AppSetting = { key: string; value: string };

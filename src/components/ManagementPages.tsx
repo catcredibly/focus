@@ -1,17 +1,23 @@
 import { useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Archive, CalendarDays, Check, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { Archive, CalendarDays, Check, FolderInput, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { db } from "../db";
 import { createSession, CURRENT_YEAR_KEY, formatDuration, makeId, setCurrentAcademicYear } from "../data";
 import type { AcademicYear, FocusSession, Subject } from "../types";
 import { localDateInputValue } from "../timerState";
-import { canDeleteManagedRecord, deleteAcademicYearCascade, deleteSession, deleteSessions, deleteSubjectCascade, setAcademicYearArchived } from "../management";
+import { canDeleteManagedRecord, deleteAcademicYearCascade, deleteSession, deleteSessions, deleteSubjectCascade, moveSessions, setAcademicYearArchived } from "../management";
 import { managementViewState } from "../managementViewState";
 import { useSettings } from "../hooks/useSettings";
 import { useTranslation } from "react-i18next";
 import { localeCode } from "../i18n";
 
 const COLORS = ["#4da3ff", "#ff4d57", "#ffad3b", "#4dd39a", "#a879ff", "#ff7eb6"];
+const activeTimerRelationship = () => {
+  try {
+    const timer = JSON.parse(localStorage.getItem("focus.activeTimer") ?? "null");
+    return timer?.sessionId && timer?.startedAt ? { subjectId: String(timer.subjectId ?? ""), academicYearId: String(timer.academicYearId ?? "") } : undefined;
+  } catch { return undefined; }
+};
 const dateText = (value?: string) =>
   value
     ? new Date(`${value}T00:00:00`).toLocaleDateString(localeCode(), {
@@ -71,9 +77,8 @@ export function AcademicYearsPage() {
   const setArchived = (value: boolean) => { managementViewState.academicYearsArchived = value; setArchivedState(value); };
   const [editing, setEditing] = useState<AcademicYear | null | undefined>();
   const [deleting, setDeleting] = useState<AcademicYear>();
-  const academicYearIsRunning = (id: string) => {
-    try { const timer = JSON.parse(localStorage.getItem("focus.activeTimer") ?? "null"); return Boolean(timer?.running && timer?.academicYearId === id); } catch { return false; }
-  };
+  const [warning, setWarning] = useState("");
+  const academicYearIsActive = (id: string) => activeTimerRelationship()?.academicYearId === id;
   const save = async (form: FormData) => {
     const name = String(form.get("name") ?? "").trim();
     if (!name) return;
@@ -138,13 +143,14 @@ export function AcademicYearsPage() {
                   <button
                     title={t(year.archived ? "Restore" : "Archive")}
                     onClick={async () => {
-                      if (!year.archived && currentId === year.id) return alert(t("Choose another current Academic Year before archiving this one."));
+                      if (!year.archived && academicYearIsActive(year.id)) { setWarning(t("This Academic Year is used by the active timer. Finish or discard the timer before archiving it.")); return; }
+                      if (!year.archived && currentId === year.id) { setWarning(t("Choose another current Academic Year before archiving this one.")); return; }
                       await setAcademicYearArchived(year.id, !year.archived);
                     }}
                   >
                     {year.archived ? <RotateCcw /> : <Archive />}
                   </button>
-                  {canDeleteManagedRecord(year.archived, settings.allowDirectActiveDeletion) && <button className="danger-icon" disabled={academicYearIsRunning(year.id)} title={t(academicYearIsRunning(year.id) ? "Stop the active timer first" : "Delete permanently")} onClick={() => setDeleting(year)}><Trash2/></button>}
+                  {canDeleteManagedRecord(year.archived, settings.allowDirectActiveDeletion) && <button className="danger-icon" title={t("Delete permanently")} onClick={() => academicYearIsActive(year.id) ? setWarning(t("This Academic Year is used by the active timer. Finish or discard the timer before deleting it.")) : setDeleting(year)}><Trash2/></button>}
                 </div>
               </article>
             );
@@ -183,6 +189,7 @@ export function AcademicYearsPage() {
         </Modal>
       )}
       {deleting && (() => { const affectedSubjects = subjects.filter((subject) => subject.academicYearId === deleting.id); const ids = new Set(affectedSubjects.map((subject) => subject.id)); const affectedSessions = sessions.filter((session) => session.academicYearId === deleting.id || ids.has(session.subjectId)); const total = affectedSessions.reduce((sum, session) => sum + session.focusedDurationSeconds, 0); return <DeleteConfirmation title={t("Delete Academic Year?")} deleteLabel="Delete Academic Year and Data" onCancel={() => setDeleting(undefined)} onDelete={async () => { await deleteAcademicYearCascade(deleting.id); setDeleting(undefined); }}>{t("Permanently delete Academic Year with data", { name: deleting.name, subjects: affectedSubjects.length, sessions: affectedSessions.length, duration: formatDuration(total) })}</DeleteConfirmation>; })()}
+      {warning && <Modal title={t("Active timer protected")} onClose={() => setWarning("")}><p>{warning}</p><div className="modal-actions"><button className="primary-action" onClick={() => setWarning("")}>{t("OK")}</button></div></Modal>}
     </main>
   );
 }
@@ -199,6 +206,7 @@ export function SubjectsPage() {
   const setArchived = (value: boolean) => { managementViewState.subjectsArchived = value; setArchivedState(value); };
   const [deleting, setDeleting] = useState<Subject>();
   const [editing, setEditing] = useState<Subject | null | undefined>();
+  const [warning, setWarning] = useState("");
   const selectedYear = yearId === "current" ? currentId : yearId;
   const save = async (form: FormData) => {
     const name = String(form.get("name") ?? "").trim();
@@ -214,14 +222,7 @@ export function SubjectsPage() {
     setEditing(undefined);
   };
   const visible = subjects.filter((s) => s.archived === archived && (selectedYear === "all" || !selectedYear || s.academicYearId === selectedYear));
-  const subjectIsRunning = (id: string) => {
-    try {
-      const timer = JSON.parse(localStorage.getItem("focus.activeTimer") ?? "null");
-      return Boolean(timer?.running && timer?.subjectId === id);
-    } catch {
-      return false;
-    }
-  };
+  const subjectIsActive = (id: string) => activeTimerRelationship()?.subjectId === id;
   return (
     <main className="page">
       <PageHeader
@@ -260,7 +261,7 @@ export function SubjectsPage() {
         {visible.map((subject) => {
           const used = sessions.filter((s) => s.subjectId === subject.id);
           const total = used.reduce((n, s) => n + s.focusedDurationSeconds, 0);
-          const running = subjectIsRunning(subject.id);
+          const active = subjectIsActive(subject.id);
           return (
             <article className="data-row" key={subject.id}>
               <span className="list-dot" style={{ background: subject.color }} />
@@ -276,18 +277,14 @@ export function SubjectsPage() {
                   <Pencil />
                 </button>
                 <button
-                  disabled={running}
-                  title={t(running ? "Stop the active timer first" : subject.archived ? "Restore" : "Archive")}
-                  onClick={() =>
-                    db.subjects.update(subject.id, {
-                      archived: !subject.archived,
-                    })
+                  title={t(subject.archived ? "Restore" : "Archive")}
+                  onClick={() => active && !subject.archived ? setWarning(t("This Subject is used by the active timer. Finish or discard the timer before archiving it.")) : void db.subjects.update(subject.id, { archived: !subject.archived })
                   }
                 >
                   {subject.archived ? <RotateCcw /> : <Archive />}
                 </button>
                 {canDeleteManagedRecord(subject.archived, settings.allowDirectActiveDeletion) && (
-                  <button className="danger-icon" disabled={running} title={t(running ? "Stop the active timer first" : "Delete permanently")} onClick={() => setDeleting(subject)}>
+                  <button className="danger-icon" title={t("Delete permanently")} onClick={() => active ? setWarning(t("This Subject is used by the active timer. Finish or discard the timer before deleting it.")) : setDeleting(subject)}>
                     <Trash2 />
                   </button>
                 )}
@@ -330,6 +327,7 @@ export function SubjectsPage() {
         </Modal>
       )}
       {deleting && (() => { const affected = sessions.filter((session) => session.subjectId === deleting.id); const total = affected.reduce((sum, session) => sum + session.focusedDurationSeconds, 0); return <DeleteConfirmation title={t("Delete Subject?")} deleteLabel="Delete Subject and Data" onCancel={() => setDeleting(undefined)} onDelete={async () => { await deleteSubjectCascade(deleting.id); setDeleting(undefined); }}>{t("Permanently delete Subject with data", { name: deleting.name, sessions: affected.length, duration: formatDuration(total) })}</DeleteConfirmation>; })()}
+      {warning && <Modal title={t("Active timer protected")} onClose={() => setWarning("")}><p>{warning}</p><div className="modal-actions"><button className="primary-action" onClick={() => setWarning("")}>{t("OK")}</button></div></Modal>}
     </main>
   );
 }
@@ -349,6 +347,10 @@ export function HistoryPage() {
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [confirmBulk, setConfirmBulk] = useState(false);
+  const [moving, setMoving] = useState(false);
+  const activeYears = years.filter((year) => !year.archived);
+  const [moveYearId, setMoveYearId] = useState("");
+  const [moveSubjectId, setMoveSubjectId] = useState("");
   const pageSize = 20;
   const filtered = useMemo(() => sessions.filter((s) => (status === "all" || s.archived === (status === "archived")) && (!yearId || s.academicYearId === yearId) && (!subjectId || s.subjectId === subjectId)), [sessions, status, yearId, subjectId]);
   const save = async (form: FormData) => {
@@ -446,7 +448,7 @@ export function HistoryPage() {
           </select>
         </label>
       </div>
-      {selecting && <div className="selection-toolbar"><strong>{t("{{count}} selected", { count: selected.size })}</strong><button onClick={() => setSelected(new Set(filtered.map((session) => session.id)))}>{t("Select all")}</button><button className="danger-outline" disabled={!selected.size} onClick={() => setConfirmBulk(true)}><Trash2/> {t("Delete")}</button><button onClick={() => { setSelecting(false); setSelected(new Set()); }}>{t("Cancel")}</button></div>}
+      {selecting && <div className="selection-toolbar"><strong>{t("{{count}} selected", { count: selected.size })}</strong><button onClick={() => setSelected(new Set(filtered.map((session) => session.id)))}>{t("Select all")}</button><button disabled={!selected.size} onClick={() => { const first = activeYears[0]; setMoveYearId(first?.id ?? ""); setMoveSubjectId(""); setMoving(true); }}><FolderInput/> {t("Move")}</button><button className="danger-outline" disabled={!selected.size} onClick={() => setConfirmBulk(true)}><Trash2/> {t("Delete")}</button><button onClick={() => { setSelecting(false); setSelected(new Set()); }}>{t("Cancel")}</button></div>}
       <div className="history-table">
         <div className="history-head">
           <span>{t("Date")}</span>
@@ -555,6 +557,12 @@ export function HistoryPage() {
       )}
       {deleting && <DeleteConfirmation title={t("Delete Session?")} onCancel={() => setDeleting(undefined)} onDelete={async () => { await deleteSession(deleting.id); setDeleting(undefined); }}>{t("This permanently removes this Session.")}</DeleteConfirmation>}
       {confirmBulk && <DeleteConfirmation title={t("Delete {{count}} Sessions?", { count: selected.size })} deleteLabel={t("Delete {{count}} Sessions", { count: selected.size })} onCancel={() => setConfirmBulk(false)} onDelete={async () => { await deleteSessions([...selected]); setSelected(new Set()); setSelecting(false); setConfirmBulk(false); }}>{t("These Sessions will be permanently removed.")}</DeleteConfirmation>}
+      {moving && <Modal title={t("Move {{count}} Sessions", { count: selected.size })} onClose={() => setMoving(false)}><div className="form">
+        <label>{t("Academic Year")}<select value={moveYearId} onChange={(event) => { setMoveYearId(event.target.value); setMoveSubjectId(""); }}><option value="">{t("Choose Academic Year")}</option>{activeYears.map((year) => <option key={year.id} value={year.id}>{year.name}</option>)}</select></label>
+        <label>{t("Subject")}<select value={moveSubjectId} disabled={!moveYearId} onChange={(event) => setMoveSubjectId(event.target.value)}><option value="">{t("Choose Subject")}</option>{subjects.filter((subject) => !subject.archived && subject.academicYearId === moveYearId).map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}</select></label>
+        <p>{t("Only the Subject and Academic Year assignment will change.")}</p>
+        <div className="modal-actions"><button onClick={() => setMoving(false)}>{t("Cancel")}</button><button className="primary-action" disabled={!moveSubjectId} onClick={async () => { await moveSessions([...selected], moveSubjectId); setMoving(false); setSelected(new Set()); setSelecting(false); }}>{t("Move Sessions")}</button></div>
+      </div></Modal>}
     </main>
   );
 }

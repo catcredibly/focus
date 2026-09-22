@@ -2,7 +2,7 @@ import "fake-indexeddb/auto";
 import Dexie from "dexie";
 import { afterEach, describe, expect, it } from "vitest";
 import { FocusDatabase } from "./db";
-import { canDeleteManagedRecord, deleteAcademicYearCascade, deleteSession, deleteSessions, deleteSubjectCascade, setAcademicYearArchived } from "./management";
+import { canDeleteManagedRecord, deleteAcademicYearCascade, deleteSession, deleteSessions, deleteSubjectCascade, moveSessions, setAcademicYearArchived } from "./management";
 import { managementViewState } from "./managementViewState";
 
 const opened: Dexie[] = [];
@@ -63,5 +63,25 @@ describe("management archive and deletion integrity", () => {
     await deleteSessions(["one","three"],testDb);
     expect((await testDb.sessions.toArray()).map((row)=>row.id)).toEqual(["two"]);
     await deleteSession("two",testDb); expect(await testDb.sessions.count()).toBe(0);
+  });
+
+  it("moves selected Sessions without changing their study data", async () => {
+    const testDb=database();
+    await testDb.academicYears.add({id:"year",name:"Year",archived:false});
+    await testDb.subjects.bulkAdd([{id:"old",academicYearId:"year",name:"Old",color:"#fff",archived:false},{id:"new",academicYearId:"year",name:"New",color:"#fff",archived:false}]);
+    await testDb.sessions.bulkAdd([
+      {id:"one",subjectId:"old",subjectName:"Old",academicYearId:"year",academicYearName:"Year",startTime:10,endTime:20,focusedDurationSeconds:10,note:"Keep me",archived:true},
+      {id:"two",subjectId:"old",subjectName:"Old",academicYearId:"year",academicYearName:"Year",startTime:20,endTime:30,focusedDurationSeconds:10,archived:false},
+    ]);
+    await moveSessions(["one"],"new",testDb);
+    expect(await testDb.sessions.get("one")).toMatchObject({subjectId:"new",subjectName:"New",startTime:10,endTime:20,focusedDurationSeconds:10,note:"Keep me",archived:true});
+    expect((await testDb.sessions.get("two"))?.subjectId).toBe("old");
+  });
+
+  it("does not move Sessions to archived destinations", async () => {
+    const testDb=database();
+    await testDb.academicYears.add({id:"year",name:"Year",archived:false});
+    await testDb.subjects.add({id:"archived",academicYearId:"year",name:"Archived",color:"#fff",archived:true});
+    await expect(moveSessions(["one"],"archived",testDb)).rejects.toThrow("active Subject");
   });
 });

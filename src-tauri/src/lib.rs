@@ -1,7 +1,7 @@
-use tauri::Manager;
 use serde::Serialize;
+use tauri::{Emitter, Manager};
 
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct WorkArea {
     x: i32,
@@ -10,23 +10,41 @@ struct WorkArea {
     height: u32,
 }
 
-#[cfg(windows)]
-fn timer_work_area(window: &tauri::WebviewWindow) -> Result<WorkArea, String> {
-    use windows_sys::Win32::Foundation::{POINT, RECT};
-    use windows_sys::Win32::Graphics::Gdi::{GetMonitorInfoW, MonitorFromPoint, MONITORINFO, MONITOR_DEFAULTTONEAREST};
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct MonitorWorkArea {
+    id: String,
+    label: String,
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+}
 
-    let position = window.outer_position().map_err(|e| e.to_string())?;
-    let size = window.outer_size().map_err(|e| e.to_string())?;
-    let point = POINT {
-        x: position.x + size.width as i32 / 2,
-        y: position.y + size.height as i32 / 2,
+#[cfg(windows)]
+fn work_area_at_point(x: i32, y: i32) -> Result<WorkArea, String> {
+    use windows_sys::Win32::Foundation::{POINT, RECT};
+    use windows_sys::Win32::Graphics::Gdi::{
+        GetMonitorInfoW, MonitorFromPoint, MONITORINFO, MONITOR_DEFAULTTONEAREST,
     };
+
+    let point = POINT { x, y };
     unsafe {
         let monitor = MonitorFromPoint(point, MONITOR_DEFAULTTONEAREST);
         let mut info = MONITORINFO {
             cbSize: std::mem::size_of::<MONITORINFO>() as u32,
-            rcMonitor: RECT { left: 0, top: 0, right: 0, bottom: 0 },
-            rcWork: RECT { left: 0, top: 0, right: 0, bottom: 0 },
+            rcMonitor: RECT {
+                left: 0,
+                top: 0,
+                right: 0,
+                bottom: 0,
+            },
+            rcWork: RECT {
+                left: 0,
+                top: 0,
+                right: 0,
+                bottom: 0,
+            },
             dwFlags: 0,
         };
         if GetMonitorInfoW(monitor, &mut info) == 0 {
@@ -41,9 +59,42 @@ fn timer_work_area(window: &tauri::WebviewWindow) -> Result<WorkArea, String> {
     }
 }
 
+#[cfg(windows)]
+fn timer_work_area(
+    window: &tauri::WebviewWindow,
+    monitor_id: Option<&str>,
+) -> Result<WorkArea, String> {
+    if let Some(index) = monitor_id
+        .and_then(|value| value.strip_prefix("display:"))
+        .and_then(|value| value.parse::<usize>().ok())
+    {
+        let monitors = window.available_monitors().map_err(|e| e.to_string())?;
+        if let Some(monitor) = monitors.get(index) {
+            return work_area_at_point(
+                monitor.position().x + monitor.size().width as i32 / 2,
+                monitor.position().y + monitor.size().height as i32 / 2,
+            );
+        }
+    }
+    let position = window.outer_position().map_err(|e| e.to_string())?;
+    let size = window.outer_size().map_err(|e| e.to_string())?;
+    work_area_at_point(
+        position.x + size.width as i32 / 2,
+        position.y + size.height as i32 / 2,
+    )
+}
+
 #[cfg(not(windows))]
-fn timer_work_area(window: &tauri::WebviewWindow) -> Result<WorkArea, String> {
-    let monitor = window.current_monitor().map_err(|e| e.to_string())?
+fn timer_work_area(
+    window: &tauri::WebviewWindow,
+    monitor_id: Option<&str>,
+) -> Result<WorkArea, String> {
+    let explicit = monitor_id
+        .and_then(|value| value.strip_prefix("display:"))
+        .and_then(|value| value.parse::<usize>().ok())
+        .and_then(|index| window.available_monitors().ok()?.get(index).cloned());
+    let monitor = explicit
+        .or(window.current_monitor().map_err(|e| e.to_string())?)
         .ok_or_else(|| "No monitor is available".to_string())?;
     Ok(WorkArea {
         x: monitor.position().x,
@@ -51,6 +102,45 @@ fn timer_work_area(window: &tauri::WebviewWindow) -> Result<WorkArea, String> {
         width: monitor.size().width,
         height: monitor.size().height,
     })
+}
+
+#[tauri::command]
+fn list_monitor_work_areas(app: tauri::AppHandle) -> Result<Vec<MonitorWorkArea>, String> {
+    let window = app
+        .get_webview_window("timer")
+        .or_else(|| app.get_webview_window("main"))
+        .ok_or_else(|| "No Focus window is available".to_string())?;
+    window
+        .available_monitors()
+        .map_err(|e| e.to_string())?
+        .iter()
+        .enumerate()
+        .map(|(index, monitor)| {
+            #[cfg(windows)]
+            let area = work_area_at_point(
+                monitor.position().x + monitor.size().width as i32 / 2,
+                monitor.position().y + monitor.size().height as i32 / 2,
+            )?;
+            #[cfg(not(windows))]
+            let area = WorkArea {
+                x: monitor.position().x,
+                y: monitor.position().y,
+                width: monitor.size().width,
+                height: monitor.size().height,
+            };
+            Ok(MonitorWorkArea {
+                id: format!("display:{}", index),
+                label: monitor
+                    .name()
+                    .map(|name| format!("Display {} - {}", index + 1, name))
+                    .unwrap_or_else(|| format!("Display {}", index + 1)),
+                x: area.x,
+                y: area.y,
+                width: area.width,
+                height: area.height,
+            })
+        })
+        .collect()
 }
 
 #[tauri::command]
@@ -118,11 +208,14 @@ fn set_timer_position_unchecked(app: tauri::AppHandle, x: i32, y: i32) -> Result
 }
 
 #[tauri::command]
-fn get_timer_work_area(app: tauri::AppHandle) -> Result<WorkArea, String> {
+fn get_timer_work_area(
+    app: tauri::AppHandle,
+    monitor_id: Option<String>,
+) -> Result<WorkArea, String> {
     let window = app
         .get_webview_window("timer")
         .ok_or_else(|| "The configured timer window is unavailable".to_string())?;
-    timer_work_area(&window)
+    timer_work_area(&window, monitor_id.as_deref())
 }
 
 #[tauri::command]
@@ -142,9 +235,41 @@ fn hide_timer_popout(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+fn close_main_window(app: tauri::AppHandle) -> Result<(), String> {
+    app.exit(0);
+    Ok(())
+}
+
+#[tauri::command]
+fn set_main_fullscreen(app: tauri::AppHandle, fullscreen: bool) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("main") {
+        window
+            .set_fullscreen(fullscreen)
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn is_main_fullscreen(app: tauri::AppHandle) -> Result<bool, String> {
+    app.get_webview_window("main")
+        .ok_or_else(|| "The main Focus window is unavailable".to_string())?
+        .is_fullscreen()
+        .map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.unminimize();
+                let _ = window.set_focus();
+                let _ = window.emit("focus://second-instance", ());
+            }
+        }))
         .plugin(tauri_plugin_notification::init())
         .setup(|app| {
             #[cfg(desktop)]
@@ -163,8 +288,12 @@ pub fn run() {
             set_timer_position,
             set_timer_position_unchecked,
             get_timer_work_area,
+            list_monitor_work_areas,
             focus_main_window,
-            hide_timer_popout
+            hide_timer_popout,
+            close_main_window,
+            set_main_fullscreen,
+            is_main_fullscreen
         ])
         .on_window_event(|window, event| {
             if window.label() == "timer" {

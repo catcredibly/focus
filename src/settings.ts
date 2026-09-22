@@ -5,9 +5,13 @@ export type AccentColour = "orange" | "blue" | "green" | "purple";
 export type UiScale = "small" | "medium" | "large";
 export type TimerDurationMode = "remember" | "fixed";
 export type PopoutAutoHide = "500" | "1000" | "2000" | "never";
-export type Locale = "en" | "zh-CN";
+export type Locale = "en" | "zh-CN" | "zh-TW" | "ja";
 export type DockCorner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
 export type DockEdge = "top" | "right" | "bottom" | "left";
+export type DockMonitor = "current" | `display:${number}`;
+export type CompletionSound = "soft-chime" | "bell" | "digital" | "gentle" | "bright";
+export type DateFormat = "full" | "standard" | "compact" | "numeric";
+export type ClockFormat = "system" | "12-hour" | "24-hour";
 
 export type FocusSettings = {
   displayName: string;
@@ -17,7 +21,18 @@ export type FocusSettings = {
   timerDurationMode: TimerDurationMode;
   lastTimerDurationSeconds: number;
   fixedTimerDurationSeconds: number;
+  showDate: boolean;
+  dateFormat: DateFormat;
+  showWeekday: boolean;
+  showClock: boolean;
+  clockFormat: ClockFormat;
+  dailyGoalEnabled: boolean;
+  dailyGoalSeconds: number;
+  weeklyGoalEnabled: boolean;
+  weeklyGoalSeconds: number;
   completionSound: boolean;
+  completionSoundChoice: CompletionSound;
+  completionSoundVolume: number;
   completionNotification: boolean;
   popoutAlwaysOnTop: boolean;
   popoutRememberPosition: boolean;
@@ -32,6 +47,7 @@ export type FocusSettings = {
   popoutPositionY: number | null;
   popoutDockingEnabled: boolean;
   popoutDockCorner: DockCorner;
+  popoutDockMonitor: DockMonitor;
   popoutDocked: boolean;
   popoutDockAutoHide: boolean;
   popoutAutoHideEdge: DockEdge;
@@ -50,7 +66,18 @@ export const SETTINGS_KEYS: { [K in keyof FocusSettings]: string } = {
   timerDurationMode: "timerDurationMode",
   lastTimerDurationSeconds: LAST_TIMER_DURATION_KEY,
   fixedTimerDurationSeconds: "fixedTimerDurationSeconds",
+  showDate: "showDate",
+  dateFormat: "dateFormat",
+  showWeekday: "showWeekday",
+  showClock: "showClock",
+  clockFormat: "clockFormat",
+  dailyGoalEnabled: "dailyGoalEnabled",
+  dailyGoalSeconds: "dailyGoalSeconds",
+  weeklyGoalEnabled: "weeklyGoalEnabled",
+  weeklyGoalSeconds: "weeklyGoalSeconds",
   completionSound: "completionSound",
+  completionSoundChoice: "completionSoundChoice",
+  completionSoundVolume: "completionSoundVolume",
   completionNotification: "completionNotification",
   popoutAlwaysOnTop: "popoutAlwaysOnTop",
   popoutRememberPosition: "popoutRememberPosition",
@@ -65,6 +92,7 @@ export const SETTINGS_KEYS: { [K in keyof FocusSettings]: string } = {
   popoutPositionY: "popoutPositionY",
   popoutDockingEnabled: "popoutDockingEnabled",
   popoutDockCorner: "popoutDockCorner",
+  popoutDockMonitor: "popoutDockMonitor",
   popoutDocked: "popoutDocked",
   popoutDockAutoHide: "popoutDockAutoHide",
   popoutAutoHideEdge: "popoutAutoHideEdge",
@@ -83,7 +111,18 @@ export const DEFAULT_SETTINGS: FocusSettings = {
   timerDurationMode: "remember",
   lastTimerDurationSeconds: 75 * 60,
   fixedTimerDurationSeconds: 75 * 60,
+  showDate: true,
+  dateFormat: "standard",
+  showWeekday: true,
+  showClock: true,
+  clockFormat: "system",
+  dailyGoalEnabled: false,
+  dailyGoalSeconds: 2 * 60 * 60,
+  weeklyGoalEnabled: false,
+  weeklyGoalSeconds: 12 * 60 * 60,
   completionSound: true,
+  completionSoundChoice: "soft-chime",
+  completionSoundVolume: 65,
   completionNotification: true,
   popoutAlwaysOnTop: true,
   popoutRememberPosition: true,
@@ -98,6 +137,7 @@ export const DEFAULT_SETTINGS: FocusSettings = {
   popoutPositionY: null,
   popoutDockingEnabled: false,
   popoutDockCorner: "top-right",
+  popoutDockMonitor: "current",
   popoutDocked: false,
   popoutDockAutoHide: false,
   popoutAutoHideEdge: "right",
@@ -108,23 +148,30 @@ export const DEFAULT_SETTINGS: FocusSettings = {
   allowDirectActiveDeletion: false,
 };
 
-const booleans = new Set<keyof FocusSettings>(["startMaximized", "launchAtStartup", "completionSound", "completionNotification", "popoutAlwaysOnTop", "popoutRememberPosition", "popoutShowSubject", "popoutHideControls", "popoutAutoOpen", "popoutShowInTaskbar", "popoutCloseOnCompletion", "popoutDockingEnabled", "popoutDocked", "popoutDockAutoHide", "allowDirectActiveDeletion"]);
-const numbers = new Set<keyof FocusSettings>(["lastTimerDurationSeconds", "fixedTimerDurationSeconds", "popoutTransparency", "popoutPositionX", "popoutPositionY", "popoutAutoHideOffset"]);
+const booleans = new Set<keyof FocusSettings>(["startMaximized", "launchAtStartup", "showDate", "showWeekday", "showClock", "dailyGoalEnabled", "weeklyGoalEnabled", "completionSound", "completionNotification", "popoutAlwaysOnTop", "popoutRememberPosition", "popoutShowSubject", "popoutHideControls", "popoutAutoOpen", "popoutShowInTaskbar", "popoutCloseOnCompletion", "popoutDockingEnabled", "popoutDocked", "popoutDockAutoHide", "allowDirectActiveDeletion"]);
+const numbers = new Set<keyof FocusSettings>(["lastTimerDurationSeconds", "fixedTimerDurationSeconds", "dailyGoalSeconds", "weeklyGoalSeconds", "completionSoundVolume", "popoutTransparency", "popoutPositionX", "popoutPositionY", "popoutAutoHideOffset"]);
 
 function decode<K extends keyof FocusSettings>(key: K, raw: string | undefined): FocusSettings[K] {
   if (raw === undefined) return DEFAULT_SETTINGS[key];
   if (booleans.has(key)) return (raw === "true") as FocusSettings[K];
   if (numbers.has(key)) {
     if (raw === "null") return null as FocusSettings[K];
-    const value = Number(raw);
-    return (Number.isFinite(value) ? value : DEFAULT_SETTINGS[key]) as FocusSettings[K];
+    let value = Number(raw);
+    if (!Number.isFinite(value)) return DEFAULT_SETTINGS[key];
+    if (key === "popoutTransparency") value = Math.min(100, Math.max(10, value));
+    if (key === "completionSoundVolume") value = Math.min(100, Math.max(0, value));
+    if (key === "popoutAutoHideOffset") value = Math.min(1, Math.max(0, value));
+    if (["lastTimerDurationSeconds", "fixedTimerDurationSeconds", "dailyGoalSeconds", "weeklyGoalSeconds"].includes(key)) value = Math.max(0, Math.floor(value));
+    return value as FocusSettings[K];
   }
   if (key === "lastBackupAt") return (raw || null) as FocusSettings[K];
   const allowed: Partial<Record<keyof FocusSettings, readonly string[]>> = {
-    language: ["en", "zh-CN"], timerDurationMode: ["remember", "fixed"], popoutAutoHide: ["500", "1000", "2000", "never"],
+    language: ["en", "zh-CN", "zh-TW", "ja"], timerDurationMode: ["remember", "fixed"], dateFormat: ["full", "standard", "compact", "numeric"], clockFormat: ["system", "12-hour", "24-hour"],
+    completionSoundChoice: ["soft-chime", "bell", "digital", "gentle", "bright"], popoutAutoHide: ["500", "1000", "2000", "never"],
     popoutDockCorner: ["top-left", "top-right", "bottom-left", "bottom-right"], popoutAutoHideEdge: ["top", "right", "bottom", "left"],
     accentColour: ["orange", "blue", "green", "purple"], uiScale: ["small", "medium", "large"],
   };
+  if (key === "popoutDockMonitor") return (/^(current|display:\d+)$/.test(raw) ? raw : DEFAULT_SETTINGS[key]) as FocusSettings[K];
   return ((allowed[key] && !allowed[key]?.includes(raw)) ? DEFAULT_SETTINGS[key] : raw) as FocusSettings[K];
 }
 
@@ -135,6 +182,12 @@ export async function loadSettings(database: FocusDatabase = db): Promise<FocusS
 
 export async function saveSetting<K extends keyof FocusSettings>(key: K, value: FocusSettings[K], database: FocusDatabase = db) {
   await database.settings.put({ key: SETTINGS_KEYS[key], value: String(value) });
+}
+
+export async function restoreSettingDefaults(keys: (keyof FocusSettings)[], database: FocusDatabase = db) {
+  await database.transaction("rw", database.settings, async () => {
+    await database.settings.bulkDelete(keys.map((key) => SETTINGS_KEYS[key]));
+  });
 }
 
 export function greeting(name: string, hour = new Date().getHours()) {
