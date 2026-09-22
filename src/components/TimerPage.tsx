@@ -1,4 +1,4 @@
-import { CalendarDays, Check, ExternalLink, Maximize2, Minimize2, Pause, Play, Plus, Square } from "lucide-react";
+import { Check, ExternalLink, Maximize2, Minimize2, Pause, Play, Plus, Square } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -53,6 +53,11 @@ export function TimerPage() {
     const value = normaliseDuration(0, 0, defaultDuration);
     setHours(pad(value.hours)); setMinutes(pad(value.minutes)); setSeconds(pad(value.seconds));
   }, [defaultDuration, timer.state.running]);
+  useEffect(() => {
+    if (!subjects.length || subjectId) return;
+    const preferred = settings.subjectPickerMode === "fixed" ? settings.defaultSubjectId : settings.lastSubjectId;
+    setSubjectId(subjects.some((subject) => subject.id === preferred) ? preferred : subjects[0].id);
+  }, [settings.defaultSubjectId, settings.lastSubjectId, settings.subjectPickerMode, subjectId, subjects]);
 
   const setNativeFullscreen = async (next: boolean) => {
     try {
@@ -82,9 +87,9 @@ export function TimerPage() {
   const openPopout = () => openTimerPopout(settings).catch(() => undefined);
   const dateTime = formatTimerDateTime(now, settings.language, settings);
   const timerTools = <div className="timer-top-tools">
-    {!timer.state.running && <IconButton label={t(todayOpen ? "Hide Today" : "Show Today")} className={todayOpen ? "icon-button active" : "icon-button"} onClick={() => setTodayOpen((value) => !value)}><CalendarDays/></IconButton>}
     <span className="fullscreen-tool"><IconButton label={t(fullscreen ? "Exit fullscreen (F11)" : "Fullscreen (F11)")} className="icon-button" onClick={() => void toggleFullscreen()}>{fullscreen ? <Minimize2/> : <Maximize2/>}</IconButton></span>
   </div>;
+  const dateControl = !timer.state.running && <span className="tooltip-host date-toggle-host"><button className={`date date-toggle ${todayOpen ? "active" : ""}`} aria-pressed={todayOpen} onClick={() => setTodayOpen((value) => !value)}>{dateTime || t("Today")}</button><span className="focus-tooltip" role="tooltip">{t(todayOpen ? "Hide Today pane" : "Show Today pane")}</span></span>;
 
   const recoveryDialogs = <>
     {timer.recovery === "running" && <Dialog title={t("Recover timer")}><p>{t("Focus closed while this timer was running. How would you like to continue?")}</p><div className="modal-actions modal-actions--stack"><button className="primary-action" onClick={timer.continueRecovery}>{t("Continue timer")}</button><button onClick={timer.resumeCheckpoint}>{t("Resume from where I left off")}</button><button className="danger-outline" onClick={() => setDiscarding(true)}>{t("Discard timer")}</button></div></Dialog>}
@@ -104,11 +109,11 @@ export function TimerPage() {
   </section>{recoveryDialogs}</main>;
 
   return <main className={`timer-shell timer-shell--idle ${todayOpen ? "timer-shell--today-open" : ""}`}><section className="timer-card">
-    {timerTools}{dateTime && <div className="date">{dateTime}</div>}
+    {timerTools}{dateControl}
     <div className="time-entry"><label><input inputMode="numeric" value={hours} onChange={(event) => input(event.target.value, setHours)} onBlur={commitInput} onKeyDown={inputKey}/><span>{t("Hours")}</span></label><b>:</b><label><input inputMode="numeric" value={minutes} onChange={(event) => input(event.target.value, setMinutes)} onBlur={commitInput} onKeyDown={inputKey}/><span>{t("Minutes")}</span></label><b>:</b><label><input inputMode="numeric" value={seconds} onChange={(event) => input(event.target.value, setSeconds)} onBlur={commitInput} onKeyDown={inputKey}/><span>{t("Seconds")}</span></label></div>
     <select className="subject-select" value={selectedSubject?.id ?? ""} onChange={(event) => setSubjectId(event.target.value)} disabled={!subjects.length}>{!subjects.length && <option>{t("Add a Subject for the current Academic Year")}</option>}{subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}</select>
     <input className="note-field" aria-label={t("Session note")} placeholder={t("Add a note (optional)...")} value={timer.state.note} onChange={(event) => timer.setNote(event.target.value)}/>
-    <button className="start-button" disabled={!selectedSubject || !currentYear || duration <= 0} onClick={async () => { const value = commitInput(); if (selectedSubject && currentYear && value > 0) { await saveSetting("lastTimerDurationSeconds", value); timer.start(value, selectedSubject, currentYear); if (settings.popoutAutoOpen) await openPopout(); } }}><Play size={20} fill="currentColor"/> {t("Start")}</button>
+    <button className="start-button" disabled={!selectedSubject || !currentYear || duration <= 0} onClick={async () => { const value = commitInput(); if (selectedSubject && currentYear && value > 0) { await Promise.all([saveSetting("lastTimerDurationSeconds", value), saveSetting("lastSubjectId", selectedSubject.id)]); timer.start(value, selectedSubject, currentYear); if (settings.popoutAutoOpen) await openPopout(); } }}><Play size={20} fill="currentColor"/> {t("Start")}</button>
   </section>{todayOpen && <TodayPanel summary={summary} sessions={sessions} recent={recent} dailySeconds={goals.dailySeconds} weeklySeconds={goals.weeklySeconds} settings={settings}/>} {recoveryDialogs}</main>;
 }
 

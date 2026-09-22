@@ -5,7 +5,7 @@ import { db } from "../db";
 import { createSession, CURRENT_YEAR_KEY, formatDuration, makeId, setCurrentAcademicYear } from "../data";
 import type { AcademicYear, FocusSession, Subject } from "../types";
 import { localDateInputValue } from "../timerState";
-import { canDeleteManagedRecord, deleteAcademicYearCascade, deleteSession, deleteSessions, deleteSubjectCascade, moveSessions, setAcademicYearArchived } from "../management";
+import { canDeleteManagedRecord, deleteAcademicYearCascade, deleteSession, deleteSessions, deleteSubjectCascade, isSessionEffectivelyArchived, moveSessions, setAcademicYearArchived } from "../management";
 import { managementViewState } from "../managementViewState";
 import { useSettings } from "../hooks/useSettings";
 import { useTranslation } from "react-i18next";
@@ -352,7 +352,7 @@ export function HistoryPage() {
   const [moveYearId, setMoveYearId] = useState("");
   const [moveSubjectId, setMoveSubjectId] = useState("");
   const pageSize = 20;
-  const filtered = useMemo(() => sessions.filter((s) => (status === "all" || s.archived === (status === "archived")) && (!yearId || s.academicYearId === yearId) && (!subjectId || s.subjectId === subjectId)), [sessions, status, yearId, subjectId]);
+  const filtered = useMemo(() => sessions.filter((session) => (status === "all" || isSessionEffectivelyArchived(session, subjects, years) === (status === "archived")) && (!yearId || session.academicYearId === yearId) && (!subjectId || session.subjectId === subjectId)), [sessions, status, yearId, subjectId, subjects, years]);
   const save = async (form: FormData) => {
     const subject = subjects.find((s) => s.id === String(form.get("subject")));
     const year = years.find((y) => y.id === subject?.academicYearId);
@@ -482,13 +482,10 @@ export function HistoryPage() {
             <strong>{formatDuration(s.focusedDurationSeconds)}</strong>
             <span>{s.subjectName}</span>
             <span>{s.academicYearName}</span>
-            <span className="badge">{t(s.archived ? "Archived" : "Active")}</span>
+            <span className="badge">{t(isSessionEffectivelyArchived(s, subjects, years) ? "Archived" : "Active")}</span>
             <div className="row-actions">
               <button title={t("Edit")} onClick={() => setEditing(s)}>
                 <Pencil />
-              </button>
-              <button title={t(s.archived ? "Restore" : "Archive")} onClick={() => db.sessions.update(s.id, { archived: !s.archived })}>
-                {s.archived ? <RotateCcw /> : <Archive />}
               </button>
               <button className="danger-icon" title={t("Delete permanently")} onClick={() => setDeleting(s)}>
                 <Trash2 />

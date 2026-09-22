@@ -1,8 +1,11 @@
 import { db, type FocusDatabase } from "./db";
 import { ACTIVE_TIMER_STORAGE_KEY, LAST_TIMER_DURATION_KEY, type TimerState } from "./timerState";
 
-export type AccentColour = "orange" | "blue" | "green" | "purple";
-export type UiScale = "small" | "medium" | "large";
+export type AccentColour = "coral" | "orange" | "pink" | "miku" | "cappuccino";
+export type Theme = "dark" | "light";
+export type UiScale = "small" | "medium" | "large" | "extra-large";
+export type SubjectPickerMode = "remember" | "fixed";
+export type PopoutSize = "small" | "medium" | "large";
 export type TimerDurationMode = "remember" | "fixed";
 export type PopoutAutoHide = "500" | "1000" | "2000" | "never";
 export type Locale = "en" | "zh-CN" | "zh-TW" | "ja";
@@ -15,12 +18,17 @@ export type ClockFormat = "system" | "12-hour" | "24-hour";
 
 export type FocusSettings = {
   displayName: string;
+  sidebarSubtitle: string;
   language: Locale;
+  theme: Theme;
   startMaximized: boolean;
   launchAtStartup: boolean;
   timerDurationMode: TimerDurationMode;
   lastTimerDurationSeconds: number;
   fixedTimerDurationSeconds: number;
+  subjectPickerMode: SubjectPickerMode;
+  defaultSubjectId: string;
+  lastSubjectId: string;
   showDate: boolean;
   dateFormat: DateFormat;
   showWeekday: boolean;
@@ -37,6 +45,8 @@ export type FocusSettings = {
   popoutAlwaysOnTop: boolean;
   popoutRememberPosition: boolean;
   popoutShowSubject: boolean;
+  popoutShowClock: boolean;
+  popoutSize: PopoutSize;
   popoutHideControls: boolean;
   popoutAutoHide: PopoutAutoHide;
   popoutAutoOpen: boolean;
@@ -60,12 +70,17 @@ export type FocusSettings = {
 
 export const SETTINGS_KEYS: { [K in keyof FocusSettings]: string } = {
   displayName: "displayName",
+  sidebarSubtitle: "sidebarSubtitle",
   language: "language",
+  theme: "theme",
   startMaximized: "startMaximized",
   launchAtStartup: "launchAtStartup",
   timerDurationMode: "timerDurationMode",
   lastTimerDurationSeconds: LAST_TIMER_DURATION_KEY,
   fixedTimerDurationSeconds: "fixedTimerDurationSeconds",
+  subjectPickerMode: "subjectPickerMode",
+  defaultSubjectId: "defaultSubjectId",
+  lastSubjectId: "lastSubjectId",
   showDate: "showDate",
   dateFormat: "dateFormat",
   showWeekday: "showWeekday",
@@ -82,6 +97,8 @@ export const SETTINGS_KEYS: { [K in keyof FocusSettings]: string } = {
   popoutAlwaysOnTop: "popoutAlwaysOnTop",
   popoutRememberPosition: "popoutRememberPosition",
   popoutShowSubject: "popoutShowSubject",
+  popoutShowClock: "popoutShowClock",
+  popoutSize: "popoutSize",
   popoutHideControls: "popoutHideControls",
   popoutAutoHide: "popoutAutoHide",
   popoutAutoOpen: "popoutAutoOpen",
@@ -105,12 +122,17 @@ export const SETTINGS_KEYS: { [K in keyof FocusSettings]: string } = {
 
 export const DEFAULT_SETTINGS: FocusSettings = {
   displayName: "",
+  sidebarSubtitle: "",
   language: "en",
+  theme: "dark",
   startMaximized: true,
   launchAtStartup: false,
   timerDurationMode: "remember",
   lastTimerDurationSeconds: 75 * 60,
   fixedTimerDurationSeconds: 75 * 60,
+  subjectPickerMode: "remember",
+  defaultSubjectId: "",
+  lastSubjectId: "",
   showDate: true,
   dateFormat: "standard",
   showWeekday: true,
@@ -127,6 +149,8 @@ export const DEFAULT_SETTINGS: FocusSettings = {
   popoutAlwaysOnTop: true,
   popoutRememberPosition: true,
   popoutShowSubject: true,
+  popoutShowClock: true,
+  popoutSize: "medium",
   popoutHideControls: true,
   popoutAutoHide: "1000",
   popoutAutoOpen: false,
@@ -142,13 +166,13 @@ export const DEFAULT_SETTINGS: FocusSettings = {
   popoutDockAutoHide: false,
   popoutAutoHideEdge: "right",
   popoutAutoHideOffset: 0,
-  accentColour: "orange",
+  accentColour: "coral",
   uiScale: "medium",
   lastBackupAt: null,
   allowDirectActiveDeletion: false,
 };
 
-const booleans = new Set<keyof FocusSettings>(["startMaximized", "launchAtStartup", "showDate", "showWeekday", "showClock", "dailyGoalEnabled", "weeklyGoalEnabled", "completionSound", "completionNotification", "popoutAlwaysOnTop", "popoutRememberPosition", "popoutShowSubject", "popoutHideControls", "popoutAutoOpen", "popoutShowInTaskbar", "popoutCloseOnCompletion", "popoutDockingEnabled", "popoutDocked", "popoutDockAutoHide", "allowDirectActiveDeletion"]);
+const booleans = new Set<keyof FocusSettings>(["startMaximized", "launchAtStartup", "showDate", "showWeekday", "showClock", "dailyGoalEnabled", "weeklyGoalEnabled", "completionSound", "completionNotification", "popoutAlwaysOnTop", "popoutRememberPosition", "popoutShowSubject", "popoutShowClock", "popoutHideControls", "popoutAutoOpen", "popoutShowInTaskbar", "popoutCloseOnCompletion", "popoutDockingEnabled", "popoutDocked", "popoutDockAutoHide", "allowDirectActiveDeletion"]);
 const numbers = new Set<keyof FocusSettings>(["lastTimerDurationSeconds", "fixedTimerDurationSeconds", "dailyGoalSeconds", "weeklyGoalSeconds", "completionSoundVolume", "popoutTransparency", "popoutPositionX", "popoutPositionY", "popoutAutoHideOffset"]);
 
 function decode<K extends keyof FocusSettings>(key: K, raw: string | undefined): FocusSettings[K] {
@@ -166,10 +190,10 @@ function decode<K extends keyof FocusSettings>(key: K, raw: string | undefined):
   }
   if (key === "lastBackupAt") return (raw || null) as FocusSettings[K];
   const allowed: Partial<Record<keyof FocusSettings, readonly string[]>> = {
-    language: ["en", "zh-CN", "zh-TW", "ja"], timerDurationMode: ["remember", "fixed"], dateFormat: ["full", "standard", "compact", "numeric"], clockFormat: ["system", "12-hour", "24-hour"],
+    language: ["en", "zh-CN", "zh-TW", "ja"], theme: ["dark", "light"], timerDurationMode: ["remember", "fixed"], subjectPickerMode: ["remember", "fixed"], dateFormat: ["full", "standard", "compact", "numeric"], clockFormat: ["system", "12-hour", "24-hour"],
     completionSoundChoice: ["soft-chime", "bell", "digital", "gentle", "bright"], popoutAutoHide: ["500", "1000", "2000", "never"],
     popoutDockCorner: ["top-left", "top-right", "bottom-left", "bottom-right"], popoutAutoHideEdge: ["top", "right", "bottom", "left"],
-    accentColour: ["orange", "blue", "green", "purple"], uiScale: ["small", "medium", "large"],
+    popoutSize: ["small", "medium", "large"], accentColour: ["coral", "orange", "pink", "miku", "cappuccino"], uiScale: ["small", "medium", "large", "extra-large"],
   };
   if (key === "popoutDockMonitor") return (/^(current|display:\d+)$/.test(raw) ? raw : DEFAULT_SETTINGS[key]) as FocusSettings[K];
   return ((allowed[key] && !allowed[key]?.includes(raw)) ? DEFAULT_SETTINGS[key] : raw) as FocusSettings[K];

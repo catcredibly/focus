@@ -82,4 +82,24 @@ Object.assign(ja, {
   "OK": "OK",
 });
 
+Object.assign(ja, {
+  "Time well spent.": "時間を大切に。", "Light": "ライト", "Extra large": "特大",
+  "Coral Red": "コーラルレッド", "Cherry Blossom Pink": "桜ピンク", "Muted Miku Blue": "ミュートミクブルー", "Cappuccino": "カプチーノ",
+  "Greeting subtitle": "挨拶のサブタイトル", "Leave blank to use the default brand line.": "空欄にすると既定のブランドメッセージを使用します。",
+  "Default Subject behavior": "既定の科目の動作", "Configured Subject": "指定した科目", "Remember last used Subject": "前回の科目を記憶", "Default Subject": "既定の科目",
+  "Show clock beside Subject": "科目の横に時計を表示", "Popout size": "ポップアウトのサイズ", "Show Today pane": "今日パネルを表示", "Hide Today pane": "今日パネルを非表示",
+  "All Years": "すべての学年", "All Subjects": "すべての科目", "Date range": "期間", "Analytics views": "分析ビュー",
+  "Explore your study habits across subjects, Academic Years, and self-study.": "科目、学年、自主学習ごとの学習習慣を確認します。",
+  "Total focus time": "合計集中時間", "Total Sessions": "セッション総数", "Average Session": "平均セッション", "Longest streak": "最長連続日数", "Active study days": "学習した日数",
+  "Period comparison": "期間比較", "Personal bests": "自己ベスト", "No previous period": "前期間のデータなし", "{{percent}}% vs previous period": "前期間比 {{percent}}%",
+  "Longest Session": "最長セッション", "Best day": "最高記録の日", "Focus time over time": "集中時間の推移", "Daily totals and rolling calendar-day averages.": "日別合計と暦日ベースの移動平均。",
+  "Daily total": "日別合計", "7-day average": "7日平均", "30-day average": "30日平均", "3-month average": "3か月平均", "1-year average": "1年平均",
+  "Focus time by Academic Year": "学年別の集中時間", "Focus time by Subject": "科目別の集中時間", "Subject share over time": "科目比率の推移",
+  "Session length distribution": "セッション時間の分布", "Study time by day of week": "曜日別の学習時間",
+  "No Sessions in this range": "この期間にセッションはありません", "Try another date range or Academic Year.": "別の期間または学年を選択してください。",
+  "Status": "状態", "All Academic Years": "すべての学年", "Review and correct completed focus sessions.": "完了した集中セッションを確認・修正します。",
+  "Delete permanently": "完全に削除", "Select": "選択", "Select all": "すべて選択", "Add Session": "セッションを追加",
+  "Study time by weekday and time": "曜日・時間帯別の学習時間", "Rolling calendar-day averages": "暦日ベースの移動平均", "Zero-study calendar days are included.": "学習していない日も含まれます。",
+});
+
 export default ja;

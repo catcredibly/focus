@@ -8,7 +8,9 @@ import { exportFullBackup } from "../importExport/exportBackup";
 import { useSettings } from "../hooks/useSettings";
 import { clearAllFocusData, formatLastBackup, hasActiveTimer, normaliseDuration, restoreSettingDefaults, type AccentColour, type FocusSettings } from "../settings";
 import { previewCompletionSound, testCompletionNotification } from "../timerCompletion";
-import focusIcon from "../assets/focus-icon.png";
+import focusIcon from "../assets/focus-logo.png";
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "../db";
 import packageMetadata from "../../package.json";
 import { useTranslation } from "react-i18next";
 
@@ -46,9 +48,10 @@ function General({ settings, setSetting }: SettingsProps) {
   return <><SettingsHeader title={t("General")}>{t("Basic app settings.")}</SettingsHeader>
     <Row label={t("Language")}><select value={settings.language} onChange={(event) => void setSetting("language", event.target.value as FocusSettings["language"])}><option value="en">English</option><option value="zh-CN">简体中文</option><option value="zh-TW">繁體中文</option><option value="ja">日本語</option></select></Row>
     <Row label={t("Your name")} hint={t("Used in the sidebar greeting.")}><input className="settings-input" value={name} maxLength={60} placeholder={t("Your name")} onChange={(event) => setName(event.target.value)} onBlur={() => void setSetting("displayName", name.trim())}/></Row>
+    <Row label={t("Greeting subtitle")} hint={t("Leave blank to use the default brand line.")}><input className="settings-input" value={settings.sidebarSubtitle} maxLength={120} placeholder={t("Time well spent.")} onChange={(event) => void setSetting("sidebarSubtitle", event.target.value)}/></Row>
     <Row label={t("Start Focus maximized")}><Toggle label={t("Start Focus maximized")} checked={settings.startMaximized} onChange={(value) => void setSetting("startMaximized", value)}/></Row>
     <Row label={t("Launch Focus at Windows startup")}><Toggle label={t("Launch Focus at Windows startup")} checked={settings.launchAtStartup} onChange={(value) => void startup(value)}/></Row>
-    <RestoreSection keys={["displayName", "language", "startMaximized", "launchAtStartup"]}/>
+    <RestoreSection keys={["displayName", "sidebarSubtitle", "language", "startMaximized", "launchAtStartup"]}/>
   </>;
 }
 
@@ -61,11 +64,26 @@ function DurationEditor({ value, onChange }: { value: number; onChange: (seconds
   return <div className="duration-editor"><label><input aria-label={t("Hours")} min="0" type="number" value={draft.hours} onChange={(event) => setDraft({ ...draft, hours: Number(event.target.value) })} onBlur={commit}/><span>{t("Hours")}</span></label><b>:</b><label><input aria-label={t("Minutes")} min="0" type="number" value={draft.minutes} onChange={(event) => setDraft({ ...draft, minutes: Number(event.target.value) })} onBlur={commit}/><span>{t("Minutes")}</span></label><b>:</b><label><input aria-label={t("Seconds")} min="0" type="number" value={draft.seconds} onChange={(event) => setDraft({ ...draft, seconds: Number(event.target.value) })} onBlur={commit}/><span>{t("Seconds")}</span></label></div>;
 }
 
+function GoalDurationEditor({ value, onChange }: { value: number; onChange: (seconds: number) => void }) {
+  const format = (seconds: number) => `${String(Math.floor(seconds / 3600)).padStart(2, "0")}:${String(Math.floor((seconds % 3600) / 60)).padStart(2, "0")}`;
+  const [draft, setDraft] = useState(() => format(value));
+  useEffect(() => setDraft(format(value)), [value]);
+  const commit = () => {
+    const [hours = "0", minutes = "0"] = draft.split(":");
+    const normalized = normaliseDuration(Number(hours), Number(minutes), 0);
+    setDraft(format(normalized.total)); onChange(normalized.total);
+  };
+  return <input className="settings-input goal-duration-input" inputMode="numeric" aria-label="HH:MM" value={draft} onChange={(event) => setDraft(event.target.value.replace(/[^\d:]/g, ""))} onBlur={commit} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }}/>
+}
+
 function Timer({ settings, setSetting }: SettingsProps) {
   const { t } = useTranslation();
+  const subjects = useLiveQuery(() => db.subjects.filter((subject) => !subject.archived).sortBy("name"), []) ?? [];
   return <><SettingsHeader title={t("Timer")}>{t("Behaviour during focus Sessions.")}</SettingsHeader>
     <Row label={t("New timer duration")}><select value={settings.timerDurationMode} onChange={(event) => void setSetting("timerDurationMode", event.target.value as FocusSettings["timerDurationMode"])}><option value="remember">{t("Remember last used")}</option><option value="fixed">{t("Fixed default")}</option></select></Row>
     {settings.timerDurationMode === "fixed" && <Row label={t("Fixed default duration")} hint={t("Values are normalized when you leave a field.")}><DurationEditor value={settings.fixedTimerDurationSeconds} onChange={(value) => void setSetting("fixedTimerDurationSeconds", value)}/></Row>}
+    <Row label={t("Default Subject behavior")}><select value={settings.subjectPickerMode} onChange={(event) => void setSetting("subjectPickerMode", event.target.value as FocusSettings["subjectPickerMode"])}><option value="remember">{t("Remember last used")}</option><option value="fixed">{t("Configured Subject")}</option></select></Row>
+    {settings.subjectPickerMode === "fixed" && <Row label={t("Default Subject")}><select value={settings.defaultSubjectId} onChange={(event) => void setSetting("defaultSubjectId", event.target.value)}><option value="">{t("Choose Subject")}</option>{subjects.map((subject) => <option value={subject.id} key={subject.id}>{subject.name}</option>)}</select></Row>}
     <div className="settings-subheading"><strong>{t("Date and clock")}</strong></div>
     <Row label={t("Show date")}><Toggle label={t("Show date")} checked={settings.showDate} onChange={(value) => void setSetting("showDate", value)}/></Row>
     <Row label={t("Date format")}><select disabled={!settings.showDate} value={settings.dateFormat} onChange={(event) => void setSetting("dateFormat", event.target.value as FocusSettings["dateFormat"])}><option value="full">{t("Full")}</option><option value="standard">{t("Standard")}</option><option value="compact">{t("Compact")}</option><option value="numeric">{t("Numeric")}</option></select></Row>
@@ -74,10 +92,10 @@ function Timer({ settings, setSetting }: SettingsProps) {
     <Row label={t("Clock format")}><select disabled={!settings.showClock} value={settings.clockFormat} onChange={(event) => void setSetting("clockFormat", event.target.value as FocusSettings["clockFormat"])}><option value="system">{t("System format")}</option><option value="12-hour">{t("12-hour")}</option><option value="24-hour">{t("24-hour")}</option></select></Row>
     <div className="settings-subheading"><strong>{t("Study goals")}</strong><span>{t("Goals count finalized focus Sessions in your local day and week.")}</span></div>
     <Row label={t("Daily goal")}><Toggle label={t("Daily goal")} checked={settings.dailyGoalEnabled} onChange={(value) => void setSetting("dailyGoalEnabled", value)}/></Row>
-    {settings.dailyGoalEnabled && <Row label={t("Daily goal duration")}><DurationEditor value={settings.dailyGoalSeconds} onChange={(value) => void setSetting("dailyGoalSeconds", value)}/></Row>}
+    {settings.dailyGoalEnabled && <Row label={t("Daily goal duration")}><GoalDurationEditor value={settings.dailyGoalSeconds} onChange={(value) => void setSetting("dailyGoalSeconds", value)}/></Row>}
     <Row label={t("Weekly goal")}><Toggle label={t("Weekly goal")} checked={settings.weeklyGoalEnabled} onChange={(value) => void setSetting("weeklyGoalEnabled", value)}/></Row>
-    {settings.weeklyGoalEnabled && <Row label={t("Weekly goal duration")}><DurationEditor value={settings.weeklyGoalSeconds} onChange={(value) => void setSetting("weeklyGoalSeconds", value)}/></Row>}
-    <RestoreSection keys={["timerDurationMode", "lastTimerDurationSeconds", "fixedTimerDurationSeconds", "showDate", "dateFormat", "showWeekday", "showClock", "clockFormat", "dailyGoalEnabled", "dailyGoalSeconds", "weeklyGoalEnabled", "weeklyGoalSeconds"]}/>
+    {settings.weeklyGoalEnabled && <Row label={t("Weekly goal duration")}><GoalDurationEditor value={settings.weeklyGoalSeconds} onChange={(value) => void setSetting("weeklyGoalSeconds", value)}/></Row>}
+    <RestoreSection keys={["timerDurationMode", "lastTimerDurationSeconds", "fixedTimerDurationSeconds", "subjectPickerMode", "defaultSubjectId", "lastSubjectId", "showDate", "dateFormat", "showWeekday", "showClock", "clockFormat", "dailyGoalEnabled", "dailyGoalSeconds", "weeklyGoalEnabled", "weeklyGoalSeconds"]}/>
   </>;
 }
 
@@ -116,24 +134,26 @@ function Popout({ settings, setSetting }: SettingsProps) {
     <Row label={t("Dock monitor")}><select value={settings.popoutDockMonitor} disabled={!settings.popoutDockingEnabled} onChange={(event) => void setSetting("popoutDockMonitor", event.target.value as FocusSettings["popoutDockMonitor"])}><option value="current">{t("Current monitor")}</option>{displays.map((display) => <option key={display.id} value={display.id}>{display.label}</option>)}</select></Row>
     <Row label={t("Auto-hide when docked")}><Toggle label={t("Auto-hide when docked")} checked={settings.popoutDockAutoHide} onChange={(v) => void setSetting("popoutDockAutoHide", v)}/></Row>
     <Row label={t("Show Subject")}><Toggle label={t("Show Subject")} checked={settings.popoutShowSubject} onChange={(v) => void setSetting("popoutShowSubject", v)}/></Row>
+    <Row label={t("Show clock beside Subject")}><Toggle label={t("Show clock beside Subject")} checked={settings.popoutShowClock} onChange={(v) => void setSetting("popoutShowClock", v)}/></Row>
+    <Row label={t("Popout size")}><select value={settings.popoutSize} onChange={(event) => void setSetting("popoutSize", event.target.value as FocusSettings["popoutSize"])}><option value="small">{t("Small")}</option><option value="medium">{t("Medium")}</option><option value="large">{t("Large")}</option></select></Row>
     <Row label={t("Hide controls until hovered")}><Toggle label={t("Hide controls until hovered")} checked={settings.popoutHideControls} onChange={(v) => void setSetting("popoutHideControls", v)}/></Row>
     <Row label={t("Auto-hide controls after")}><select value={settings.popoutAutoHide} disabled={!settings.popoutHideControls} onChange={(event) => void setSetting("popoutAutoHide", event.target.value as FocusSettings["popoutAutoHide"])}><option value="500">0.5 sec</option><option value="1000">1 sec</option><option value="2000">2 sec</option><option value="never">{t("Never")}</option></select></Row>
     <Row label={t("Open popout automatically when a timer starts")}><Toggle label={t("Open popout automatically")} checked={settings.popoutAutoOpen} onChange={(v) => void setSetting("popoutAutoOpen", v)}/></Row>
     <Row label={t("Show popout in taskbar")}><Toggle label={t("Show popout in taskbar")} checked={settings.popoutShowInTaskbar} onChange={(v) => void setSetting("popoutShowInTaskbar", v)}/></Row>
     <Row label={t("Close popout when timer finishes")}><Toggle label={t("Close popout on completion")} checked={settings.popoutCloseOnCompletion} onChange={(v) => void setSetting("popoutCloseOnCompletion", v)}/></Row>
     <Row label={t("Transparency")} hint={`${settings.popoutTransparency}%`}><input aria-label={t("Transparency")} type="range" min="10" max="100" step="5" value={settings.popoutTransparency} onChange={(event) => void setSetting("popoutTransparency", Number(event.target.value))}/></Row>
-    <RestoreSection keys={["popoutAlwaysOnTop", "popoutRememberPosition", "popoutShowSubject", "popoutHideControls", "popoutAutoHide", "popoutAutoOpen", "popoutShowInTaskbar", "popoutCloseOnCompletion", "popoutTransparency", "popoutPositionX", "popoutPositionY", "popoutDockingEnabled", "popoutDockCorner", "popoutDockMonitor", "popoutDocked", "popoutDockAutoHide", "popoutAutoHideEdge", "popoutAutoHideOffset"]}/>
+    <RestoreSection keys={["popoutAlwaysOnTop", "popoutRememberPosition", "popoutShowSubject", "popoutShowClock", "popoutSize", "popoutHideControls", "popoutAutoHide", "popoutAutoOpen", "popoutShowInTaskbar", "popoutCloseOnCompletion", "popoutTransparency", "popoutPositionX", "popoutPositionY", "popoutDockingEnabled", "popoutDockCorner", "popoutDockMonitor", "popoutDocked", "popoutDockAutoHide", "popoutAutoHideEdge", "popoutAutoHideOffset"]}/>
   </>;
 }
 
-const accents: { name: string; value: AccentColour; color: string }[] = [{ name:"Orange",value:"orange",color:"#ff922b"},{name:"Blue",value:"blue",color:"#4da3ff"},{name:"Green",value:"green",color:"#4dd39a"},{name:"Purple",value:"purple",color:"#9c72f2"}];
+const accents: { name: string; value: AccentColour; color: string }[] = [{ name:"Coral Red",value:"coral",color:"#f06464"},{name:"Orange",value:"orange",color:"#ff922b"},{name:"Cherry Blossom Pink",value:"pink",color:"#e98aaa"},{name:"Muted Miku Blue",value:"miku",color:"#58aeb8"},{name:"Cappuccino",value:"cappuccino",color:"#ad8466"}];
 function Appearance({ settings, setSetting }: SettingsProps) {
   const { t } = useTranslation();
   return <><SettingsHeader title={t("Appearance")}>{t("Customize the Focus interface.")}</SettingsHeader>
-    <Row label={t("Theme")}><select disabled value="dark"><option>{t("Dark")}</option></select></Row>
+    <Row label={t("Theme")}><select value={settings.theme} onChange={(event) => void setSetting("theme", event.target.value as FocusSettings["theme"])}><option value="dark">{t("Dark")}</option><option value="light">{t("Light")}</option></select></Row>
     <Row label={t("Accent colour")}><div className="accent-options">{accents.map((accent) => <button key={accent.value} title={t(accent.name)} aria-label={t(accent.name)} className={settings.accentColour === accent.value ? "active" : ""} style={{ "--swatch": accent.color } as CSSProperties} onClick={() => void setSetting("accentColour", accent.value)}><span/></button>)}</div></Row>
-    <Row label={t("UI scale")}><select value={settings.uiScale} onChange={(event) => void setSetting("uiScale", event.target.value as FocusSettings["uiScale"])}><option value="small">{t("Small")}</option><option value="medium">{t("Medium")}</option><option value="large">{t("Large")}</option></select></Row>
-    <RestoreSection keys={["accentColour", "uiScale"]}/>
+    <Row label={t("UI scale")}><select value={settings.uiScale} onChange={(event) => void setSetting("uiScale", event.target.value as FocusSettings["uiScale"])}><option value="small">{t("Small")}</option><option value="medium">{t("Medium")}</option><option value="large">{t("Large")}</option><option value="extra-large">{t("Extra large")}</option></select></Row>
+    <RestoreSection keys={["theme", "accentColour", "uiScale"]}/>
   </>;
 }
 
@@ -160,7 +180,7 @@ function About() {
   const [version, setVersion] = useState(packageMetadata.version);
   useEffect(() => { if (isTauri()) void getVersion().then(setVersion).catch(() => undefined); }, []);
   return <div className="about-settings"><SettingsHeader title={t("About")}>{t("Application information.")}</SettingsHeader><div className="about-body">
-    <div className="about-identity"><img src={focusIcon} alt="Focus"/><div><h3>Focus</h3><p>{t("Study. Track. Improve.")}</p><span>{t("Version {{version}}", { version })}</span></div></div>
+    <div className="about-identity"><img src={focusIcon} alt="Focus"/><div><h3>Focus</h3><p>{t("Time well spent.")}</p><span>V{version}</span></div></div>
     <section><h3>{t("About Focus")}</h3><p>{t("Focus is a local-first study timer and analytics app designed for long-term study tracking.")}</p></section>
     <section><h3>{t("Your data")}</h3><p>{t("Focus stores your study data locally on this device. Your data is not uploaded to a Focus account or cloud service.")}</p></section>
     <section><h3>{t("Application")}</h3><dl><div><dt>{t("Version")}</dt><dd>{version}</dd></div><div><dt>{t("Platform")}</dt><dd>Windows</dd></div><div><dt>{t("Data storage")}</dt><dd>{t("Local device")}</dd></div></dl></section>

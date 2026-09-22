@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useSettings } from "../hooks/useSettings";
 import { useTranslation } from "react-i18next";
+import focusLogo from "../assets/focus-logo.png";
 
 const items = [
   [Clock3, "Timer"],
@@ -37,11 +38,11 @@ export function Sidebar({ collapsed, onToggle, active, onNavigate }: Props) {
   return (
     <aside className={`sidebar ${collapsed ? "sidebar--collapsed" : ""}`}>
       <div className="brand-row">
-        <div className="brand-mark">◉</div>
+        <img className="brand-mark" src={focusLogo} alt=""/>
         {!collapsed && (
           <div>
             <div className="brand-name">Focus</div>
-            <div className="brand-subtitle">{t("Study. Track. Improve.")}</div>
+            <div className="brand-subtitle">{t("Time well spent.")}</div>
           </div>
         )}
         <button className="icon-button sidebar-toggle" onClick={onToggle} aria-label={t("Toggle sidebar")}>
@@ -63,7 +64,7 @@ export function Sidebar({ collapsed, onToggle, active, onNavigate }: Props) {
           <div className="moon">◒</div>
           <div>
             <div>{t(greetingKey, { name: greetingName })}</div>
-            <span>{t("Stay consistent.")}</span>
+            <span className="greeting-subtitle" title={settings.sidebarSubtitle || t("Time well spent.")}><b>{settings.sidebarSubtitle || t("Time well spent.")}</b></span>
           </div>
         </div>
       )}

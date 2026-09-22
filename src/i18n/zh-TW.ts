@@ -1,7 +1,8 @@
+import en from "./en";
 import zhCN from "./zh-CN";
 
 const zhTW: typeof zhCN = {
-  ...zhCN,
+  ...en,
   "Settings": "設定",
   "Timer": "計時器",
   "Analytics": "分析",
@@ -80,6 +81,26 @@ Object.assign(zhTW, {
   "Close Focus": "關閉 Focus",
   "Focus is already running": "Focus 已在執行",
   "OK": "確定",
+});
+
+Object.assign(zhTW, {
+  "Time well spent.": "讓時間更有價值。", "Light": "淺色", "Extra large": "特大",
+  "Coral Red": "珊瑚紅", "Cherry Blossom Pink": "櫻花粉", "Muted Miku Blue": "柔和未來藍", "Cappuccino": "卡布奇諾",
+  "Greeting subtitle": "問候語副標題", "Leave blank to use the default brand line.": "留空以使用預設品牌標語。",
+  "Default Subject behavior": "預設科目行為", "Configured Subject": "指定科目", "Remember last used Subject": "記住上次使用的科目", "Default Subject": "預設科目",
+  "Show clock beside Subject": "在科目旁顯示時鐘", "Popout size": "浮動計時器大小", "Show Today pane": "顯示今日面板", "Hide Today pane": "隱藏今日面板",
+  "All Years": "所有學年", "All Subjects": "所有科目", "Date range": "日期範圍", "Analytics views": "分析檢視",
+  "Explore your study habits across subjects, Academic Years, and self-study.": "探索不同科目、學年與自主學習中的學習習慣。",
+  "Total focus time": "總專注時間", "Total Sessions": "總專注時段", "Average Session": "平均時段", "Longest streak": "最長連續天數", "Active study days": "活躍學習天數",
+  "Period comparison": "時段比較", "Personal bests": "個人最佳", "No previous period": "無上一時段資料", "{{percent}}% vs previous period": "較上一時段 {{percent}}%",
+  "Longest Session": "最長專注時段", "Best day": "最佳學習日", "Focus time over time": "專注時間趨勢", "Daily totals and rolling calendar-day averages.": "每日總量與按日移動平均值。",
+  "Daily total": "每日總量", "7-day average": "7 日平均", "30-day average": "30 日平均", "3-month average": "3 個月平均", "1-year average": "1 年平均",
+  "Focus time by Academic Year": "各學年專注時間", "Focus time by Subject": "各科目專注時間", "Subject share over time": "科目占比趨勢",
+  "Session length distribution": "專注時長分布", "Study time by day of week": "按星期統計學習時間",
+  "No Sessions in this range": "此範圍內沒有專注時段", "Try another date range or Academic Year.": "請嘗試其他日期範圍或學年。",
+  "Status": "狀態", "All Academic Years": "所有學年", "Review and correct completed focus sessions.": "檢視並修正已完成的專注時段。",
+  "Delete permanently": "永久刪除", "Select": "選取", "Select all": "全選", "Add Session": "新增專注時段",
+  "Study time by weekday and time": "按星期與時段統計學習時間", "Rolling calendar-day averages": "按日移動平均值", "Zero-study calendar days are included.": "包含未學習的日期。",
 });
 
 export default zhTW;

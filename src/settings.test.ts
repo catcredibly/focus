@@ -23,12 +23,12 @@ describe("application settings", () => {
   it("persists typed preferences and falls back from invalid enum values", async () => {
     const testDb = database();
     await saveSetting("displayName", "Alex", testDb);
-    await saveSetting("accentColour", "green", testDb);
+    await saveSetting("accentColour", "miku", testDb);
     await saveSetting("popoutAlwaysOnTop", false, testDb);
     await testDb.settings.put({ key: "uiScale", value: "enormous" });
     const settings = await loadSettings(testDb);
     expect(settings.displayName).toBe("Alex");
-    expect(settings.accentColour).toBe("green");
+    expect(settings.accentColour).toBe("miku");
     expect(settings.popoutAlwaysOnTop).toBe(false);
     expect(settings.uiScale).toBe("medium");
     expect(settings.allowDirectActiveDeletion).toBe(false);

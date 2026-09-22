@@ -1,5 +1,12 @@
 import { db, type FocusDatabase } from "./db";
 import { CURRENT_YEAR_KEY } from "./data";
+import type { AcademicYear, FocusSession, Subject } from "./types";
+
+export function isSessionEffectivelyArchived(session: FocusSession, subjects: Subject[], years: AcademicYear[]) {
+  const subject = subjects.find((item) => item.id === session.subjectId);
+  const year = years.find((item) => item.id === session.academicYearId);
+  return Boolean(subject?.archived || year?.archived);
+}
 
 export async function setAcademicYearArchived(id: string, archived: boolean, database: FocusDatabase = db) {
   await database.academicYears.update(id, { archived });

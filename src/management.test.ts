@@ -2,7 +2,7 @@ import "fake-indexeddb/auto";
 import Dexie from "dexie";
 import { afterEach, describe, expect, it } from "vitest";
 import { FocusDatabase } from "./db";
-import { canDeleteManagedRecord, deleteAcademicYearCascade, deleteSession, deleteSessions, deleteSubjectCascade, moveSessions, setAcademicYearArchived } from "./management";
+import { canDeleteManagedRecord, deleteAcademicYearCascade, deleteSession, deleteSessions, deleteSubjectCascade, isSessionEffectivelyArchived, moveSessions, setAcademicYearArchived } from "./management";
 import { managementViewState } from "./managementViewState";
 
 const opened: Dexie[] = [];
@@ -10,6 +10,14 @@ const database = () => { const value = new FocusDatabase(`focus-management-${cry
 afterEach(async () => { await Promise.all(opened.splice(0).map((value) => value.delete())); });
 
 describe("management archive and deletion integrity", () => {
+  it("derives Session archive status from its Subject and Academic Year", () => {
+    const session = { id: "session", subjectId: "subject", subjectName: "Subject", academicYearId: "year", academicYearName: "Year", startTime: 1, endTime: 2, focusedDurationSeconds: 1, archived: true };
+    const subject = { id: "subject", academicYearId: "year", name: "Subject", color: "#fff", archived: false };
+    const year = { id: "year", name: "Year", archived: false };
+    expect(isSessionEffectivelyArchived(session, [subject], [year])).toBe(false);
+    expect(isSessionEffectivelyArchived(session, [{ ...subject, archived: true }], [year])).toBe(true);
+    expect(isSessionEffectivelyArchived(session, [subject], [{ ...year, archived: true }])).toBe(true);
+  });
   it("retains management view selections while pages unmount and remount", () => {
     managementViewState.academicYearsArchived=true; managementViewState.subjectsArchived=true; managementViewState.historyStatus="archived";
     expect(managementViewState).toEqual({academicYearsArchived:true,subjectsArchived:true,historyStatus:"archived"});

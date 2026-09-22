@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { BarChart3, BookOpen, CalendarDays, Clock3, Flame, Layers3 } from "lucide-react";
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, ComposedChart, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { BarChart3, CalendarDays, Clock3, Flame, Layers3 } from "lucide-react";
 import { db } from "../db";
 import { formatDuration, formatDurationAxis } from "../data";
 import type { AcademicYear, FocusSession, Subject } from "../types";
@@ -13,6 +13,13 @@ import { useSettings } from "../hooks/useSettings";
 import { localeCode } from "../i18n";
 
 const YEAR_COLORS = ["#4da3ff", "#a879ff", "#4dd39a", "#ffad3b", "#ff7eb6", "#8da2b5"];
+const ACCENT_COLORS = {
+  coral: { primary: "#f06464", tint: "#f6a1a1" },
+  orange: { primary: "#ff922b", tint: "#ffc078" },
+  pink: { primary: "#e98aaa", tint: "#f3b4ca" },
+  miku: { primary: "#58aeb8", tint: "#92d0d7" },
+  cappuccino: { primary: "#ad8466", tint: "#d0ae95" },
+} as const;
 const ranges = ["7D", "30D", "3M", "1Y", "All"] as const;
 type Range = (typeof ranges)[number];
 const tabs = ["Overview", "Subjects", "Academic Years", "Time Trends", "Study Patterns"] as const;
@@ -38,14 +45,23 @@ export function AnalyticsPage() {
     sessions = demo?.sessions ?? storedSessions;
   const [tab, setTab] = useState<Tab>("Overview"),
     [yearId, setYearId] = useState(""),
+    [subjectId, setSubjectId] = useState(""),
     [range, setRange] = useState<Range>("All");
+  const effectiveSessions = useMemo(() => (sessions ?? []).filter((session) => {
+    const subject = subjects?.find((item) => item.id === session.subjectId);
+    const year = years?.find((item) => item.id === session.academicYearId);
+    return subject && year && !subject.archived && !year.archived;
+  }), [sessions, subjects, years]);
+  const scopedSessions = useMemo(() => filterSessions(effectiveSessions, {
+    academicYearId: yearId || undefined,
+    subjectId: subjectId || undefined,
+  }), [effectiveSessions, subjectId, yearId]);
   const filtered = useMemo(
     () =>
-      filterSessions(sessions ?? [], {
-        academicYearId: yearId || undefined,
+      filterSessions(scopedSessions, {
         start: rangeStart(range),
       }),
-    [sessions, yearId, range],
+    [range, scopedSessions],
   );
   if (!years || !subjects || !sessions)
     return (
@@ -74,6 +90,10 @@ export function AnalyticsPage() {
               </option>
             ))}
           </select>
+          <select aria-label={t("Subject")} value={subjectId} onChange={(event) => setSubjectId(event.target.value)}>
+            <option value="">{t("All Subjects")}</option>
+            {subjects.filter((subject) => !subject.archived && (!yearId || subject.academicYearId === yearId)).map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}
+          </select>
           <div className="range-control" aria-label={t("Date range")}>
             {ranges.map((r) => (
               <button key={r} className={range === r ? "active" : ""} onClick={() => setRange(r)}>
@@ -97,7 +117,7 @@ export function AnalyticsPage() {
           <p>{t("Try another date range or Academic Year.")}</p>
         </div>
       ) : tab === "Overview" ? (
-        <Overview sessions={filtered} years={years} subjects={subjects} />
+        <Overview sessions={filtered} comparisonSessions={scopedSessions} years={years} subjects={subjects} range={range} />
       ) : tab === "Subjects" ? (
         <SubjectsAnalytics sessions={filtered} subjects={subjects} years={years} />
       ) : tab === "Academic Years" ? (
@@ -117,59 +137,81 @@ function GoalSummary({ label, current, target }: { label: string; current: numbe
   return <section><div><strong>{label}</strong><span>{reached ? t("Goal reached") : t("{{duration}} left", { duration: formatDuration(Math.max(0, target - current)) })}</span></div><progress max={Math.max(1, target)} value={Math.min(current, target)}/><small>{formatDuration(current)} / {formatDuration(target)}</small></section>;
 }
 
-function Overview({ sessions, years, subjects }: { sessions: FocusSession[]; years: AcademicYear[]; subjects: Subject[] }) {
+function Overview({ sessions, comparisonSessions, years, subjects, range }: { sessions: FocusSession[]; comparisonSessions: FocusSession[]; years: AcademicYear[]; subjects: Subject[]; range: Range }) {
   const { t } = useTranslation();
   const { settings } = useSettings();
   const goals = goalProgress(sessions);
+  const accent = ACCENT_COLORS[settings.accentColour];
   const subjectsData = subjectTotals(sessions, subjects),
     yearData = academicYearTotals(sessions, years, subjects),
-    months = calendarMonthlySeries(sessions),
-    byMonthYear = new Map<string, number>();
-  for (const session of sessions) {
-    const date = new Date(session.startTime),
-      key = `${date.getFullYear()}-${date.getMonth()}-${session.academicYearId}`;
-    byMonthYear.set(key, (byMonthYear.get(key) ?? 0) + session.focusedDurationSeconds);
-  }
-  const monthRows = months.map((month) => {
-      const date = new Date(month.start),
-        row: Record<string, string | number> = {
-          label: date.toLocaleDateString(localeCode(), {
-            month: "short",
-            year: "2-digit",
-          }),
-        };
-      for (const year of years) row[year.id] = byMonthYear.get(`${date.getFullYear()}-${date.getMonth()}-${year.id}`) ?? 0;
-      return row;
-    }),
     top = subjectsData.slice(0, 6),
     other = subjectsData.slice(6).reduce((n, s) => n + s.seconds, 0),
     pie = [...top.map((s) => ({ name: s.name, value: s.seconds, color: s.color })), ...(other ? [{ name: t("Other"), value: other, color: "#71879d" }] : [])];
+  const start = Math.min(...sessions.map((session) => session.startTime));
+  const daily = calendarDailySeries(sessions, start, Date.now() + 86_400_000);
+  const averages = [7, 30, 90, 365].map((days) => rollingAverage(daily, days));
+  const focusTimeline = daily.map((point, index) => ({
+    ...point,
+    avg7: averages[0][index].averageSeconds,
+    avg30: averages[1][index].averageSeconds,
+    avg90: averages[2][index].averageSeconds,
+    avg365: averages[3][index].averageSeconds,
+  }));
+  const monthSubjects = new Map<string, Map<string, number>>();
+  for (const session of sessions) {
+    const date = new Date(session.startTime), key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    const values = monthSubjects.get(key) ?? new Map<string, number>();
+    values.set(session.subjectId, (values.get(session.subjectId) ?? 0) + session.focusedDurationSeconds);
+    monthSubjects.set(key, values);
+  }
+  const subjectShare = [...monthSubjects].sort(([a], [b]) => a.localeCompare(b)).map(([key, values]) => {
+    const total = [...values.values()].reduce((sum, value) => sum + value, 0);
+    return { label: new Date(`${key}-01T12:00:00`).toLocaleDateString(localeCode(), { month: "short", year: "2-digit" }), ...Object.fromEntries(top.map((subject) => [subject.subjectId, (values.get(subject.subjectId) ?? 0) / Math.max(1, total) * 100])) };
+  });
+  const currentSeconds = totalFocusedSeconds(sessions);
+  const currentStart = rangeStart(range);
+  const periodLength = currentStart ? Date.now() - currentStart : 0;
+  const previousSessions = currentStart ? comparisonSessions.filter((session) => session.startTime >= currentStart - periodLength && session.startTime < currentStart) : [];
+  const previousSeconds = totalFocusedSeconds(previousSessions);
+  const comparisonPercent = previousSeconds ? Math.round((currentSeconds - previousSeconds) / previousSeconds * 100) : undefined;
+  const days = dailyTotals(sessions);
+  const bestDay = days.reduce((best, day) => day.seconds > (best?.seconds ?? 0) ? day : best, days[0]);
+  const longestSession = sessions.reduce((best, session) => session.focusedDurationSeconds > (best?.focusedDurationSeconds ?? 0) ? session : best, sessions[0]);
   return (
     <div className="analytics-content">
-      <div className="metric-strip">
+      <div className="metric-strip metric-strip--five">
         <Metric icon={<Clock3 />} label={t("Total focus time")} value={formatDuration(totalFocusedSeconds(sessions))} />
         <Metric icon={<Layers3 />} label={t("Total Sessions")} value={sessions.length.toLocaleString()} />
+        <Metric icon={<BarChart3 />} label={t("Average Session")} value={formatDuration(Math.round(totalFocusedSeconds(sessions) / Math.max(1, sessions.length)))} />
         <Metric icon={<Flame />} label={t("Longest streak")} value={t("{{count}} days", { count: longestStreak(sessions) })} />
-        <Metric icon={<BarChart3 />} label={t("Average per active day")} value={formatDuration(averageActiveDaySeconds(sessions))} />
-        <Metric icon={<BookOpen />} label={t("Most studied Subject")} value={subjectsData[0]?.name ?? "-"} />
-        <Metric icon={<CalendarDays />} label={t("Academic Years")} value={String(new Set(sessions.map((s) => s.academicYearId)).size)} />
+        <Metric icon={<CalendarDays />} label={t("Active study days")} value={String(activeDayCount(sessions))} />
       </div>
       {(settings.dailyGoalEnabled || settings.weeklyGoalEnabled) && <div className="analytics-goals">
         {settings.dailyGoalEnabled && <GoalSummary label={t("Daily goal")} current={goals.dailySeconds} target={settings.dailyGoalSeconds}/>}
         {settings.weeklyGoalEnabled && <GoalSummary label={t("Weekly goal")} current={goals.weeklySeconds} target={settings.weeklyGoalSeconds}/>}
       </div>}
+      <div className="analytics-insights-row">
+        <Panel title={t("Period comparison")}>
+          <div className="analytics-highlight"><strong>{formatDuration(currentSeconds)}</strong><span>{comparisonPercent === undefined ? t("No previous period") : t("{{percent}}% vs previous period", { percent: comparisonPercent > 0 ? `+${comparisonPercent}` : comparisonPercent })}</span></div>
+        </Panel>
+        <Panel title={t("Personal bests")}>
+          <div className="analytics-best-list"><span>{t("Longest Session")}<strong>{formatDuration(longestSession.focusedDurationSeconds)}</strong></span><span>{t("Best day")}<strong>{bestDay ? formatDuration(bestDay.seconds) : "-"}</strong></span></div>
+        </Panel>
+      </div>
       <div className="overview-grid">
-        <Panel className="wide" title={t("Focus time over time")} subtitle={t("Monthly focused time. Latest months are shown first.")}>
-          <ScrollChart width={Math.max(760, monthRows.length * 48)}>
-            <BarChart data={monthRows} accessibilityLayer>
-              <CartesianGrid stroke="#173044" vertical={false} />
+        <Panel className="wide" title={t("Focus time over time")} subtitle={t("Daily totals and rolling calendar-day averages.")}>
+          <ScrollChart width={Math.max(760, focusTimeline.length * 13)}>
+            <ComposedChart data={focusTimeline} accessibilityLayer>
+              <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
               <XAxis dataKey="label" stroke="#7890a4" fontSize={11} />
               <YAxis tickFormatter={durationTick} stroke="#7890a4" fontSize={11} />
               <Tooltip content={<DurationTooltip />} />
-              {years.map((year, index) => (
-                <Bar key={year.id} dataKey={year.id} name={year.name} stackId="focus" fill={YEAR_COLORS[index % YEAR_COLORS.length]} />
-              ))}
-            </BarChart>
+              <Bar dataKey="seconds" name={t("Daily total")} fill={accent.primary} opacity={0.72} />
+              <Line dataKey="avg7" name={t("7-day average")} stroke={accent.tint} dot={false} strokeWidth={2} />
+              <Line dataKey="avg30" name={t("30-day average")} stroke="#4da3ff" dot={false} strokeWidth={2} />
+              <Line dataKey="avg90" name={t("3-month average")} stroke="#4dd39a" dot={false} strokeWidth={2} />
+              <Line dataKey="avg365" name={t("1-year average")} stroke="#a879ff" dot={false} strokeWidth={2} />
+            </ComposedChart>
           </ScrollChart>
         </Panel>
         <Panel title={t("Focus time by Academic Year")}>
@@ -185,6 +227,17 @@ function Overview({ sessions, years, subjects }: { sessions: FocusSession[]; yea
               />
             </div>
           ))}
+        </Panel>
+        <Panel className="wide" title={t("Subject share over time")}>
+          <ScrollChart width={Math.max(760, subjectShare.length * 58)}>
+            <LineChart data={subjectShare} accessibilityLayer>
+              <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
+              <XAxis dataKey="label" stroke="#7890a4" fontSize={11} />
+              <YAxis domain={[0, 100]} tickFormatter={(value) => `${value}%`} stroke="#7890a4" fontSize={11} />
+              <Tooltip formatter={(value) => `${Math.round(Number(value))}%`} />
+              {top.map((subject) => <Line key={subject.subjectId} dataKey={subject.subjectId} name={subject.name} stroke={subject.color} dot={false} strokeWidth={2}/>) }
+            </LineChart>
+          </ScrollChart>
         </Panel>
         <Panel title={t("Focus time by Subject")}>
           <div className="donut-wrap">
@@ -209,9 +262,6 @@ function Overview({ sessions, years, subjects }: { sessions: FocusSession[]; yea
             </div>
           </div>
         </Panel>
-        <Panel className="wide" title={t("Study activity")} subtitle={t("Daily focused time across the selected range.")}>
-          <ActivityHeatmap sessions={sessions} />
-        </Panel>
         <Panel title={t("Session length distribution")}>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={sessionLengthBuckets(sessions)} accessibilityLayer>
@@ -219,10 +269,21 @@ function Overview({ sessions, years, subjects }: { sessions: FocusSession[]; yea
               <XAxis dataKey="label" stroke="#7890a4" fontSize={10} />
               <YAxis stroke="#7890a4" fontSize={11} />
               <Tooltip content={<CountTooltip />} />
-              <Bar dataKey="count" fill="#6baeff" />
+              <Bar dataKey="count" fill={accent.primary} />
             </BarChart>
           </ResponsiveContainer>
           <p className="panel-foot">{t("Median Session")}: {formatDuration(medianSessionSeconds(sessions))}</p>
+        </Panel>
+        <Panel title={t("Study time by day of week")}>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={weekdayTotals(sessions)} accessibilityLayer>
+              <CartesianGrid stroke="var(--chart-grid)" vertical={false}/>
+              <XAxis dataKey="label" stroke="#7890a4" fontSize={10}/>
+              <YAxis tickFormatter={durationTick} stroke="#7890a4" fontSize={11}/>
+              <Tooltip content={<DurationTooltip/>}/>
+              <Bar dataKey="seconds" name={t("Focus time")} fill={accent.primary}/>
+            </BarChart>
+          </ResponsiveContainer>
         </Panel>
       </div>
     </div>
@@ -347,6 +408,8 @@ function YearsAnalytics({ sessions, years, subjects }: { sessions: FocusSession[
 
 function TimeTrends({ sessions, subjects }: { sessions: FocusSession[]; subjects: any[] }) {
   const { t } = useTranslation();
+  const { settings } = useSettings();
+  const accent = ACCENT_COLORS[settings.accentColour];
   const [aggregation, setAggregation] = useState<"daily" | "weekly" | "monthly">("monthly"),
     [subjectId, setSubjectId] = useState("");
   const rows = sessions.filter((s) => !subjectId || s.subjectId === subjectId),
@@ -356,10 +419,14 @@ function TimeTrends({ sessions, subjects }: { sessions: FocusSession[]; subjects
     series = calendarDailySeries(rows, start, Date.now() + 86_400_000),
     avg7 = rollingAverage(series, 7),
     avg30 = rollingAverage(series, 30),
+    avg90 = rollingAverage(series, 90),
+    avg365 = rollingAverage(series, 365),
     rolling = series.map((p, i) => ({
       ...p,
       avg7: avg7[i].averageSeconds,
       avg30: avg30[i].averageSeconds,
+      avg90: avg90[i].averageSeconds,
+      avg365: avg365[i].averageSeconds,
     }));
   return (
     <div className="analytics-content">
@@ -388,7 +455,7 @@ function TimeTrends({ sessions, subjects }: { sessions: FocusSession[]; subjects
               <XAxis dataKey="label" stroke="#7890a4" fontSize={10} />
               <YAxis tickFormatter={durationTick} stroke="#7890a4" />
               <Tooltip content={<DurationTooltip />} />
-              <Area dataKey="seconds" name={t("Focus time")} stroke="#4da3ff" fill="#1f5f95" fillOpacity={0.45} />
+              <Area dataKey="seconds" name={t("Focus time")} stroke={accent.primary} fill={accent.primary} fillOpacity={0.28} />
             </AreaChart>
           </ScrollChart>
         </Panel>
@@ -410,8 +477,11 @@ function TimeTrends({ sessions, subjects }: { sessions: FocusSession[]; subjects
               <XAxis dataKey="label" stroke="#7890a4" fontSize={10} />
               <YAxis tickFormatter={durationTick} stroke="#7890a4" />
               <Tooltip content={<DurationTooltip />} />
-              <Line dataKey="avg7" name={t("7-day average")} stroke="#4da3ff" dot={false} />
-              <Line dataKey="avg30" name={t("30-day average")} stroke="#ff7eb6" dot={false} />
+              <Line dataKey="seconds" name={t("Daily total")} stroke={accent.primary} dot={false} strokeWidth={1} />
+              <Line dataKey="avg7" name={t("7-day average")} stroke={accent.tint} dot={false} strokeWidth={2} />
+              <Line dataKey="avg30" name={t("30-day average")} stroke="#4da3ff" dot={false} strokeWidth={2} />
+              <Line dataKey="avg90" name={t("3-month average")} stroke="#4dd39a" dot={false} strokeWidth={2} />
+              <Line dataKey="avg365" name={t("1-year average")} stroke="#a879ff" dot={false} strokeWidth={2} />
             </LineChart>
           </ScrollChart>
         </Panel>
@@ -574,6 +644,8 @@ function CountTooltip({ active, payload, label }: any) {
   );
 }
 function SimpleTrend({ sessions }: { sessions: FocusSession[] }) {
+  const { settings } = useSettings();
+  const accent = ACCENT_COLORS[settings.accentColour];
   const points = calendarMonthlySeries(sessions);
   return (
     <div className="mini-trend">
@@ -583,7 +655,7 @@ function SimpleTrend({ sessions }: { sessions: FocusSession[] }) {
           <XAxis dataKey="label" stroke="#7890a4" fontSize={10} />
           <YAxis tickFormatter={durationTick} stroke="#7890a4" fontSize={10} />
           <Tooltip content={<DurationTooltip />} />
-          <Area dataKey="seconds" stroke="#4da3ff" fill="#1f5f95" fillOpacity={0.35} />
+          <Area dataKey="seconds" stroke={accent.primary} fill={accent.primary} fillOpacity={0.28} />
         </AreaChart>
       </ResponsiveContainer>
     </div>

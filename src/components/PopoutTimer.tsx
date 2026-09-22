@@ -8,6 +8,7 @@ import { useSettings } from "../hooks/useSettings";
 import { autoHidePosition, cornerPosition, defaultEdgeForCorner, edgeOffset, nearestDockCorner, nearestEdge, tabOrientation, type Point, type Size, type WorkArea } from "../popoutPlacement";
 import type { DockCorner, FocusSettings } from "../settings";
 import { TimerExtendMenu } from "./TimerExtendMenu";
+import { formatTimerClock } from "../dateTime";
 
 function parts(total: number) {
   const hours = Math.floor(total / 3600);
@@ -27,6 +28,7 @@ export function PopoutTimer() {
   const [revealed, setRevealed] = useState(false);
   const [stopping, setStopping] = useState(false);
   const [displays, setDisplays] = useState<{ id: string; label: string }[]>([]);
+  const [now, setNow] = useState(() => new Date());
   const appliedDefaultRef = useRef(false);
   const draggingRef = useRef(false);
   const programmaticUntilRef = useRef(0);
@@ -168,6 +170,15 @@ export function PopoutTimer() {
   }, [loaded, placeDocked, selectedMonitorAvailable, settings.popoutDockAutoHide, settings.popoutDocked, settings.popoutDockingEnabled]);
 
   useEffect(() => { void invoke("set_timer_taskbar", { visible: settings.popoutShowInTaskbar }).catch(() => undefined); }, [settings.popoutShowInTaskbar]);
+  useEffect(() => {
+    void invoke("set_timer_size", { size: settings.popoutSize })
+      .then(() => {
+        if (loaded && settings.popoutDockingEnabled && settings.popoutDocked) return placeDocked(settings.popoutDockAutoHide && selectedMonitorAvailable);
+      })
+      .catch(() => undefined);
+  }, [loaded, placeDocked, selectedMonitorAvailable, settings.popoutAutoHide, settings.popoutDockAutoHide, settings.popoutDocked, settings.popoutDockingEnabled, settings.popoutSize]);
+  useEffect(() => { const id = window.setInterval(() => setNow(new Date()), 10_000); return () => window.clearInterval(id); }, []);
+  useEffect(() => { let stop: (() => void) | undefined; void getCurrentWindow().onFocusChanged(({ payload }) => { if (payload) { setMenu(null); setStopping(false); } }).then((value) => { stop = value; }); return () => stop?.(); }, []);
 
   useEffect(() => {
     if (!isTauri()) return;
@@ -206,10 +217,10 @@ export function PopoutTimer() {
   const hidden = autoHideActive && !revealed;
   const cornerLabels: [DockCorner, string][] = [["top-left", "Top Left"], ["top-right", "Top Right"], ["bottom-left", "Bottom Left"], ["bottom-right", "Bottom Right"]];
 
-  return <main className={`popout-root ${settings.popoutHideControls ? "popout-root--hover-controls" : ""} ${hidden ? "popout-root--auto-hidden" : ""}`} data-accent={settings.accentColour} data-scale={settings.uiScale} data-edge={settings.popoutAutoHideEdge} style={{ "--controls-hide-delay": controlsDelay, "--popout-opacity": settings.popoutTransparency / 100 } as CSSProperties} onPointerDown={(event) => void startDrag(event)} onMouseEnter={clearHideTimer} onMouseLeave={scheduleHide}>
+  return <main className={`popout-root ${settings.popoutHideControls ? "popout-root--hover-controls" : ""} ${hidden ? "popout-root--auto-hidden" : ""}`} data-accent={settings.accentColour} data-theme={settings.theme} data-scale={settings.uiScale} data-edge={settings.popoutAutoHideEdge} data-size={settings.popoutSize} style={{ "--controls-hide-delay": controlsDelay, "--popout-opacity": settings.popoutTransparency / 100 } as CSSProperties} onPointerDown={(event) => void startDrag(event)} onMouseEnter={clearHideTimer} onMouseLeave={scheduleHide}>
     {hidden && <button className={`auto-hide-tab auto-hide-tab--${tabOrientation(settings.popoutAutoHideEdge)}`} aria-label={t("Open Focus")} onPointerDown={(event) => { event.stopPropagation(); void startDrag(event, true); }} onMouseEnter={scheduleReveal} onMouseLeave={() => window.clearTimeout(tabHoverTimerRef.current)} onClick={() => { if (!suppressTabClickRef.current) void reveal(); }}><span/></button>}
     <div className="popout-content">
-      {settings.popoutShowSubject && <div className="popout-subject subject-overflow" tabIndex={0} title={timer.state.subject || t("No Subject")}><span className="subject-dot" style={{ background: timer.state.subjectColor }}/>{timer.state.subject || t("No Subject")}</div>}
+      {(settings.popoutShowSubject || settings.popoutShowClock) && <div className="popout-subject-row">{settings.popoutShowSubject && <div className="popout-subject subject-overflow" tabIndex={0} title={timer.state.subject || t("No Subject")}><span className="subject-dot" style={{ background: timer.state.subjectColor }}/>{timer.state.subject || t("No Subject")}</div>}{settings.popoutShowClock && <time>{formatTimerClock(now, settings.language, settings.clockFormat)}</time>}</div>}
       <div className="popout-time"><span>{time[0]}</span><b>:</b><span>{time[1]}</span><b>:</b><span>{time[2]}</span></div>
       <div className="popout-labels"><span>{t("Hours")}</span><span>{t("Minutes")}</span><span>{t("Seconds")}</span></div>
       <div className="popout-status">{timer.state.finished ? t("Finished") : timer.state.paused ? t("Paused") : ""}</div>

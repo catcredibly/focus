@@ -174,6 +174,19 @@ fn set_timer_taskbar(app: tauri::AppHandle, visible: bool) -> Result<(), String>
 }
 
 #[tauri::command]
+fn set_timer_size(app: tauri::AppHandle, size: String) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("timer") {
+        let (width, height) = match size.as_str() {
+            "small" => (320, 170),
+            "large" => (460, 230),
+            _ => (380, 190),
+        };
+        window.set_size(tauri::PhysicalSize::new(width, height)).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
 fn set_timer_position(app: tauri::AppHandle, x: i32, y: i32) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("timer") {
         let monitors = window.available_monitors().map_err(|e| e.to_string())?;
@@ -285,6 +298,7 @@ pub fn run() {
             open_timer_popout,
             set_timer_always_on_top,
             set_timer_taskbar,
+            set_timer_size,
             set_timer_position,
             set_timer_position_unchecked,
             get_timer_work_area,

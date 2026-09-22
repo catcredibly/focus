@@ -47,7 +47,7 @@ export default function App() {
   if (isPopout) return <PopoutTimer />;
 
   return (
-    <div className={`app-shell ${collapsed ? "app-shell--collapsed" : ""}`} data-accent={settings.accentColour} data-scale={settings.uiScale}>
+    <div className={`app-shell ${collapsed ? "app-shell--collapsed" : ""}`} data-accent={settings.accentColour} data-theme={settings.theme} data-scale={settings.uiScale}>
       <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((v) => !v)} active={page} onNavigate={setPage} />
       {page === "Timer" && <TimerPage />}
       {page === "Analytics" && <Suspense fallback={<main className="page"><div className="analytics-loading">{t("Loading analytics...")}</div></main>}><AnalyticsPage /></Suspense>}

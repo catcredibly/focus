@@ -7,9 +7,9 @@ const session=(id:string,startTime:number,seconds:number,overrides:Partial<Focus
 
 describe("analytics aggregation",()=>{
   const rows=[session("a",at(2026,9,20),3600),session("b",at(2026,9,20,15),1800),session("c",at(2026,9,21),7200),session("archived",at(2026,9,21),99_000,{archived:true})];
-  it("groups local daily and monthly focused totals",()=>{expect(dailyTotals(filterSessions(rows)).map((p)=>p.seconds)).toEqual([5400,7200]);expect(monthlyTotals(filterSessions(rows))[0].seconds).toBe(12600);});
-  it("excludes archived Sessions and filters by Academic Year and Subject",()=>{expect(filterSessions(rows)).toHaveLength(3);expect(filterSessions(rows,{academicYearId:"other"})).toHaveLength(0);expect(filterSessions(rows,{subjectId:"math"})).toHaveLength(3);});
-  it("calculates active days, average active-day duration, and longest streak",()=>{const active=filterSessions(rows);expect(activeDayCount(active)).toBe(2);expect(averageActiveDaySeconds(active)).toBe(6300);expect(longestStreak(active)).toBe(2);});
+  it("groups local daily and monthly focused totals",()=>{expect(dailyTotals(filterSessions(rows)).map((p)=>p.seconds)).toEqual([5400,106200]);expect(monthlyTotals(filterSessions(rows))[0].seconds).toBe(111600);});
+  it("ignores the legacy Session archive flag and filters by Academic Year and Subject",()=>{expect(filterSessions(rows)).toHaveLength(4);expect(filterSessions(rows,{academicYearId:"other"})).toHaveLength(0);expect(filterSessions(rows,{subjectId:"math"})).toHaveLength(4);});
+  it("calculates active days, average active-day duration, and longest streak",()=>{const active=filterSessions(rows);expect(activeDayCount(active)).toBe(2);expect(averageActiveDaySeconds(active)).toBe(55800);expect(longestStreak(active)).toBe(2);});
   it("uses Monday as the start of each week",()=>{const sunday=at(2026,9,20),monday=at(2026,9,21);expect(localDayKey(startOfLocalWeek(sunday))).toBe("2026-09-14");expect(localDayKey(startOfLocalWeek(monday))).toBe("2026-09-21");expect(weeklyTotals(filterSessions(rows))).toHaveLength(2);});
   it("preserves distinct same-name Subjects",()=>{const subjects=[{id:"math",academicYearId:"ib",name:"Mathematics",color:"#1",archived:false},{id:"math-uni",academicYearId:"uni",name:"Mathematics",color:"#2",archived:false}];const data=subjectTotals([...rows,session("u",at(2026,9,20),1000,{subjectId:"math-uni",academicYearId:"uni",academicYearName:"University"})],subjects);expect(data).toHaveLength(2);});
   it("adds overlapping Academic Years into the same monthly total",()=>{const overlap=[session("ib",at(2028,5,3),3600),session("self",at(2028,5,4),1800,{subjectId:"piano",academicYearId:"self",academicYearName:"Independent Study"})];expect(monthlyTotals(overlap)[0].seconds).toBe(5400);});
@@ -28,5 +28,5 @@ describe("adaptive heatmap scale",()=>{
   it("snaps a 22-minute raw step to the nearest 5 minutes",()=>{expect(cleanHeatmapStep(22*60*4)).toBe(20*60);});
   it("excludes zero-study days from P90",()=>{const rows=[session("a",at(2026,1,1),3600),session("b",at(2026,1,3),7200)];const scale=heatmapScale(rows);expect(scale.p90).toBeGreaterThan(3600);expect(scale.p90).toBeLessThanOrEqual(7200);});
   it("caps days above level four at maximum intensity",()=>{expect(heatmapLevel(99_999,900)).toBe(4);expect(heatmapLevel(0,900)).toBe(0);});
-  it("does not let archived Sessions affect daily totals or P90",()=>{const rows=[session("a",at(2026,1,1),3600),session("b",at(2026,1,2),99_000,{archived:true})];const active=filterSessions(rows);expect(dailyTotals(active)).toHaveLength(1);expect(heatmapScale(active).p90).toBe(3600);});
+  it("includes legacy archived Sessions after effective status filtering",()=>{const rows=[session("a",at(2026,1,1),3600),session("b",at(2026,1,2),99_000,{archived:true})];const active=filterSessions(rows);expect(dailyTotals(active)).toHaveLength(2);expect(heatmapScale(active).p90).toBeGreaterThan(3600);});
 });

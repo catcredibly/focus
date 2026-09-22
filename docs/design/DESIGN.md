@@ -32,7 +32,7 @@ Supplementary reference:
 
 Visible elements:
 
-- Quote and date.
+- Optional date and clock control.
 - Hours, minutes, and seconds inputs with labels.
 - Subject selector and optional note input.
 - Primary Start action and compact utility controls.
@@ -49,6 +49,7 @@ Interaction notes:
 - The idle duration defaults to the most recently started base duration. Extensions to an active Session do not change that preference.
 - Today totals, streak, and recent Sessions contain persisted, non-archived Sessions only; no example values are shown in normal use.
 - Starting a session switches to the running layout rather than retaining the idle summary layout.
+- The date/time control toggles the Today pane. The motivational quote is intentionally removed.
 
 ## Timer - Running
 
@@ -134,6 +135,13 @@ Final V0.4 behavior:
 - Time-of-day patterns distribute focused duration proportionally across each wall-clock bucket a Session crosses. This is an approximation because pause locations are not stored.
 - Analytics is read-only and presents factual measurements only; it does not generate productivity scores, advice, or subjective rankings.
 
+Current overrides:
+
+- Global filters are Academic Year, Subject, and 7D/30D/3M/1Y/All range controls.
+- Overview metrics are total focus time, total Sessions, average Session, longest streak, and active study days.
+- Focus time over time shows daily totals plus 7-day, 30-day, 3-month, and 1-year rolling averages.
+- Single-series emphasis follows the selected app accent; category series retain stable distinct colours.
+
 ## History
 
 Canonical reference:
@@ -213,7 +221,8 @@ Approved decisions:
 - V0.5 sections are General, Timer, Popout, Appearance, and Data. The draft Advanced section is not part of V0.5.
 - About is a sixth Settings-only section. It uses the packaged Focus icon and runtime application version and does not appear in the main sidebar.
 - Settings persist in the existing Dexie settings table and use centralized defaults when a key is absent.
-- Appearance remains dark-only. Accent choices are Orange, Blue, Green, and Purple; chart semantics do not inherit the UI accent.
+- Appearance supports dark and light themes. Accent choices are Coral Red, Orange, Cherry Blossom Pink, Muted Miku Blue, and Cappuccino.
+- Single-series Analytics emphasis follows the UI accent while categorical and supporting analytical series retain distinct semantic colours.
 - Clear all data requires typing `DELETE`, is blocked while a timer is unfinished, and removes Academic Years, Subjects, Sessions, and Settings in one transaction.
 - Deletion safety is configured only under Settings > Data. Archive-first is the default for Subjects and Academic Years; enabling direct active deletion never bypasses confirmation or cascade warnings.
 - Autostart uses the official Tauri autostart plugin. Completion notifications use the official Tauri notification plugin; each receives only its required capabilities.

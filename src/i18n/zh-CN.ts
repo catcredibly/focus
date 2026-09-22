@@ -204,4 +204,24 @@ Object.assign(zhCN, {
   "OK": "确定",
 });
 
+Object.assign(zhCN, {
+  "Time well spent.": "让时间更有价值。", "Light": "浅色", "Extra large": "特大",
+  "Coral Red": "珊瑚红", "Cherry Blossom Pink": "樱花粉", "Muted Miku Blue": "柔和未来蓝", "Cappuccino": "卡布奇诺",
+  "Greeting subtitle": "问候语副标题", "Leave blank to use the default brand line.": "留空以使用默认品牌标语。",
+  "Default Subject behavior": "默认科目行为", "Configured Subject": "指定科目", "Remember last used Subject": "记住上次使用的科目", "Default Subject": "默认科目",
+  "Show clock beside Subject": "在科目旁显示时钟", "Popout size": "浮动计时器大小", "Show Today pane": "显示今日面板", "Hide Today pane": "隐藏今日面板",
+  "All Years": "所有学年", "All Subjects": "所有科目", "Date range": "日期范围", "Analytics views": "分析视图",
+  "Explore your study habits across subjects, Academic Years, and self-study.": "探索不同科目、学年与自主学习中的学习习惯。",
+  "Total focus time": "总专注时间", "Total Sessions": "总专注时段", "Average Session": "平均时段", "Longest streak": "最长连续天数", "Active study days": "活跃学习天数",
+  "Period comparison": "时段对比", "Personal bests": "个人最佳", "No previous period": "无上一时段数据", "{{percent}}% vs previous period": "较上一时段 {{percent}}%",
+  "Longest Session": "最长专注时段", "Best day": "最佳学习日", "Focus time over time": "专注时间趋势", "Daily totals and rolling calendar-day averages.": "每日总量与按日滚动平均值。",
+  "Daily total": "每日总量", "7-day average": "7 日平均", "30-day average": "30 日平均", "3-month average": "3 个月平均", "1-year average": "1 年平均",
+  "Focus time by Academic Year": "各学年专注时间", "Focus time by Subject": "各科目专注时间", "Subject share over time": "科目占比趋势",
+  "Session length distribution": "专注时长分布", "Study time by day of week": "按星期统计学习时间",
+  "No Sessions in this range": "此范围内没有专注时段", "Try another date range or Academic Year.": "请尝试其他日期范围或学年。",
+  "Status": "状态", "All Academic Years": "所有学年", "Review and correct completed focus sessions.": "查看并修正已完成的专注时段。",
+  "Delete permanently": "永久删除", "Select": "选择", "Select all": "全选", "Add Session": "添加专注时段",
+  "Study time by weekday and time": "按星期与时段统计学习时间", "Rolling calendar-day averages": "按日滚动平均值", "Zero-study calendar days are included.": "包含未学习的日期。",
+});
+
 export default zhCN;
