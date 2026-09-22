@@ -7,8 +7,6 @@ export type WorkArea = Point & Size;
 export const POPOUT_SIZE: Size = { width: 360, height: 170 };
 export const DOCK_MARGIN = 12;
 export const SNAP_THRESHOLD = 52;
-export const AUTO_HIDE_TAB_THICKNESS = 14;
-export const AUTO_HIDE_TAB_INSET = 10;
 
 const clamp = (value: number, minimum: number, maximum: number) => Math.min(Math.max(value, minimum), Math.max(minimum, maximum));
 
@@ -40,42 +38,4 @@ export function clampFreePosition(position: Point, workArea: WorkArea, size: Siz
 
 export function defaultEdgeForCorner(corner: DockCorner): DockEdge {
   return corner.endsWith("left") ? "left" : "right";
-}
-
-export function edgeOffset(position: Point, workArea: WorkArea, size: Size, edge: DockEdge): number {
-  const span = edge === "left" || edge === "right" ? workArea.height - size.height : workArea.width - size.width;
-  const value = edge === "left" || edge === "right" ? position.y - workArea.y : position.x - workArea.x;
-  return span <= 0 ? 0 : clamp(value / span, 0, 1);
-}
-
-export function nearestEdge(position: Point, workArea: WorkArea, size: Size): DockEdge {
-  const centre = { x: position.x + size.width / 2, y: position.y + size.height / 2 };
-  const distances: [DockEdge, number][] = [
-    ["left", Math.abs(centre.x - workArea.x)],
-    ["right", Math.abs(workArea.x + workArea.width - centre.x)],
-    ["top", Math.abs(centre.y - workArea.y)],
-    ["bottom", Math.abs(workArea.y + workArea.height - centre.y)],
-  ];
-  return distances.sort((left, right) => left[1] - right[1])[0][0];
-}
-
-export function autoHidePosition(workArea: WorkArea, size: Size, edge: DockEdge, offset: number, hidden: boolean): Point {
-  const normalized = clamp(offset, 0, 1);
-  const inset = hidden ? AUTO_HIDE_TAB_INSET : 0;
-  const alongX = workArea.x + inset + normalized * Math.max(0, workArea.width - size.width - inset * 2);
-  const alongY = workArea.y + inset + normalized * Math.max(0, workArea.height - size.height - inset * 2);
-  if (!hidden) {
-    if (edge === "left") return { x: workArea.x, y: alongY };
-    if (edge === "right") return { x: workArea.x + workArea.width - size.width, y: alongY };
-    if (edge === "top") return { x: alongX, y: workArea.y };
-    return { x: alongX, y: workArea.y + workArea.height - size.height };
-  }
-  if (edge === "left") return { x: workArea.x - size.width + AUTO_HIDE_TAB_THICKNESS, y: alongY };
-  if (edge === "right") return { x: workArea.x + workArea.width - AUTO_HIDE_TAB_THICKNESS, y: alongY };
-  if (edge === "top") return { x: alongX, y: workArea.y - size.height + AUTO_HIDE_TAB_THICKNESS };
-  return { x: alongX, y: workArea.y + workArea.height - AUTO_HIDE_TAB_THICKNESS };
-}
-
-export function tabOrientation(edge: DockEdge) {
-  return edge === "left" || edge === "right" ? "vertical" : "horizontal";
 }

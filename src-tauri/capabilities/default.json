@@ -5,7 +5,8 @@
   "windows": [
     "main",
     "timer",
-    "timer-menu"
+    "timer-menu",
+    "timer-tab"
   ],
   "permissions": [
     "core:default",

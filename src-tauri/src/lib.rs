@@ -209,6 +209,59 @@ fn hide_timer_menu(app: tauri::AppHandle) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("timer-menu") {
         window.hide().map_err(|e| e.to_string())?;
     }
+    if let Some(timer) = app.get_webview_window("timer") {
+        timer.emit("focus://popout-menu-closed", ()).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn show_timer_auto_hide_tab(app: tauri::AppHandle, monitor_id: String, edge: String, offset: f64) -> Result<(), String> {
+    let timer = app.get_webview_window("timer").ok_or_else(|| "The timer window is unavailable".to_string())?;
+    if !timer.is_visible().map_err(|e| e.to_string())? {
+        return Ok(());
+    }
+    let tab = app.get_webview_window("timer-tab").ok_or_else(|| "The timer reveal tab is unavailable".to_string())?;
+    let vertical = edge == "left" || edge == "right";
+    let (width, height) = if vertical { (18, 58) } else { (58, 18) };
+    tab.set_size(tauri::LogicalSize::new(width, height)).map_err(|e| e.to_string())?;
+    let size = tab.outer_size().map_err(|e| e.to_string())?;
+    let area = timer_work_area(&timer, Some(&monitor_id))?;
+    let inset = (10.0 * tab.scale_factor().map_err(|e| e.to_string())?).round() as i32;
+    let normalized = offset.clamp(0.0, 1.0);
+    let x_span = (area.width as i32 - size.width as i32 - inset * 2).max(0);
+    let y_span = (area.height as i32 - size.height as i32 - inset * 2).max(0);
+    let along_x = area.x + inset + (normalized * x_span as f64).round() as i32;
+    let along_y = area.y + inset + (normalized * y_span as f64).round() as i32;
+    let position = match edge.as_str() {
+        "left" => tauri::PhysicalPosition::new(area.x, along_y),
+        "right" => tauri::PhysicalPosition::new(area.x + area.width as i32 - size.width as i32, along_y),
+        "top" => tauri::PhysicalPosition::new(along_x, area.y),
+        _ => tauri::PhysicalPosition::new(along_x, area.y + area.height as i32 - size.height as i32),
+    };
+    tab.set_position(position).map_err(|e| e.to_string())?;
+    tab.show().map_err(|e| e.to_string())?;
+    timer.hide().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn request_timer_reveal(app: tauri::AppHandle) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("timer") {
+        window.emit("focus://reveal-auto-hide", ()).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn cancel_timer_auto_hide(app: tauri::AppHandle) -> Result<(), String> {
+    if let Some(tab) = app.get_webview_window("timer-tab") {
+        tab.hide().map_err(|e| e.to_string())?;
+    }
+    if let Some(timer) = app.get_webview_window("timer") {
+        timer.show().map_err(|e| e.to_string())?;
+        timer.set_focus().map_err(|e| e.to_string())?;
+    }
     Ok(())
 }
 
@@ -220,6 +273,9 @@ fn set_timer_always_on_top(app: tauri::AppHandle, enabled: bool) -> Result<(), S
             .map_err(|e| e.to_string())?;
     }
     if let Some(window) = app.get_webview_window("timer-menu") {
+        window.set_always_on_top(enabled).map_err(|e| e.to_string())?;
+    }
+    if let Some(window) = app.get_webview_window("timer-tab") {
         window.set_always_on_top(enabled).map_err(|e| e.to_string())?;
     }
     Ok(())
@@ -305,6 +361,9 @@ fn hide_timer_popout(app: tauri::AppHandle) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("timer") {
         window.hide().map_err(|e| e.to_string())?;
     }
+    if let Some(window) = app.get_webview_window("timer-tab") {
+        window.hide().map_err(|e| e.to_string())?;
+    }
     Ok(())
 }
 
@@ -358,6 +417,9 @@ pub fn run() {
             open_timer_popout,
             open_timer_menu,
             hide_timer_menu,
+            show_timer_auto_hide_tab,
+            request_timer_reveal,
+            cancel_timer_auto_hide,
             set_timer_always_on_top,
             set_timer_taskbar,
             set_timer_size,
@@ -373,10 +435,21 @@ pub fn run() {
             is_main_fullscreen
         ])
         .on_window_event(|window, event| {
-            if window.label() == "timer" || window.label() == "timer-menu" {
+            if window.label() == "timer" || window.label() == "timer-menu" || window.label() == "timer-tab" {
                 if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                     api.prevent_close();
                     let _ = window.hide();
+                    if window.label() == "timer-tab" {
+                        if let Some(timer) = window.app_handle().get_webview_window("timer") {
+                            let _ = timer.show();
+                            let _ = timer.set_focus();
+                        }
+                    }
+                    if window.label() == "timer-menu" {
+                        if let Some(timer) = window.app_handle().get_webview_window("timer") {
+                            let _ = timer.emit("focus://popout-menu-closed", ());
+                        }
+                    }
                 }
             }
         })

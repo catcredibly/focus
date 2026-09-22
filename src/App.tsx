@@ -6,6 +6,7 @@ import { Sidebar } from "./components/Sidebar";
 import { TimerPage } from "./components/TimerPage";
 import { PopoutTimer } from "./components/PopoutTimer";
 import { PopoutMenu } from "./components/PopoutMenu";
+import { AutoHideTab } from "./components/AutoHideTab";
 import { AcademicYearsPage, HistoryPage, SubjectsPage } from "./components/ManagementPages";
 import { ImportExportPage } from "./components/ImportExportPage";
 import { SettingsPage } from "./components/SettingsPage";
@@ -20,7 +21,8 @@ export default function App() {
   const [collapsed, setCollapsed] = useState(false);
   const [page, setPage] = useState(() => import.meta.env.DEV && new URLSearchParams(window.location.search).get("analyticsDemo") === "1" ? "Analytics" : "Timer");
   const isPopoutMenu = window.location.hash.includes("popout-menu");
-  const isPopout = window.location.hash.includes("popout");
+  const isAutoHideTab = window.location.hash.includes("auto-hide-tab");
+  const isPopout = window.location.hash.includes("popout") || isAutoHideTab;
   const { settings, loaded } = useSettings();
   const { t } = useTranslation();
   const [closeWarning, setCloseWarning] = useState(false);
@@ -47,6 +49,7 @@ export default function App() {
   }, [isPopout]);
 
   if (isPopoutMenu) return <PopoutMenu />;
+  if (isAutoHideTab) return <AutoHideTab />;
   if (isPopout) return <PopoutTimer />;
 
   return (

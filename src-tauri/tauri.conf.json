@@ -52,6 +52,19 @@
         "alwaysOnTop": true,
         "skipTaskbar": true,
         "visible": false
+      },
+      {
+        "label": "timer-tab",
+        "title": "Focus Timer Tab",
+        "url": "index.html#/auto-hide-tab",
+        "width": 18,
+        "height": 58,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "visible": false
       }
     ],
     "security": {

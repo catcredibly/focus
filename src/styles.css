@@ -20,7 +20,8 @@
 *::-webkit-scrollbar-thumb:hover { background: #4b6b82; }
 html, body, #root { width: 100%; height: 100%; margin: 0; overflow: hidden; }
 html:has(.popout-root), body:has(.popout-root), body:has(.popout-root) #root,
-html:has(.popout-menu-window), body:has(.popout-menu-window), body:has(.popout-menu-window) #root { background: transparent; }
+html:has(.popout-menu-window), body:has(.popout-menu-window), body:has(.popout-menu-window) #root,
+html:has(.auto-hide-tab-window), body:has(.auto-hide-tab-window), body:has(.auto-hide-tab-window) #root { background: transparent; }
 button, input, select { font: inherit; }
 button { color: inherit; }
 
@@ -155,20 +156,26 @@ button { color: inherit; }
 .popout-subject .subject-dot { width: 9px; height: 9px; }
 .popout-time { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 6px; align-items: center; margin-top: 2px; font-size: 30px; font-weight: 700; text-align: center; }
 .popout-time b { color: #72889a; font-weight: 400; }
-.popout-labels { width: 172px; display: grid; grid-template-columns: repeat(3,1fr); margin-top: -2px; color: #71889a; font-size: 8px; text-align: center; }
-.popout-status { min-height: 18px; margin-top: 4px; color: #aebfcd; font-size: 11px; text-align: center; }
+.popout-labels { width: 172px; display: grid; grid-template-columns: repeat(3,1fr); margin-top: -2px; color: #71889a; font-size: 8px; text-align: center; transition: transform 160ms ease; }
+.popout-status { min-height: 18px; margin-top: 4px; color: #aebfcd; font-size: 11px; text-align: center; transition: transform 160ms ease; }
 .popout-controls { display: flex; justify-content: center; gap: 16px; opacity: 1; transform: translateY(0); transition: opacity 150ms ease, transform 150ms ease; }
 .popout-controls button, .popout-close { width: 34px; height: 30px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #c6d4df; cursor: pointer; display: grid; place-items: center; }
 .popout-controls button:hover, .popout-close:hover { color: var(--accent,#ff922b); background: rgba(255,255,255,.055); }
 .popout-controls svg { width: 18px; height: 18px; }
 .popout-close { position: absolute; top: 5px; right: 6px; width: 28px; height: 28px; opacity: 1; transition: opacity 150ms ease; }
 .popout-close svg { width: 15px; height: 15px; }
-.popout-root--hover-controls:not(:hover) .popout-controls, .popout-root--hover-controls:not(:hover) .popout-close { opacity: 0; pointer-events: none; transform: translateY(4px); transition-delay: var(--controls-hide-delay,1s); }
-.popout-root--hover-controls:hover .popout-controls, .popout-root--hover-controls:hover .popout-close { transition-delay: 0ms; }
+.popout-root--hover-controls:not(:hover):not(:focus-within) .popout-controls { opacity: 0; pointer-events: none; transform: translateY(4px); transition-delay: var(--controls-hide-delay,1s); }
+.popout-root--hover-controls:hover .popout-controls, .popout-root--hover-controls:focus-within .popout-controls { transition-delay: 0ms; }
+.popout-root--hover-controls .popout-content { justify-content: center; }
+.popout-root--hover-controls .popout-subject-row { position: absolute; top: 9px; left: 38px; right: 38px; width: auto; }
+.popout-root--hover-controls .popout-controls { position: absolute; left: 0; right: 0; bottom: 8px; }
 .popout-root--hover-controls .popout-time { transition: font-size 160ms ease, margin 160ms ease; }
-.popout-root--hover-controls[data-size="small"]:not(:hover):not(:focus-within) .popout-time { margin-top: 8px; font-size: 31px; }
-.popout-root--hover-controls[data-size="medium"]:not(:hover):not(:focus-within) .popout-time { margin-top: 10px; font-size: 36px; }
-.popout-root--hover-controls[data-size="large"]:not(:hover):not(:focus-within) .popout-time { margin-top: 14px; font-size: 42px; }
+.popout-root--hover-controls[data-size="small"]:not(:hover):not(:focus-within) .popout-time { margin-top: 8px; font-size: 34px; }
+.popout-root--hover-controls[data-size="medium"]:not(:hover):not(:focus-within) .popout-time { margin-top: 10px; font-size: 42px; }
+.popout-root--hover-controls[data-size="large"]:not(:hover):not(:focus-within) .popout-time { margin-top: 14px; font-size: 52px; }
+.popout-root--hover-controls:hover .popout-time, .popout-root--hover-controls:focus-within .popout-time { transform: translateY(-9px); }
+.popout-root--hover-controls:hover .popout-labels, .popout-root--hover-controls:focus-within .popout-labels,
+.popout-root--hover-controls:hover .popout-status, .popout-root--hover-controls:focus-within .popout-status { transform: translateY(-9px); }
 .popout-menu { position: absolute; right: 5px; top: 5px; width: 178px; max-height: 158px; overflow-y: auto; background: #0b1b28; border: 1px solid #2a465a; border-radius: 8px; padding: 4px; box-shadow: 0 10px 28px rgba(0,0,0,.42); z-index: 50; }
 .popout-menu button { width: 100%; min-height: 24px; border: 0; background: transparent; padding: 5px 7px; display: flex; align-items: center; justify-content: space-between; gap: 7px; border-radius: 5px; cursor: pointer; text-align: left; font-size: 11px; }
 .popout-menu button svg { width: 13px; height: 13px; flex: 0 0 auto; }
@@ -184,17 +191,13 @@ button { color: inherit; }
 .popout-menu-window .popout-menu-select select { height: 34px; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .extend-menu--compact { position: fixed; left: auto; right: 5px; top: 5px; width: 210px; padding: 4px; z-index: 50; }
 .extend-menu--compact > button { min-height: 25px; padding: 4px 7px; font-size: 11px; }
-.popout-root--auto-hidden { background: transparent; border-color: transparent; }
-.popout-root--auto-hidden .popout-content { opacity: 0; pointer-events: none; }
-.auto-hide-tab { position: absolute; z-index: 80; padding: 0; border: 1px solid #355064; background: #0a1a27; cursor: grab; box-shadow: 0 3px 12px rgba(0,0,0,.35); display: grid; place-items: center; }
-.auto-hide-tab:active { cursor: grabbing; }
-.auto-hide-tab span { width: 5px; height: 5px; border-radius: 50%; background: var(--accent,#ff922b); box-shadow: 0 0 7px var(--accent,#ff922b); }
-.auto-hide-tab--vertical { width: 14px; height: 58px; top: 50%; transform: translateY(-50%); }
-.auto-hide-tab--horizontal { width: 58px; height: 14px; left: 50%; transform: translateX(-50%); }
-.popout-root[data-edge="left"] .auto-hide-tab { right: 0; border-radius: 0 8px 8px 0; }
-.popout-root[data-edge="right"] .auto-hide-tab { left: 0; border-radius: 8px 0 0 8px; }
-.popout-root[data-edge="top"] .auto-hide-tab { bottom: 0; border-radius: 0 0 8px 8px; }
-.popout-root[data-edge="bottom"] .auto-hide-tab { top: 0; border-radius: 8px 8px 0 0; }
+.auto-hide-tab-window { width: 100vw; height: 100vh; }
+.auto-hide-tab-window button { width: 100%; height: 100%; padding: 0; border: 1px solid #355064; background: #0a1a27; cursor: pointer; box-shadow: 0 3px 12px rgba(0,0,0,.35); display: grid; place-items: center; }
+.auto-hide-tab-window button span { width: 5px; height: 5px; border-radius: 50%; background: var(--accent,#ff922b); box-shadow: 0 0 7px var(--accent,#ff922b); }
+.auto-hide-tab-window[data-edge="left"] button { border-radius: 0 8px 8px 0; }
+.auto-hide-tab-window[data-edge="right"] button { border-radius: 8px 0 0 8px; }
+.auto-hide-tab-window[data-edge="top"] button { border-radius: 0 0 8px 8px; }
+.auto-hide-tab-window[data-edge="bottom"] button { border-radius: 8px 8px 0 0; }
 .custom-extend { padding: 7px; }
 .custom-duration { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 5px; align-items: start; }
 .custom-duration label { display: flex; flex-direction: column; align-items: center; gap: 4px; }
@@ -208,7 +211,7 @@ button { color: inherit; }
 .custom-extend-actions button:disabled { opacity: .45; cursor: not-allowed; }
 
 @media (prefers-reduced-motion: reduce) {
-  .popout-root, .popout-content, .popout-time, .popout-controls, .popout-close, .today-panel { transition: none; }
+  .popout-root, .popout-content, .popout-time, .popout-labels, .popout-status, .popout-controls, .popout-close, .today-panel { transition: none; }
 }
 
 .tooltip-host { position: relative; display: inline-flex; }
