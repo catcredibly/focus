@@ -34,6 +34,7 @@ export function TimerPage() {
   const [stopping, setStopping] = useState(false);
   const [now, setNow] = useState(() => new Date());
   const [fullscreen, setFullscreen] = useState(false);
+  const [fullscreenReveal, setFullscreenReveal] = useState(false);
   const currentYearId = useLiveQuery(async () => (await db.settings.get(CURRENT_YEAR_KEY))?.value ?? "", []) ?? "";
   const currentYear = useLiveQuery(() => currentYearId ? db.academicYears.get(currentYearId) : undefined, [currentYearId]);
   const subjects = useLiveQuery(async () => currentYearId ? (await db.subjects.where("academicYearId").equals(currentYearId).toArray()).filter((subject) => !subject.archived) : [], [currentYearId]) ?? [];
@@ -67,6 +68,12 @@ export function TimerPage() {
     } catch { setFullscreen(false); }
   };
   const toggleFullscreen = () => setNativeFullscreen(!fullscreen);
+  const trackFullscreenReveal = (event: React.PointerEvent<HTMLElement>) => {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const width = Math.min(260, Math.max(160, window.innerWidth * 0.18));
+    const height = Math.min(180, Math.max(110, window.innerHeight * 0.16));
+    setFullscreenReveal(event.clientX >= bounds.right - width && event.clientY <= bounds.top + height);
+  };
   useEffect(() => { const id = window.setInterval(() => setNow(new Date()), 10_000); return () => window.clearInterval(id); }, []);
   useEffect(() => { if (isTauri()) void invoke<boolean>("is_main_fullscreen").then(setFullscreen).catch(() => setFullscreen(false)); }, []);
   useEffect(() => {
@@ -86,7 +93,7 @@ export function TimerPage() {
   const inputKey = (event: React.KeyboardEvent<HTMLInputElement>) => { if (event.key === "Enter") event.currentTarget.blur(); };
   const openPopout = () => openTimerPopout(settings).catch(() => undefined);
   const dateTime = formatTimerDateTime(now, settings.language, settings);
-  const timerTools = <div className="timer-top-tools">
+  const timerTools = <div className={`timer-top-tools ${fullscreenReveal ? "timer-top-tools--visible" : ""}`}>
     <span className="fullscreen-tool"><IconButton label={t(fullscreen ? "Exit fullscreen (F11)" : "Fullscreen (F11)")} className="icon-button" onClick={() => void toggleFullscreen()}>{fullscreen ? <Minimize2/> : <Maximize2/>}</IconButton></span>
   </div>;
   const dateControl = !timer.state.running && <span className="tooltip-host date-toggle-host"><button className={`date date-toggle ${todayOpen ? "active" : ""}`} aria-pressed={todayOpen} onClick={() => setTodayOpen((value) => !value)}>{dateTime || t("Today")}</button><span className="focus-tooltip" role="tooltip">{t(todayOpen ? "Hide Today pane" : "Show Today pane")}</span></span>;
@@ -99,7 +106,7 @@ export function TimerPage() {
     {stopping && <Dialog title={t("Stop timer?")}><p>{t("Elapsed focus time will be saved as a completed Session.")}</p><div className="modal-actions"><button onClick={() => setStopping(false)}>{t("Cancel")}</button><button className="danger-action" onClick={async () => { setStopping(false); await timer.stop(); }}>{t("Stop and save")}</button></div></Dialog>}
   </>;
 
-  if (timer.state.running) return <main className="timer-shell timer-shell--running"><section className="running-stage">
+  if (timer.state.running) return <main className="timer-shell timer-shell--running"><section className="running-stage" onPointerMove={trackFullscreenReveal} onPointerLeave={() => setFullscreenReveal(false)}>
     {timerTools}{dateTime && <div className="date">{dateTime}</div>}
     <div className="running-subject subject-overflow" tabIndex={0} title={timer.state.subject}><span className="subject-dot" style={{ background: timer.state.subjectColor }}/><span>{timer.state.subject}</span></div>
     <div className="running-time"><span>{pad(timer.display.hours)}</span><b>:</b><span>{pad(timer.display.minutes)}</span><b>:</b><span>{pad(timer.display.seconds)}</span></div>
@@ -108,7 +115,7 @@ export function TimerPage() {
     <input className="note-field" aria-label={t("Session note")} placeholder={t("Add a note (optional)...")} value={timer.state.note} onChange={(event) => timer.setNote(event.target.value)}/>
   </section>{recoveryDialogs}</main>;
 
-  return <main className={`timer-shell timer-shell--idle ${todayOpen ? "timer-shell--today-open" : ""}`}><section className="timer-card">
+  return <main className={`timer-shell timer-shell--idle ${todayOpen ? "timer-shell--today-open" : ""}`}><section className="timer-card" onPointerMove={trackFullscreenReveal} onPointerLeave={() => setFullscreenReveal(false)}>
     {timerTools}{dateControl}
     <div className="time-entry"><label><input inputMode="numeric" value={hours} onChange={(event) => input(event.target.value, setHours)} onBlur={commitInput} onKeyDown={inputKey}/><span>{t("Hours")}</span></label><b>:</b><label><input inputMode="numeric" value={minutes} onChange={(event) => input(event.target.value, setMinutes)} onBlur={commitInput} onKeyDown={inputKey}/><span>{t("Minutes")}</span></label><b>:</b><label><input inputMode="numeric" value={seconds} onChange={(event) => input(event.target.value, setSeconds)} onBlur={commitInput} onKeyDown={inputKey}/><span>{t("Seconds")}</span></label></div>
     <select className="subject-select" value={selectedSubject?.id ?? ""} onChange={(event) => setSubjectId(event.target.value)} disabled={!subjects.length}>{!subjects.length && <option>{t("Add a Subject for the current Academic Year")}</option>}{subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}</select>
