@@ -40,6 +40,7 @@ src-tauri/updater*.key*
 # Operating systems
 Thumbs.db
 Desktop.ini
+*.lnk
 .DS_Store
 
 # IDE-local state
