@@ -334,7 +334,6 @@ select, input { color-scheme: dark; }
 .result-grid span { flex-direction: column; text-align: center; }
 .result-grid strong { font-size: 22px; }
 .import-actions { display: flex; justify-content: center; gap: 12px; margin-top: 24px; }
-.import-actions button { min-height: 40px; padding: 0 14px; display: inline-flex; align-items: center; gap: 8px; border: 1px solid #29465b; border-radius: 6px; background: #102333; cursor: pointer; }
 @media (max-width: 1050px) { .transfer-grid, .preview-layout { grid-template-columns: 1fr; } .transfer-item { grid-template-columns: 38px 1fr; } .transfer-item button { grid-column: 2; justify-self: start; } }
 
 .settings-page { padding: 30px 34px 48px; }
