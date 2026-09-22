@@ -166,7 +166,7 @@ export const DEFAULT_SETTINGS: FocusSettings = {
   popoutDockAutoHide: false,
   popoutAutoHideEdge: "right",
   popoutAutoHideOffset: 0,
-  accentColour: "coral",
+  accentColour: "orange",
   uiScale: "medium",
   lastBackupAt: null,
   allowDirectActiveDeletion: false,

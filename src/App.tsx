@@ -5,6 +5,7 @@ import { listen } from "@tauri-apps/api/event";
 import { Sidebar } from "./components/Sidebar";
 import { TimerPage } from "./components/TimerPage";
 import { PopoutTimer } from "./components/PopoutTimer";
+import { PopoutMenu } from "./components/PopoutMenu";
 import { AcademicYearsPage, HistoryPage, SubjectsPage } from "./components/ManagementPages";
 import { ImportExportPage } from "./components/ImportExportPage";
 import { SettingsPage } from "./components/SettingsPage";
@@ -18,6 +19,7 @@ const AnalyticsPage = lazy(() => import("./components/AnalyticsPage").then((modu
 export default function App() {
   const [collapsed, setCollapsed] = useState(false);
   const [page, setPage] = useState(() => import.meta.env.DEV && new URLSearchParams(window.location.search).get("analyticsDemo") === "1" ? "Analytics" : "Timer");
+  const isPopoutMenu = window.location.hash.includes("popout-menu");
   const isPopout = window.location.hash.includes("popout");
   const { settings, loaded } = useSettings();
   const { t } = useTranslation();
@@ -44,6 +46,7 @@ export default function App() {
     return () => { stopClose?.(); stopSecond?.(); };
   }, [isPopout]);
 
+  if (isPopoutMenu) return <PopoutMenu />;
   if (isPopout) return <PopoutTimer />;
 
   return (

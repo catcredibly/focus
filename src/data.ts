@@ -9,26 +9,24 @@ export function formatDurationForLocale(totalSeconds: number, locale = localeCod
   const total = Math.max(0, Math.round(totalSeconds));
   const hours = Math.floor(total / 3600);
   const minutes = Math.floor((total % 3600) / 60);
-  if (locale === "zh-CN") {
-    if (hours && minutes) return `${hours} 小时 ${minutes} 分钟`;
-    if (hours) return `${hours} 小时`;
-    if (minutes) return `${minutes} 分钟`;
-    return `${total} 秒`;
-  }
-  if (hours && minutes) return `${hours} hr ${minutes} min`;
-  if (hours) return `${hours} hr`;
-  if (minutes) return `${minutes} min`;
-  return `${total} sec`;
+  const number = new Intl.NumberFormat(locale);
+  const units = locale === "zh-CN" ? ["小时", "分钟", "秒"] : locale === "zh-TW" ? ["小時", "分鐘", "秒"] : locale === "ja" ? ["時間", "分", "秒"] : ["hr", "min", "sec"];
+  if (hours && minutes) return `${number.format(hours)} ${units[0]} ${number.format(minutes)} ${units[1]}`;
+  if (hours) return `${number.format(hours)} ${units[0]}`;
+  if (minutes) return `${number.format(minutes)} ${units[1]}`;
+  return `${number.format(total)} ${units[2]}`;
 }
 
 export function formatDuration(totalSeconds: number) { return formatDurationForLocale(totalSeconds); }
 
 export function formatDurationAxisForLocale(totalSeconds: number, locale = localeCode()) {
   const total = Math.max(0, totalSeconds);
-  if (total < 60) return `${Math.round(total)} ${locale === "zh-CN" ? "秒" : "sec"}`;
-  if (total < 3600) return `${Math.round(total / 60)} ${locale === "zh-CN" ? "分钟" : "min"}`;
+  const units = locale === "zh-CN" ? ["小时", "分钟", "秒"] : locale === "zh-TW" ? ["小時", "分鐘", "秒"] : locale === "ja" ? ["時間", "分", "秒"] : ["hr", "min", "sec"];
+  const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 });
+  if (total < 60) return `${number.format(Math.round(total))} ${units[2]}`;
+  if (total < 3600) return `${number.format(Math.round(total / 60))} ${units[1]}`;
   const hours = total / 3600;
-  return `${hours < 10 && !Number.isInteger(hours) ? hours.toFixed(1) : Math.round(hours)} ${locale === "zh-CN" ? "小时" : "hr"}`;
+  return `${number.format(hours < 10 && !Number.isInteger(hours) ? hours : Math.round(hours))} ${units[0]}`;
 }
 
 export function formatDurationAxis(totalSeconds: number) { return formatDurationAxisForLocale(totalSeconds); }

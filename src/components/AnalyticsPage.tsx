@@ -774,7 +774,7 @@ function ActivityHeatmap({ sessions, explainScale = false }: { sessions: FocusSe
             })}
           </strong>
           <span>
-            {formatDuration(selected.seconds)} · {selected.count} {selected.count === 1 ? "Session" : "Sessions"}
+            {formatDuration(selected.seconds)} · {t("{{count}} Sessions", { count: selected.count })}
           </span>
           {breakdown.slice(0, 3).map(([name, seconds]) => (
             <span key={name} title={name}>
@@ -798,7 +798,10 @@ function ActivityHeatmap({ sessions, explainScale = false }: { sessions: FocusSe
       </div>
       {explainScale && (
         <p className="panel-foot">
-          90th percentile: {formatDuration(scale.p90)} · Four intervals of {formatDuration(scale.step)}
+          {t("90th percentile: {{percentile}} · Four intervals of {{interval}}", {
+            percentile: formatDuration(scale.p90),
+            interval: formatDuration(scale.step),
+          })}
         </p>
       )}
     </>

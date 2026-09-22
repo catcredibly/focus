@@ -16,6 +16,8 @@
 *:hover::-webkit-scrollbar-thumb { background: #38556b; background-clip: padding-box; }
 *::-webkit-scrollbar-thumb:hover { background: #4b6b82; }
 html, body, #root { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+html:has(.popout-root), body:has(.popout-root), body:has(.popout-root) #root,
+html:has(.popout-menu-window), body:has(.popout-menu-window), body:has(.popout-menu-window) #root { background: transparent; }
 button, input, select { font: inherit; }
 button { color: inherit; }
 
@@ -51,7 +53,7 @@ button { color: inherit; }
   transition: width 220ms ease;
 }
 .brand-row { display: flex; align-items: center; gap: 10px; min-height: 46px; }
-.brand-mark { width: 34px; height: 34px; object-fit: contain; }
+.brand-mark { width: 34px; height: 34px; flex: 0 0 34px; background: var(--accent,#ff922b); mask: url("./assets/focus-logo-orange.png") center / contain no-repeat; }
 .brand-name { font-size: 20px; font-weight: 700; }
 .brand-subtitle { color: #7890a4; font-size: 11px; margin-top: 2px; }
 .sidebar-toggle { margin-left: auto; }
@@ -131,11 +133,20 @@ button { color: inherit; }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-.popout-root { width: 100vw; height: 100vh; background: #07121d; border: 1px solid #223d52; border-radius: 10px; position: relative; font-size: var(--ui-font-size,14px); user-select: none; opacity: var(--popout-opacity,1); transition: opacity 160ms ease; }
+.popout-root { width: 100vw; height: 100vh; background: rgba(7,18,29,var(--popout-surface-alpha,1)); border: 1px solid rgba(34,61,82,var(--popout-surface-alpha,1)); border-radius: 10px; position: relative; font-size: var(--ui-font-size,14px); user-select: none; transition: background-color 160ms ease, border-color 160ms ease; }
 .popout-subject-row { width: 100%; display: flex; align-items: center; justify-content: center; gap: 12px; }
 .popout-subject-row time { color: #8fa5b8; font-size: 11px; white-space: nowrap; }
-.popout-root[data-size="large"] .popout-time { font-size: 38px; }
-.popout-root:hover, .popout-root:focus-within { opacity: 1; }
+.popout-root[data-size="small"] .popout-content { padding: 8px 14px 7px; }
+.popout-root[data-size="small"] .popout-subject, .popout-root[data-size="small"] .popout-subject-row time { font-size: 9px; }
+.popout-root[data-size="small"] .popout-time { gap: 4px; margin-top: 0; font-size: 25px; line-height: 1.05; }
+.popout-root[data-size="small"] .popout-labels { width: 148px; margin-top: 0; font-size: 7px; }
+.popout-root[data-size="small"] .popout-status { min-height: 13px; margin-top: 1px; font-size: 9px; }
+.popout-root[data-size="small"] .popout-controls { gap: 12px; }
+.popout-root[data-size="small"] .popout-controls button { width: 30px; height: 26px; }
+.popout-root[data-size="medium"] .popout-time { font-size: 30px; }
+.popout-root[data-size="large"] .popout-time { margin-top: 6px; font-size: 38px; }
+.popout-root[data-size="large"] .popout-labels { width: 205px; font-size: 9px; }
+.popout-root[data-size="large"] .popout-controls { margin-top: 5px; gap: 20px; }
 .popout-content { width: 100%; height: 100%; padding: 12px 18px 10px; display: flex; flex-direction: column; align-items: center; opacity: 1; transition: opacity 120ms ease; }
 .popout-subject { min-height: 18px; display: flex; gap: 7px; align-items: center; justify-content: center; color: #aebfcd; font-size: 11px; }
 .popout-subject .subject-dot { width: 9px; height: 9px; }
@@ -152,7 +163,9 @@ button { color: inherit; }
 .popout-root--hover-controls:not(:hover) .popout-controls, .popout-root--hover-controls:not(:hover) .popout-close { opacity: 0; pointer-events: none; transform: translateY(4px); transition-delay: var(--controls-hide-delay,1s); }
 .popout-root--hover-controls:hover .popout-controls, .popout-root--hover-controls:hover .popout-close { transition-delay: 0ms; }
 .popout-root--hover-controls .popout-time { transition: font-size 160ms ease, margin 160ms ease; }
-.popout-root--hover-controls:not(:hover):not(:focus-within) .popout-time { margin-top: 10px; font-size: 38px; }
+.popout-root--hover-controls[data-size="small"]:not(:hover):not(:focus-within) .popout-time { margin-top: 8px; font-size: 31px; }
+.popout-root--hover-controls[data-size="medium"]:not(:hover):not(:focus-within) .popout-time { margin-top: 10px; font-size: 36px; }
+.popout-root--hover-controls[data-size="large"]:not(:hover):not(:focus-within) .popout-time { margin-top: 14px; font-size: 42px; }
 .popout-menu { position: absolute; right: 5px; top: 5px; width: 178px; max-height: 158px; overflow-y: auto; background: #0b1b28; border: 1px solid #2a465a; border-radius: 8px; padding: 4px; box-shadow: 0 10px 28px rgba(0,0,0,.42); z-index: 50; }
 .popout-menu button { width: 100%; min-height: 24px; border: 0; background: transparent; padding: 5px 7px; display: flex; align-items: center; justify-content: space-between; gap: 7px; border-radius: 5px; cursor: pointer; text-align: left; font-size: 11px; }
 .popout-menu button svg { width: 13px; height: 13px; flex: 0 0 auto; }
@@ -160,6 +173,12 @@ button { color: inherit; }
 .popout-menu-select { display: grid; gap: 3px; padding: 5px 7px; color: #9fb2c1; font-size: 10px; }
 .popout-menu-select select { width: 100%; min-width: 0; height: 25px; border: 1px solid #29465b; border-radius: 4px; background: #071621; color: #eef5fb; font-size: 10px; }
 .popout-menu--dock { width: 164px; }
+.popout-menu-window { width: 100vw; height: 100vh; overflow-y: auto; padding: 10px; border: 1px solid #2a465a; border-radius: 8px; background: #0b1b28; color: #eef5fb; box-shadow: 0 10px 28px rgba(0,0,0,.42); }
+.popout-menu-window button { width: 100%; min-height: 38px; border: 0; border-radius: 5px; background: transparent; color: inherit; padding: 8px 10px; display: flex; align-items: center; justify-content: space-between; gap: 10px; cursor: pointer; text-align: left; }
+.popout-menu-window button:hover { background: #13293b; }
+.popout-menu-window button svg { width: 16px; height: 16px; flex: 0 0 auto; }
+.popout-menu-window .popout-menu-select { padding: 8px 10px; font-size: 12px; }
+.popout-menu-window .popout-menu-select select { height: 34px; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .extend-menu--compact { position: fixed; left: auto; right: 5px; top: 5px; width: 210px; padding: 4px; z-index: 50; }
 .extend-menu--compact > button { min-height: 25px; padding: 4px 7px; font-size: 11px; }
 .popout-root--auto-hidden { background: transparent; border-color: transparent; }
@@ -528,5 +547,5 @@ select, input { color-scheme: dark; }
 [data-theme="light"] .analytics-table-head { background: #f7fafb; }
 [data-theme="light"] .analytics-goals section, [data-theme="light"] .analytics-metric { color: #1c2b37; border-color: #c8d5dd; background: #fff; }
 [data-theme="light"] .analytics-metric strong, [data-theme="light"] .analytics-best-list strong { color: #172431; }
-[data-theme="light"].popout-root { color: #172431; border-color: #bdcbd4; background: #f8fafb; }
+[data-theme="light"].popout-root { color: #172431; border-color: rgba(189,203,212,var(--popout-surface-alpha,1)); background: rgba(248,250,251,var(--popout-surface-alpha,1)); }
 [data-theme="light"].popout-root .popout-time { color: #13202a; }

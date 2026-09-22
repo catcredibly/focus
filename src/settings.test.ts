@@ -18,6 +18,9 @@ afterEach(async () => { await Promise.all(opened.splice(0).map((value) => value.
 describe("application settings", () => {
   it("provides one complete set of defaults when keys are absent", async () => {
     expect(await loadSettings(database())).toEqual(DEFAULT_SETTINGS);
+    expect(DEFAULT_SETTINGS.accentColour).toBe("orange");
+    expect(DEFAULT_SETTINGS.popoutDockingEnabled).toBe(false);
+    expect(DEFAULT_SETTINGS.popoutDocked).toBe(false);
   });
 
   it("persists typed preferences and falls back from invalid enum values", async () => {

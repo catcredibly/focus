@@ -4,7 +4,8 @@
   "description": "Default desktop capability",
   "windows": [
     "main",
-    "timer"
+    "timer",
+    "timer-menu"
   ],
   "permissions": [
     "core:default",

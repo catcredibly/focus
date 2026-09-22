@@ -37,6 +37,21 @@
         "alwaysOnTop": true,
         "skipTaskbar": true,
         "visible": false
+      },
+      {
+        "label": "timer-menu",
+        "title": "Focus Timer Menu",
+        "url": "index.html#/popout-menu",
+        "width": 320,
+        "height": 330,
+        "minWidth": 280,
+        "minHeight": 240,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "visible": false
       }
     ],
     "security": {
