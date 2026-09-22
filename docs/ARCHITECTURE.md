@@ -1,0 +1,120 @@
+# Focus Architecture
+
+## Technology stack
+
+- **Tauri 2 and Rust** provide the Windows desktop shell and native integrations.
+- **React 19 and TypeScript** implement the application UI and domain logic.
+- **Vite** builds and serves the frontend.
+- **Tailwind CSS 4** is available through the Vite integration alongside the app's shared CSS.
+- **Dexie 4 and IndexedDB** provide local-first persistence and reactive queries.
+- **Recharts** renders the standard analytics charts; custom React/CSS views render heatmaps and other specialized visualizations.
+- **Vitest** covers data, timer, analytics, settings, and import/export behavior.
+
+## Runtime structure
+
+```text
+Windows
+  -> Tauri 2 application
+       -> Main React WebView window
+       -> Compact timer React WebView popout
+```
+
+Both windows load the same Vite bundle. `App.tsx` selects the compact popout UI when the window URL contains `#/popout`; otherwise it renders the main application and its page navigation.
+
+Application and domain behavior lives in TypeScript. Native Windows behavior is implemented through Tauri APIs, Rust commands, and narrowly scoped Tauri plugins where needed.
+
+## Persistence
+
+Focus uses one local IndexedDB database through Dexie. Its main stores are:
+
+- `academicYears`
+- `subjects`
+- `sessions`
+- `settings`
+
+Dexie schema versions define indexes and migrate older Sessions to the current backwards-compatible shape. Settings are stored as string key/value records and exposed through typed TypeScript helpers.
+
+The active in-progress timer is transient recovery state rather than study history. It is stored separately in `localStorage` until it is cleared or completed; completed Sessions are written to IndexedDB.
+
+## Data relationships
+
+```text
+Academic Year
+  -> Subjects
+       -> Sessions
+```
+
+A Subject stores its parent `academicYearId`. A Session stores its `subjectId`, plus the Academic Year ID and display-name snapshots needed for history and backwards compatibility.
+
+Archiving retains records. Permanent deletion uses Dexie transactions and follows the current deletion rules: deleting a Subject removes its Sessions, while deleting an Academic Year removes its Subjects and their Sessions. This prevents orphaned dependent records.
+
+## Timer architecture
+
+The user-facing timer states are:
+
+- Idle
+- Running
+- Paused
+- Expired/Finished
+
+Pure functions in `timerState.ts` perform timer calculations from timestamps. The `useTimer` hook owns the live React state, persists recoverable active-timer state, and coordinates completion behavior.
+
+There is one authoritative active timer shared by the main window and popout. The windows synchronize updates through a `BroadcastChannel` and recover from the same stored timer state. The popout does not run an independent timer, and closing it does not stop or alter the active Session.
+
+## Analytics
+
+```text
+IndexedDB Sessions
+  -> exclude archived or zero-duration Sessions and apply filters
+  -> pure TypeScript aggregation utilities
+  -> React Analytics pages
+  -> Recharts and custom heatmaps
+```
+
+The Analytics UI reads the Dexie stores with live queries, so persisted changes flow into the dashboard without a separate analytics database or cache. Aggregation utilities group completed focus time by date, Subject, Academic Year, session length, and other displayed dimensions.
+
+## Import / Export
+
+- **JSON full backup and restore** includes Academic Years, Subjects, Sessions, and Settings. Restore data is validated and applied transactionally using merge or replace behavior.
+- **CSV Session import and export** supports Focus's CSV format and mapped generic CSV data, including duplicate and invalid-row checks.
+
+In the desktop app, Tauri file dialogs and filesystem access read and write these files. Browser development mode uses download and file-input fallbacks.
+
+## Native Windows integration
+
+The repository currently implements these native features:
+
+- Native open/save file dialogs and filesystem access for import/export
+- A configured compact timer popout window
+- Popout always-on-top, taskbar visibility, sizing, positioning, and monitor-bound checks
+- Native close handling that hides the popout without changing timer state
+- Desktop completion notifications
+- Launch-at-startup control
+- Main-window maximize and restore controls through the Tauri window API
+
+Rust in `src-tauri/src/lib.rs` owns the custom window commands and lifecycle handling. Tauri plugins provide dialogs, filesystem access, notifications, and autostart support.
+
+## Main source structure
+
+```text
+src/
+  analytics/        Pure aggregation utilities, development data, and tests
+  assets/           Frontend-owned packaged assets
+  components/       Pages, dialogs, navigation, timer, and settings UI
+  hooks/            Shared React hooks for timer and settings state
+  importExport/     JSON backup/restore and CSV import/export
+  App.tsx           Main-window routing and popout entry selection
+  db.ts             Dexie database and schema versions
+  types.ts          Persistent data model types
+  settings.ts       Typed settings defaults and persistence helpers
+  timerState.ts     Pure timer state calculations
+  timerCompletion.ts Completion sound, notification, and popout effects
+  management.ts     Transactional archive and deletion operations
+  styles.css        Shared application styling
+
+src-tauri/
+  src/              Rust entry point and native window commands
+  capabilities/     Allowed Tauri plugin and window capabilities
+  icons/            Packaged Windows/application icons
+  tauri.conf.json   Application and window configuration
+```
