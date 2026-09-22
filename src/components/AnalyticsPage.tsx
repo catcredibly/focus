@@ -18,6 +18,7 @@ const ACCENT_COLORS = {
   orange: { primary: "#ff922b", tint: "#ffc078" },
   pink: { primary: "#e98aaa", tint: "#f3b4ca" },
   miku: { primary: "#58aeb8", tint: "#92d0d7" },
+  green: { primary: "#4da778", tint: "#91c9aa" },
   cappuccino: { primary: "#ad8466", tint: "#d0ae95" },
 } as const;
 const ranges = ["7D", "30D", "3M", "1Y", "All"] as const;

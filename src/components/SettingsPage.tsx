@@ -8,7 +8,7 @@ import { exportFullBackup } from "../importExport/exportBackup";
 import { useSettings } from "../hooks/useSettings";
 import { clearAllFocusData, formatLastBackup, hasActiveTimer, normaliseDuration, restoreSettingDefaults, type AccentColour, type FocusSettings } from "../settings";
 import { previewCompletionSound, testCompletionNotification } from "../timerCompletion";
-import focusIcon from "../assets/focus-logo.png";
+import { focusLogoForAccent } from "../branding";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../db";
 import packageMetadata from "../../package.json";
@@ -146,7 +146,7 @@ function Popout({ settings, setSetting }: SettingsProps) {
   </>;
 }
 
-const accents: { name: string; value: AccentColour; color: string }[] = [{ name:"Coral Red",value:"coral",color:"#f06464"},{name:"Orange",value:"orange",color:"#ff922b"},{name:"Cherry Blossom Pink",value:"pink",color:"#e98aaa"},{name:"Muted Miku Blue",value:"miku",color:"#58aeb8"},{name:"Cappuccino",value:"cappuccino",color:"#ad8466"}];
+const accents: { name: string; value: AccentColour; color: string }[] = [{ name:"Coral Red",value:"coral",color:"#f06464"},{name:"Orange",value:"orange",color:"#ff922b"},{name:"Cherry Blossom Pink",value:"pink",color:"#e98aaa"},{name:"Muted Miku Blue",value:"miku",color:"#58aeb8"},{name:"Green",value:"green",color:"#4da778"},{name:"Cappuccino",value:"cappuccino",color:"#ad8466"}];
 function Appearance({ settings, setSetting }: SettingsProps) {
   const { t } = useTranslation();
   return <><SettingsHeader title={t("Appearance")}>{t("Customize the Focus interface.")}</SettingsHeader>
@@ -177,10 +177,11 @@ function Data({ settings, setSetting, onNavigate }: SettingsProps & { onNavigate
 
 function About() {
   const { t } = useTranslation();
+  const { settings } = useSettings();
   const [version, setVersion] = useState(packageMetadata.version);
   useEffect(() => { if (isTauri()) void getVersion().then(setVersion).catch(() => undefined); }, []);
   return <div className="about-settings"><SettingsHeader title={t("About")}>{t("Application information.")}</SettingsHeader><div className="about-body">
-    <div className="about-identity"><img src={focusIcon} alt="Focus"/><div><h3>Focus</h3><p>{t("Time well spent.")}</p><span>V{version}</span></div></div>
+    <div className="about-identity"><img src={focusLogoForAccent(settings.accentColour)} alt="Focus"/><div><h3>Focus</h3><p>{t("Time well spent.")}</p><span>V{version}</span></div></div>
     <section><h3>{t("About Focus")}</h3><p>{t("Focus is a local-first study timer and analytics app designed for long-term study tracking.")}</p></section>
     <section><h3>{t("Your data")}</h3><p>{t("Focus stores your study data locally on this device. Your data is not uploaded to a Focus account or cloud service.")}</p></section>
     <section><h3>{t("Application")}</h3><dl><div><dt>{t("Version")}</dt><dd>{version}</dd></div><div><dt>{t("Platform")}</dt><dd>Windows</dd></div><div><dt>{t("Data storage")}</dt><dd>{t("Local device")}</dd></div></dl></section>

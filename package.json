@@ -2,6 +2,13 @@
   "name": "focus",
   "private": true,
   "version": "1.0.0",
+  "description": "A local-first Windows focus timer and study analytics app.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qidanielqi/focus-app.git"
+  },
+  "homepage": "https://github.com/qidanielqi/focus-app#readme",
   "type": "module",
   "scripts": {
     "dev": "vite",

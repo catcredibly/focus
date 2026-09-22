@@ -84,7 +84,7 @@ Object.assign(ja, {
 
 Object.assign(ja, {
   "Time well spent.": "時間を大切に。", "Light": "ライト", "Extra large": "特大",
-  "Coral Red": "コーラルレッド", "Cherry Blossom Pink": "桜ピンク", "Muted Miku Blue": "ミュートミクブルー", "Cappuccino": "カプチーノ",
+  "Coral Red": "コーラルレッド", "Cherry Blossom Pink": "桜ピンク", "Muted Miku Blue": "ミュートミクブルー", "Green": "グリーン", "Cappuccino": "カプチーノ",
   "Greeting subtitle": "挨拶のサブタイトル", "Leave blank to use the default brand line.": "空欄にすると既定のブランドメッセージを使用します。",
   "Default Subject behavior": "既定の科目の動作", "Configured Subject": "指定した科目", "Remember last used Subject": "前回の科目を記憶", "Default Subject": "既定の科目",
   "Show clock beside Subject": "科目の横に時計を表示", "Popout size": "ポップアウトのサイズ", "Show Today pane": "今日パネルを表示", "Hide Today pane": "今日パネルを非表示",

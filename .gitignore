@@ -8,6 +8,12 @@ dist/
 src-tauri/target/
 target/
 src-tauri/gen/
+src-tauri/bundle/
+src-tauri/*.sig
+src-tauri/latest.json
+*.msi
+*.msix
+*-setup.exe
 
 # Logs
 *.log
@@ -20,6 +26,16 @@ pnpm-debug.log*
 .env
 .env.*
 !.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+*.cer
+*.crt
+*.jks
+*.keystore
+src-tauri/tauri*.key*
+src-tauri/updater*.key*
 
 # Operating systems
 Thumbs.db
@@ -28,6 +44,8 @@ Desktop.ini
 
 # IDE-local state
 .idea/
+.vscode/
+*.code-workspace
 
 # Temporary files
 *.tmp
@@ -38,3 +56,8 @@ Desktop.ini
 
 # Local packaged archives / ad-hoc backups
 *.zip
+backups/
+exports/
+*.focus-backup.json
+focus-backup*.json
+focus-sessions*.csv

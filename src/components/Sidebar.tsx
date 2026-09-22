@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { useSettings } from "../hooks/useSettings";
 import { useTranslation } from "react-i18next";
-import focusLogo from "../assets/focus-logo.png";
+import { focusLogoForAccent } from "../branding";
 
 const items = [
   [Clock3, "Timer"],
@@ -38,7 +38,7 @@ export function Sidebar({ collapsed, onToggle, active, onNavigate }: Props) {
   return (
     <aside className={`sidebar ${collapsed ? "sidebar--collapsed" : ""}`}>
       <div className="brand-row">
-        <img className="brand-mark" src={focusLogo} alt=""/>
+        <img className="brand-mark" src={focusLogoForAccent(settings.accentColour)} alt=""/>
         {!collapsed && (
           <div>
             <div className="brand-name">Focus</div>

@@ -23,6 +23,7 @@ button { color: inherit; }
 [data-accent="orange"] { --accent: #ff922b; --accent-strong: #e9781f; --accent-soft: rgba(255,146,43,.18); --accent-text: #111820; }
 [data-accent="pink"] { --accent: #e98aaa; --accent-strong: #d56f94; --accent-soft: rgba(233,138,170,.2); --accent-text: #151016; }
 [data-accent="miku"] { --accent: #58aeb8; --accent-strong: #3f929d; --accent-soft: rgba(88,174,184,.2); --accent-text: #07121d; }
+[data-accent="green"] { --accent: #4da778; --accent-strong: #37875e; --accent-soft: rgba(77,167,120,.2); --accent-text: #07150e; }
 [data-accent="cappuccino"] { --accent: #ad8466; --accent-strong: #936b50; --accent-soft: rgba(173,132,102,.2); --accent-text: #15110e; }
 [data-scale="small"] { --ui-font-size: 13px; --ui-control-height: 36px; }
 [data-scale="medium"] { --ui-font-size: 14px; --ui-control-height: 40px; }

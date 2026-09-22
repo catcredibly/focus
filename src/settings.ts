@@ -1,7 +1,7 @@
 import { db, type FocusDatabase } from "./db";
 import { ACTIVE_TIMER_STORAGE_KEY, LAST_TIMER_DURATION_KEY, type TimerState } from "./timerState";
 
-export type AccentColour = "coral" | "orange" | "pink" | "miku" | "cappuccino";
+export type AccentColour = "coral" | "orange" | "pink" | "miku" | "green" | "cappuccino";
 export type Theme = "dark" | "light";
 export type UiScale = "small" | "medium" | "large" | "extra-large";
 export type SubjectPickerMode = "remember" | "fixed";
@@ -193,7 +193,7 @@ function decode<K extends keyof FocusSettings>(key: K, raw: string | undefined):
     language: ["en", "zh-CN", "zh-TW", "ja"], theme: ["dark", "light"], timerDurationMode: ["remember", "fixed"], subjectPickerMode: ["remember", "fixed"], dateFormat: ["full", "standard", "compact", "numeric"], clockFormat: ["system", "12-hour", "24-hour"],
     completionSoundChoice: ["soft-chime", "bell", "digital", "gentle", "bright"], popoutAutoHide: ["500", "1000", "2000", "never"],
     popoutDockCorner: ["top-left", "top-right", "bottom-left", "bottom-right"], popoutAutoHideEdge: ["top", "right", "bottom", "left"],
-    popoutSize: ["small", "medium", "large"], accentColour: ["coral", "orange", "pink", "miku", "cappuccino"], uiScale: ["small", "medium", "large", "extra-large"],
+    popoutSize: ["small", "medium", "large"], accentColour: ["coral", "orange", "pink", "miku", "green", "cappuccino"], uiScale: ["small", "medium", "large", "extra-large"],
   };
   if (key === "popoutDockMonitor") return (/^(current|display:\d+)$/.test(raw) ? raw : DEFAULT_SETTINGS[key]) as FocusSettings[K];
   return ((allowed[key] && !allowed[key]?.includes(raw)) ? DEFAULT_SETTINGS[key] : raw) as FocusSettings[K];

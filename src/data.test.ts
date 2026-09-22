@@ -16,6 +16,16 @@ afterEach(async () => {
 });
 
 describe("V0.2 data management", () => {
+  it("opens a fresh database without bundled study data", async () => {
+    const testDb = database();
+    expect(await Promise.all([
+      testDb.academicYears.count(),
+      testDb.subjects.count(),
+      testDb.sessions.count(),
+      testDb.settings.count(),
+    ])).toEqual([0, 0, 0, 0]);
+  });
+
   it("creates an Academic Year and Subject and filters archived Subjects", async () => {
     const testDb = database();
     await testDb.academicYears.add({ id: "year", name: "University Year 1", archived: false });

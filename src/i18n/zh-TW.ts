@@ -85,7 +85,7 @@ Object.assign(zhTW, {
 
 Object.assign(zhTW, {
   "Time well spent.": "讓時間更有價值。", "Light": "淺色", "Extra large": "特大",
-  "Coral Red": "珊瑚紅", "Cherry Blossom Pink": "櫻花粉", "Muted Miku Blue": "柔和未來藍", "Cappuccino": "卡布奇諾",
+  "Coral Red": "珊瑚紅", "Cherry Blossom Pink": "櫻花粉", "Muted Miku Blue": "柔和未來藍", "Green": "綠色", "Cappuccino": "卡布奇諾",
   "Greeting subtitle": "問候語副標題", "Leave blank to use the default brand line.": "留空以使用預設品牌標語。",
   "Default Subject behavior": "預設科目行為", "Configured Subject": "指定科目", "Remember last used Subject": "記住上次使用的科目", "Default Subject": "預設科目",
   "Show clock beside Subject": "在科目旁顯示時鐘", "Popout size": "浮動計時器大小", "Show Today pane": "顯示今日面板", "Hide Today pane": "隱藏今日面板",
