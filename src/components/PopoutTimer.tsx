@@ -173,6 +173,7 @@ export function PopoutTimer() {
   const controlsDelay = settings.popoutAutoHide === "never" ? "2147483647ms" : `${settings.popoutAutoHide}ms`;
   const time = parts(timer.state.remainingSeconds);
   return <main className={`popout-root ${settings.popoutHideControls ? "popout-root--hover-controls" : ""}`} data-accent={settings.accentColour} data-theme={settings.theme} data-scale={settings.uiScale} data-edge={settings.popoutAutoHideEdge} data-size={settings.popoutSize} style={{ "--controls-hide-delay": controlsDelay, "--popout-surface-alpha": settings.popoutTransparency / 100 } as CSSProperties} onPointerDown={startDrag} onMouseEnter={clearHideTimer} onMouseLeave={scheduleHide}>
+    {!dockedActive && <div className="popout-drag-edge" data-tauri-drag-region data-no-drag aria-hidden="true"/>}
     <div className="popout-content">
       {(settings.popoutShowSubject || settings.popoutShowClock) && <div className="popout-subject-row">{settings.popoutShowSubject && <div className="popout-subject subject-overflow" tabIndex={0} title={timer.state.subject || t("No Subject")}><span className="subject-dot" style={{ background: timer.state.subjectColor }}/>{timer.state.subject || t("No Subject")}</div>}{settings.popoutShowClock && <time>{formatTimerClock(now, settings.language, settings.clockFormat)}</time>}</div>}
       <div className="popout-time"><span>{time[0]}</span><b>:</b><span>{time[1]}</span><b>:</b><span>{time[2]}</span></div>
