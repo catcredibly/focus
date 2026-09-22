@@ -8,6 +8,12 @@ export function AutoHideTab() {
   const { settings, loaded } = useSettings();
   const active = settings.popoutDockingEnabled && settings.popoutDocked && settings.popoutDockAutoHide;
   const wasActive = useRef(false);
+  const revealing = useRef(false);
+  const reveal = () => {
+    if (revealing.current) return;
+    revealing.current = true;
+    void invoke("request_timer_reveal").finally(() => window.setTimeout(() => { revealing.current = false; }, 500));
+  };
 
   useEffect(() => {
     if (!loaded) return;
@@ -16,6 +22,6 @@ export function AutoHideTab() {
   }, [active, loaded]);
 
   return <main className="auto-hide-tab-window" data-accent={settings.accentColour} data-edge={settings.popoutAutoHideEdge}>
-    <button aria-label={t("Open Focus")} onClick={() => void invoke("request_timer_reveal")}><span/></button>
+    <button aria-label={t("Open Focus")} onPointerEnter={reveal} onClick={reveal}><span/></button>
   </main>;
 }
