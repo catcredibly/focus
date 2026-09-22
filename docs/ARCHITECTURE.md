@@ -9,15 +9,6 @@
 - The popout can target the current monitor or an explicit display. Native Windows work-area coordinates keep docking clear of the taskbar and support negative multi-monitor coordinates.
 - English, Simplified Chinese, Traditional Chinese, and Japanese are selectable persisted locales. User-created names and notes are never translated.
 
-## Current runtime guarantees
-
-- Focus is single-instance. A second launch focuses the existing main window.
-- The main window and compact popout share one authoritative active Timer through persisted state and cross-window updates.
-- Running, Paused, Finished, recovery, checkpoint, note, and save-failure state is kept in the active Timer record until it is finalized or explicitly discarded.
-- Completed Sessions may include focus intervals so daily and weekly goals allocate focused time correctly across local day and Monday-based week boundaries.
-- The popout can target the current monitor or an explicit display. Native Windows work-area coordinates keep docking clear of the taskbar and support negative multi-monitor coordinates.
-- English, Simplified Chinese, Traditional Chinese, and Japanese are selectable persisted locales. User-created names and notes are never translated.
-
 ## Technology stack
 
 - **Tauri 2 and Rust** provide the Windows desktop shell and native integrations.
@@ -54,6 +45,8 @@ Dexie schema versions define indexes and migrate older Sessions to the current b
 
 The active in-progress timer is transient recovery state rather than study history. It is stored separately in `localStorage` until it is cleared or completed; completed Sessions are written to IndexedDB.
 
+The production Dexie database name is `focus`. A fresh installation creates the schema with empty study tables and default settings supplied by application code; no development database is bundled.
+
 ## Data relationships
 
 ```text
@@ -83,7 +76,7 @@ There is one authoritative active timer shared by the main window and popout. Th
 
 ```text
 IndexedDB Sessions
-  -> exclude archived or zero-duration Sessions and apply filters
+  -> apply effective Subject/Academic Year archive status and filters
   -> pure TypeScript aggregation utilities
   -> React Analytics pages
   -> Recharts and custom heatmaps
@@ -111,6 +104,18 @@ The repository currently implements these native features:
 - Main-window maximize and restore controls through the Tauri window API
 
 Rust in `src-tauri/src/lib.rs` owns the custom window commands and lifecycle handling. Tauri plugins provide dialogs, filesystem access, notifications, and autostart support.
+
+## Release identity
+
+- Product name: `Focus`
+- Version: `1.0.0`
+- Tauri application identifier: `com.focus.timer`
+- Dexie database name: `focus`
+- Windows installer: NSIS
+
+The application identifier and database name are stable V1 identities. Future installers must retain them so upgrades continue to use the same installed application and local data store.
+
+The Orange leaf is the permanent Windows application icon. In-app leaf artwork follows the selected accent using approved packaged variants.
 
 ## Main source structure
 

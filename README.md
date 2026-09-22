@@ -1,49 +1,82 @@
+<p align="center">
+  <img src="src/assets/focus-logo-orange.png" alt="Focus leaf logo" width="112" />
+</p>
+
 # Focus
 
-This is the first implementation scaffold for the Windows Focus timer.
+**Time well spent.**
 
-## Current milestone: V0.4
+Focus is a Windows desktop focus timer and study tracker. It combines a clean countdown with Subjects, Academic Years, history, study goals, and long-term analytics without requiring a Focus account or cloud service.
 
-- React + TypeScript + Vite
-- Tauri 2 desktop shell
-- Windows main window starts maximized
-- Sidebar with collapse button
-- Idle timer UI
-- Smooth transition to distraction-free running UI
-- Minutes/seconds may overflow and are normalized on blur/start
-- Extend the same running session by +5/+15/+30/+50 minutes
-- Compact frameless popout timer
-- Popout controls appear on hover
-- Always-on-top can be toggled from the popout menu
-- Dexie / IndexedDB database schema is prepared
-- Academic Year creation, editing, current selection, archive, and restore
-- Subject management scoped by Academic Year
-- Current-year active Subjects integrated with the Timer
-- Completed and manual Session history with editing, archive, restore, and pagination
-- IndexedDB V1 to V2 migration preserving existing Sessions
-- Versioned, lossless JSON backup and transactional merge/replace restore
-- UTF-8 CSV Session export for Excel and flexible CSV import with column mapping
-- Import previews, validation, conflict handling, and duplicate detection
-- Native Windows open/save dialogs through official Tauri plugins
-- Five-view local Analytics with Academic Year and date-range filtering
-- Scrollable focus trends, cumulative totals, and rolling calendar-day averages
-- Adaptive P90 activity heatmaps and factual study-pattern summaries
+## Features
 
-Full Settings and final Windows polish are later milestones.
+- Focus timer with pause, extend, recovery, notes, and completion notifications
+- Compact always-on-top timer popout with docking and auto-hide
+- Subjects grouped into Academic Years
+- Searchable, editable Session history
+- Daily and weekly study goals
+- Analytics for trends, streaks, Subjects, Academic Years, and study patterns
+- Dark and light themes with six accent colours
+- English, Simplified Chinese, Traditional Chinese, and Japanese interfaces
+- Full JSON backup/restore and CSV Session import/export
 
-## Windows prerequisites
+## Privacy
 
-1. Install Node.js LTS.
-2. Install Rust using rustup (MSVC toolchain).
-3. Install Visual Studio Build Tools with **Desktop development with C++** and a Windows SDK.
-4. Windows 11 normally already has WebView2. If Tauri reports that it is missing, install the Microsoft Edge WebView2 Runtime.
+Focus is local-first. Academic Years, Subjects, Sessions, settings, and notes are stored in IndexedDB on the device where Focus runs. The application does not upload study data to a Focus account or bundled cloud service.
 
-## Run
+Export regular backups if the data matters to you. Removing the application or its WebView storage may remove local data.
 
-    npm install
-    npm run tauri dev
+## Availability
 
-## Recommended build order
+Focus currently targets Windows. Version 1.0.0 is being prepared for limited private distribution as an NSIS installer; there is no public download yet.
 
-1. Settings and popout polish.
-2. Windows installer build.
+## Development
+
+### Prerequisites
+
+- Node.js LTS and npm
+- Rust stable with the MSVC toolchain
+- Visual Studio Build Tools with Desktop development with C++ and a Windows SDK
+- Microsoft Edge WebView2 Runtime
+
+### Setup
+
+```powershell
+npm ci
+npm run tauri dev
+```
+
+### Checks
+
+```powershell
+npm run typecheck
+npm test
+npm run build
+cargo check --manifest-path src-tauri/Cargo.toml
+```
+
+### Windows installer
+
+```powershell
+npm run tauri build
+```
+
+Generated installers and executables belong outside source control.
+
+## Technology
+
+- Tauri 2 and Rust
+- React and TypeScript
+- Vite
+- Dexie and IndexedDB
+- Recharts
+
+See [Architecture](docs/ARCHITECTURE.md) for implementation details and [Releasing](docs/RELEASING.md) for the private release workflow.
+
+## Security
+
+Never commit personal Focus backups, signing keys, certificates, or credentials. See [SECURITY.md](SECURITY.md) for reporting and handling guidance.
+
+## License
+
+Focus is available under the [MIT License](LICENSE).

@@ -221,7 +221,8 @@ Approved decisions:
 - V0.5 sections are General, Timer, Popout, Appearance, and Data. The draft Advanced section is not part of V0.5.
 - About is a sixth Settings-only section. It uses the packaged Focus icon and runtime application version and does not appear in the main sidebar.
 - Settings persist in the existing Dexie settings table and use centralized defaults when a key is absent.
-- Appearance supports dark and light themes. Accent choices are Coral Red, Orange, Cherry Blossom Pink, Muted Miku Blue, and Cappuccino.
+- Appearance supports dark and light themes. Accent choices are Coral Red, Orange, Cherry Blossom Pink, Muted Miku Blue, Green, and Cappuccino.
+- In-app Focus leaf artwork follows the selected accent. The Orange leaf remains the canonical Windows application icon.
 - Single-series Analytics emphasis follows the UI accent while categorical and supporting analytical series retain distinct semantic colours.
 - Clear all data requires typing `DELETE`, is blocked while a timer is unfinished, and removes Academic Years, Subjects, Sessions, and Settings in one transaction.
 - Deletion safety is configured only under Settings > Data. Archive-first is the default for Subjects and Academic Years; enabling direct active deletion never bypasses confirmation or cascade warnings.
