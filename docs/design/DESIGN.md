@@ -210,6 +210,13 @@ Approved decisions:
 
 - Use the compact control patterns shown: toggles for binary settings, selectors for finite choices, swatches for accent colour, and sliders for continuous values.
 - The Background control visible in an older Appearance draft is excluded. Do not implement or add a background setting.
+- V0.5 sections are General, Timer, Popout, Appearance, and Data. The draft Advanced section is not part of V0.5.
+- About is a sixth Settings-only section. It uses the packaged Focus icon and runtime application version and does not appear in the main sidebar.
+- Settings persist in the existing Dexie settings table and use centralized defaults when a key is absent.
+- Appearance remains dark-only. Accent choices are Orange, Blue, Green, and Purple; chart semantics do not inherit the UI accent.
+- Clear all data requires typing `DELETE`, is blocked while a timer is unfinished, and removes Academic Years, Subjects, Sessions, and Settings in one transaction.
+- Deletion safety is configured only under Settings > Data. Archive-first is the default for Subjects and Academic Years; enabling direct active deletion never bypasses confirmation or cascade warnings.
+- Autostart uses the official Tauri autostart plugin. Completion notifications use the official Tauri notification plugin; each receives only its required capabilities.
 
 ## Popout Timer
 
@@ -234,6 +241,9 @@ Interaction notes:
 - Always-on-top, open Focus, hide timer, and close popout actions belong in the quick-actions menu.
 - Opening a popout menu temporarily expands the native utility window so its actions are not clipped; closing the menu restores the compact height.
 - Popout transparency and finish behaviour follow the corresponding Settings values.
+- The popout uses icon-only controls and a hover-linked close control; the main Timer retains labelled controls.
+- Closing the popout, including native close, only hides the utility window and never changes timer state.
+- Extend choices are 5, 15, 30, and 60 minutes plus a custom amount editor. Custom is hidden until selected and adds to the current Session without changing its remembered base duration.
 
 ## Reference Precedence
 

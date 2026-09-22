@@ -1,15 +1,40 @@
 import { db, type FocusDatabase } from "./db";
+import { CURRENT_YEAR_KEY } from "./data";
 
 export async function setAcademicYearArchived(id: string, archived: boolean, database: FocusDatabase = db) {
   await database.academicYears.update(id, { archived });
 }
 
-export async function deleteSubjectIfUnused(id: string, database: FocusDatabase = db) {
-  if (await database.sessions.where("subjectId").equals(id).count()) return false;
-  await database.subjects.delete(id);
-  return true;
+export async function deleteSubjectCascade(id: string, database: FocusDatabase = db) {
+  await database.transaction("rw", database.subjects, database.sessions, async () => {
+    await database.sessions.where("subjectId").equals(id).delete();
+    await database.subjects.delete(id);
+  });
+}
+
+export async function deleteAcademicYearCascade(id: string, database: FocusDatabase = db) {
+  await database.transaction("rw", database.academicYears, database.subjects, database.sessions, database.settings, async () => {
+    const subjectIds = (await database.subjects.where("academicYearId").equals(id).primaryKeys()) as string[];
+    if (subjectIds.length) await database.sessions.where("subjectId").anyOf(subjectIds).delete();
+    await database.sessions.where("academicYearId").equals(id).delete();
+    await database.subjects.where("academicYearId").equals(id).delete();
+    await database.academicYears.delete(id);
+    if ((await database.settings.get(CURRENT_YEAR_KEY))?.value === id) {
+      const replacement = await database.academicYears.filter((year) => !year.archived).first();
+      if (replacement) await database.settings.put({ key: CURRENT_YEAR_KEY, value: replacement.id });
+      else await database.settings.delete(CURRENT_YEAR_KEY);
+    }
+  });
 }
 
 export async function deleteSession(id: string, database: FocusDatabase = db) {
   await database.sessions.delete(id);
+}
+
+export async function deleteSessions(ids: string[], database: FocusDatabase = db) {
+  await database.transaction("rw", database.sessions, () => database.sessions.bulkDelete(ids));
+}
+
+export function canDeleteManagedRecord(archived: boolean, allowDirectActiveDeletion: boolean) {
+  return archived || allowDirectActiveDeletion;
 }

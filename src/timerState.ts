@@ -17,6 +17,8 @@ export type TimerState = {
   remainingSeconds: number;
   plannedDurationSeconds: number;
   note: string;
+  finished?: boolean;
+  finishedAt?: number | null;
 };
 
 export const initialTimerState: TimerState = {
@@ -33,15 +35,18 @@ export const initialTimerState: TimerState = {
   remainingSeconds: 75 * 60,
   plannedDurationSeconds: 75 * 60,
   note: "",
+  finished: false,
+  finishedAt: null,
 };
 
 export function startTimerState(state: TimerState, seconds: number, subject: Subject, year: AcademicYear, now = Date.now(), sessionId: string = crypto.randomUUID()): TimerState {
-  return { ...state, subject: subject.name, subjectId: subject.id, subjectColor: subject.color, academicYearId: year.id, academicYearName: year.name, sessionId, running: true, paused: false, startedAt: now, targetEnd: now + seconds * 1000, remainingSeconds: seconds, plannedDurationSeconds: seconds };
+  return { ...state, subject: subject.name, subjectId: subject.id, subjectColor: subject.color, academicYearId: year.id, academicYearName: year.name, sessionId, running: true, paused: false, finished: false, finishedAt: null, startedAt: now, targetEnd: now + seconds * 1000, remainingSeconds: seconds, plannedDurationSeconds: seconds };
 }
 
 export function extendTimerState(state: TimerState, seconds: number, now = Date.now()): TimerState {
   if (!state.running) return state;
-  return { ...state, remainingSeconds: state.remainingSeconds + seconds, plannedDurationSeconds: state.plannedDurationSeconds + seconds, targetEnd: state.paused ? null : (state.targetEnd ?? now) + seconds * 1000 };
+  if (seconds <= 0) return state;
+  return { ...state, paused: state.finished ? false : state.paused, finished: false, finishedAt: null, remainingSeconds: state.remainingSeconds + seconds, plannedDurationSeconds: state.plannedDurationSeconds + seconds, targetEnd: state.paused && !state.finished ? null : (state.targetEnd ?? now) + seconds * 1000 };
 }
 
 export function completedSession(state: TimerState, endTime: number): FocusSession | undefined {
@@ -51,7 +56,7 @@ export function completedSession(state: TimerState, endTime: number): FocusSessi
 }
 
 export function idleTimerState(state: TimerState): TimerState {
-  return { ...state, running: false, paused: false, startedAt: null, targetEnd: null, sessionId: null, remainingSeconds: state.plannedDurationSeconds, note: "" };
+  return { ...state, running: false, paused: false, finished: false, finishedAt: null, startedAt: null, targetEnd: null, sessionId: null, remainingSeconds: state.plannedDurationSeconds, note: "" };
 }
 
 export function localDateInputValue(stamp: number) {

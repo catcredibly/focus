@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Archive, CalendarDays, Check, MoreHorizontal, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { Archive, CalendarDays, Check, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { db } from "../db";
 import { createSession, CURRENT_YEAR_KEY, formatDuration, makeId, setCurrentAcademicYear } from "../data";
 import type { AcademicYear, FocusSession, Subject } from "../types";
 import { localDateInputValue } from "../timerState";
-import { deleteSession, deleteSubjectIfUnused, setAcademicYearArchived } from "../management";
+import { canDeleteManagedRecord, deleteAcademicYearCascade, deleteSession, deleteSessions, deleteSubjectCascade, setAcademicYearArchived } from "../management";
 import { managementViewState } from "../managementViewState";
+import { useSettings } from "../hooks/useSettings";
 
 const COLORS = ["#4da3ff", "#ff4d57", "#ffad3b", "#4dd39a", "#a879ff", "#ff7eb6"];
 const dateText = (value?: string) =>
@@ -41,7 +42,7 @@ function Modal({ title, children, onClose }: { title: string; children: React.Re
   );
 }
 
-function DeleteConfirmation({ title, children, onCancel, onDelete }: { title: string; children: React.ReactNode; onCancel: () => void; onDelete: () => Promise<void> }) {
+function DeleteConfirmation({ title, children, onCancel, onDelete, deleteLabel = "Delete" }: { title: string; children: React.ReactNode; onCancel: () => void; onDelete: () => Promise<void>; deleteLabel?: string }) {
   return (
     <Modal title={title} onClose={onCancel}>
       <div className="delete-confirmation">
@@ -50,13 +51,14 @@ function DeleteConfirmation({ title, children, onCancel, onDelete }: { title: st
       </div>
       <div className="modal-actions">
         <button type="button" onClick={onCancel}>Cancel</button>
-        <button type="button" className="danger-action" onClick={onDelete}>Delete</button>
+        <button type="button" className="danger-action" onClick={onDelete}>{deleteLabel}</button>
       </div>
     </Modal>
   );
 }
 
 export function AcademicYearsPage() {
+  const { settings } = useSettings();
   const years = useLiveQuery(() => db.academicYears.orderBy("name").toArray(), []) ?? [];
   const currentId = useLiveQuery(async () => (await db.settings.get(CURRENT_YEAR_KEY))?.value ?? "", []) ?? "";
   const subjects = useLiveQuery(() => db.subjects.toArray(), []) ?? [];
@@ -64,6 +66,10 @@ export function AcademicYearsPage() {
   const [archived, setArchivedState] = useState(managementViewState.academicYearsArchived);
   const setArchived = (value: boolean) => { managementViewState.academicYearsArchived = value; setArchivedState(value); };
   const [editing, setEditing] = useState<AcademicYear | null | undefined>();
+  const [deleting, setDeleting] = useState<AcademicYear>();
+  const academicYearIsRunning = (id: string) => {
+    try { const timer = JSON.parse(localStorage.getItem("focus.activeTimer") ?? "null"); return Boolean(timer?.running && timer?.academicYearId === id); } catch { return false; }
+  };
   const save = async (form: FormData) => {
     const name = String(form.get("name") ?? "").trim();
     if (!name) return;
@@ -134,6 +140,7 @@ export function AcademicYearsPage() {
                   >
                     {year.archived ? <RotateCcw /> : <Archive />}
                   </button>
+                  {canDeleteManagedRecord(year.archived, settings.allowDirectActiveDeletion) && <button className="danger-icon" disabled={academicYearIsRunning(year.id)} title={academicYearIsRunning(year.id) ? "Stop the active timer first" : "Delete permanently"} onClick={() => setDeleting(year)}><Trash2/></button>}
                 </div>
               </article>
             );
@@ -171,11 +178,13 @@ export function AcademicYearsPage() {
           </form>
         </Modal>
       )}
+      {deleting && (() => { const affectedSubjects = subjects.filter((subject) => subject.academicYearId === deleting.id); const ids = new Set(affectedSubjects.map((subject) => subject.id)); const affectedSessions = sessions.filter((session) => session.academicYearId === deleting.id || ids.has(session.subjectId)); const total = affectedSessions.reduce((sum, session) => sum + session.focusedDurationSeconds, 0); return <DeleteConfirmation title="Delete Academic Year?" deleteLabel="Delete Academic Year and Data" onCancel={() => setDeleting(undefined)} onDelete={async () => { await deleteAcademicYearCascade(deleting.id); setDeleting(undefined); }}>Permanently delete "{deleting.name}"? This will also permanently delete all {affectedSubjects.length} Subjects and {affectedSessions.length} Sessions ({formatDuration(total)}) associated with this Academic Year.</DeleteConfirmation>; })()}
     </main>
   );
 }
 
 export function SubjectsPage() {
+  const { settings } = useSettings();
   const years = useLiveQuery(() => db.academicYears.toArray(), []) ?? [];
   const subjects = useLiveQuery(() => db.subjects.orderBy("name").toArray(), []) ?? [];
   const sessions = useLiveQuery(() => db.sessions.toArray(), []) ?? [];
@@ -272,8 +281,8 @@ export function SubjectsPage() {
                 >
                   {subject.archived ? <RotateCcw /> : <Archive />}
                 </button>
-                {used.length === 0 && (
-                  <button disabled={running} title={running ? "Stop the active timer first" : "Delete unused subject"} onClick={() => setDeleting(subject)}>
+                {canDeleteManagedRecord(subject.archived, settings.allowDirectActiveDeletion) && (
+                  <button className="danger-icon" disabled={running} title={running ? "Stop the active timer first" : "Delete permanently"} onClick={() => setDeleting(subject)}>
                     <Trash2 />
                   </button>
                 )}
@@ -315,7 +324,7 @@ export function SubjectsPage() {
           </form>
         </Modal>
       )}
-      {deleting && <DeleteConfirmation title="Delete Subject?" onCancel={() => setDeleting(undefined)} onDelete={async () => { if (!await deleteSubjectIfUnused(deleting.id)) { setDeleting(undefined); alert("This Subject has Sessions and cannot be permanently deleted."); return; } setDeleting(undefined); }}>This permanently removes "{deleting.name}".</DeleteConfirmation>}
+      {deleting && (() => { const affected = sessions.filter((session) => session.subjectId === deleting.id); const total = affected.reduce((sum, session) => sum + session.focusedDurationSeconds, 0); return <DeleteConfirmation title="Delete Subject?" deleteLabel="Delete Subject and Data" onCancel={() => setDeleting(undefined)} onDelete={async () => { await deleteSubjectCascade(deleting.id); setDeleting(undefined); }}>Permanently delete "{deleting.name}"? This will also permanently delete {affected.length} Sessions ({formatDuration(total)}) and all study history associated with this Subject.</DeleteConfirmation>; })()}
     </main>
   );
 }
@@ -331,6 +340,9 @@ export function HistoryPage() {
   const [page, setPage] = useState(0);
   const [editing, setEditing] = useState<FocusSession | null | undefined>();
   const [deleting, setDeleting] = useState<FocusSession>();
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [confirmBulk, setConfirmBulk] = useState(false);
   const pageSize = 20;
   const filtered = useMemo(() => sessions.filter((s) => (status === "all" || s.archived === (status === "archived")) && (!yearId || s.academicYearId === yearId) && (!subjectId || s.subjectId === subjectId)), [sessions, status, yearId, subjectId]);
   const save = async (form: FormData) => {
@@ -374,11 +386,7 @@ export function HistoryPage() {
       <PageHeader
         title="History"
         subtitle="Review and correct completed focus sessions."
-        action={
-          <button className="primary-action" disabled={!subjects.length} onClick={() => setEditing(null)}>
-            <Plus /> Add Session
-          </button>
-        }
+        action={<div className="header-actions"><button className="secondary-action" onClick={() => { setSelecting((value) => !value); setSelected(new Set()); }}>{selecting ? "Cancel" : "Select"}</button><button className="primary-action" disabled={!subjects.length} onClick={() => setEditing(null)}><Plus /> Add Session</button></div>}
       />
       <div className="filter-bar history-filters">
         <label>
@@ -432,6 +440,7 @@ export function HistoryPage() {
           </select>
         </label>
       </div>
+      {selecting && <div className="selection-toolbar"><strong>{selected.size} selected</strong><button onClick={() => setSelected(new Set(filtered.map((session) => session.id)))}>Select all</button><button className="danger-outline" disabled={!selected.size} onClick={() => setConfirmBulk(true)}><Trash2/> Delete</button><button onClick={() => { setSelecting(false); setSelected(new Set()); }}>Cancel</button></div>}
       <div className="history-table">
         <div className="history-head">
           <span>Date</span>
@@ -445,7 +454,7 @@ export function HistoryPage() {
         {filtered.slice(page * pageSize, (page + 1) * pageSize).map((s) => (
           <div className="history-row" key={s.id}>
             <span>
-              {new Date(s.startTime).toLocaleDateString(undefined, {
+              {selecting && <input className="history-checkbox" type="checkbox" aria-label={`Select Session ${s.id}`} checked={selected.has(s.id)} onChange={() => setSelected((current) => { const next = new Set(current); if (next.has(s.id)) next.delete(s.id); else next.add(s.id); return next; })}/>} {new Date(s.startTime).toLocaleDateString(undefined, {
                 day: "numeric",
                 month: "short",
                 year: "numeric",
@@ -539,6 +548,7 @@ export function HistoryPage() {
         </Modal>
       )}
       {deleting && <DeleteConfirmation title="Delete Session?" onCancel={() => setDeleting(undefined)} onDelete={async () => { await deleteSession(deleting.id); setDeleting(undefined); }}>This permanently removes this Session.</DeleteConfirmation>}
+      {confirmBulk && <DeleteConfirmation title={`Delete ${selected.size} Sessions?`} deleteLabel={`Delete ${selected.size} Sessions`} onCancel={() => setConfirmBulk(false)} onDelete={async () => { await deleteSessions([...selected]); setSelected(new Set()); setSelecting(false); setConfirmBulk(false); }}>These Sessions will be permanently removed.</DeleteConfirmation>}
     </main>
   );
 }

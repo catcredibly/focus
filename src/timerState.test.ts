@@ -5,6 +5,8 @@ import { FocusDatabase } from "./db";
 import { filterSessions } from "./analytics/analytics";
 import { createDevelopmentAnalyticsDataset } from "./analytics/developmentDataset";
 import { completedSession, currentStreak, extendTimerState, initialTimerState, LAST_TIMER_DURATION_KEY, localDateInputValue, startTimerState, todaySummary } from "./timerState";
+import { EXTEND_PRESETS_MINUTES } from "./components/TimerExtendMenu";
+import { normaliseDuration } from "./settings";
 
 const opened: Dexie[] = [];
 const database = () => { const value = new FocusDatabase(`focus-timer-test-${crypto.randomUUID()}`); opened.push(value); return value; };
@@ -29,6 +31,21 @@ describe("timer persistence and summaries", () => {
     expect(extended.note).toBe("Chapter 3 questions");
     expect(JSON.parse(JSON.stringify(extended)).note).toBe("Chapter 3 questions");
     expect(completedSession({ ...extended, remainingSeconds: 0 }, 2_401_000)?.note).toBe("Chapter 3 questions");
+  });
+
+  it("uses the approved presets and normalizes custom extension overflow", () => {
+    expect(EXTEND_PRESETS_MINUTES).toEqual([5,15,30,60]);
+    expect(normaliseDuration(2,75,90)).toEqual({total:11790,hours:3,minutes:16,seconds:30});
+    const started=startTimerState(initialTimerState,3000,subject,year,1_000,"same-session");
+    const paused={...started,paused:true,targetEnd:null,note:"Keep this"};
+    const extended=extendTimerState(paused,1200,2_000);
+    expect(extended).toMatchObject({sessionId:"same-session",subjectId:"subject",note:"Keep this",paused:true,remainingSeconds:4200});
+    expect(extendTimerState(started,0)).toBe(started);
+  });
+
+  it("resumes the same expired Session when it is extended", () => {
+    const finished={...startTimerState(initialTimerState,300,subject,year,1_000,"session"),remainingSeconds:0,targetEnd:null,finished:true,finishedAt:301_000};
+    expect(extendTimerState(finished,300,400_000)).toMatchObject({sessionId:"session",running:true,paused:false,finished:false,remainingSeconds:300,targetEnd:700_000});
   });
 
   it("persists the last started duration without replacing it on extension", async () => {

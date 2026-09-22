@@ -2,9 +2,10 @@ import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { AlertTriangle, ArrowLeft, CheckCircle2, DatabaseBackup, Download, FileSpreadsheet, History, Upload } from "lucide-react";
 import { db } from "../db";
-import { analyzeBackup, backupFilename, createBackup, parseBackupText, restoreBackup } from "../importExport/backup";
+import { analyzeBackup, backupFilename, parseBackupText, restoreBackup } from "../importExport/backup";
 import { exportSessionsCsv, importCsvPreview, previewCsv } from "../importExport/csv";
 import { chooseTextFile, saveTextFile } from "../importExport/files";
+import { exportFullBackup } from "../importExport/exportBackup";
 import type { BackupAnalysis, ConflictPolicy, CsvMapping, CsvPreview, ImportSummary, RestoreMode } from "../importExport/types";
 
 type PreviewState = { kind:"json";analysis:BackupAnalysis;name:string } | { kind:"csv";preview:CsvPreview;text:string;name:string };
@@ -14,7 +15,7 @@ const activeTimer=()=>{try{const timer=JSON.parse(localStorage.getItem("focus.ac
 export function ImportExportPage({onNavigate}:{onNavigate:(page:string)=>void}){
   const years=useLiveQuery(()=>db.academicYears.toArray(),[])??[];
   const [preview,setPreview]=useState<PreviewState>(); const [result,setResult]=useState<ImportSummary>(); const [error,setError]=useState(""); const [busy,setBusy]=useState(false); const [mode,setMode]=useState<RestoreMode>("merge"); const [policy,setPolicy]=useState<ConflictPolicy>("keep-existing"); const [destinationYear,setDestinationYear]=useState("");
-  const exportJson=async()=>{setBusy(true);setError("");try{const backup=await createBackup();if(await saveTextFile(backupFilename(),JSON.stringify(backup,null,2),"json"))await db.settings.put({key:"lastBackupAt",value:new Date().toISOString()});}catch(e){setError(e instanceof Error?e.message:"Backup failed.");}finally{setBusy(false);}};
+  const exportJson=async()=>{setBusy(true);setError("");try{await exportFullBackup();}catch(e){setError(e instanceof Error?e.message:"Backup failed.");}finally{setBusy(false);}};
   const exportCsv=async()=>{setBusy(true);setError("");try{const sessions=await db.sessions.orderBy("startTime").toArray();const date=backupFilename().replace("focus-backup-","").replace(".json","");await saveTextFile(`focus-sessions-${date}.csv`,exportSessionsCsv(sessions),"csv");}catch(e){setError(e instanceof Error?e.message:"CSV export failed.");}finally{setBusy(false);}};
   const inspect=async(file:{name:string;text:string})=>{setError("");setResult(undefined);try{if(!/\.(json|csv)$/i.test(file.name))throw new Error("Choose a .json or .csv file.");if(/\.json$/i.test(file.name)){const backup=parseBackupText(file.text);setPreview({kind:"json",analysis:await analyzeBackup(backup),name:file.name});}else setPreview({kind:"csv",preview:await previewCsv(file.text,undefined,destinationYear||undefined),text:file.text,name:file.name});}catch(e){setPreview(undefined);setError(e instanceof Error?e.message:"The file could not be read.");}};
   const choose=async()=>{const file=await chooseTextFile();if(file)await inspect(file);};

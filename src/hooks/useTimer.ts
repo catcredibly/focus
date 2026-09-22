@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { db } from "../db";
 import type { AcademicYear, Subject } from "../types";
 import { ACTIVE_TIMER_STORAGE_KEY, completedSession, extendTimerState, idleTimerState, initialTimerState, startTimerState, type TimerState } from "../timerState";
+import { handleTimerCompletion } from "../timerCompletion";
 
 const CHANNEL = "focus-timer";
 function readStored(): TimerState {
@@ -32,14 +33,16 @@ export function useTimer() {
   }, []);
 
   useEffect(() => {
-    if (!state.running || state.paused || !state.targetEnd) return;
+    if (!state.running || state.paused || state.finished || !state.targetEnd) return;
     const tick = () => {
       const remaining = Math.max(0, Math.ceil((state.targetEnd! - Date.now()) / 1000));
       setState((current) => ({ ...current, remainingSeconds: remaining }));
       if (remaining <= 0 && !completingRef.current) {
         completingRef.current = true;
-        void persistCompleted({ ...state, remainingSeconds: 0 }, state.targetEnd!).finally(() => {
-          commit(idleTimerState({ ...state, remainingSeconds: 0 }));
+        const completed = { ...state, remainingSeconds: 0, targetEnd: null, finished: true, finishedAt: state.targetEnd };
+        commit(completed);
+        const effects = window.location.hash.includes("popout") ? Promise.resolve() : handleTimerCompletion(completed);
+        void effects.finally(() => {
           completingRef.current = false;
         });
       }
@@ -54,7 +57,7 @@ export function useTimer() {
   }, [commit, state]);
 
   const pause = useCallback(() => {
-    if (!state.running) return;
+    if (!state.running || state.finished) return;
     if (state.paused) {
       commit({
         ...state,
@@ -71,8 +74,14 @@ export function useTimer() {
     const snapshot = state.running && !state.paused && state.targetEnd
       ? { ...state, remainingSeconds: Math.max(0, Math.ceil((state.targetEnd - now) / 1000)) }
       : state;
-    if (snapshot.running) await persistCompleted(snapshot, now);
+    if (snapshot.running) await persistCompleted(snapshot, snapshot.finishedAt ?? now);
     commit(idleTimerState(snapshot));
+  }, [commit, state]);
+
+  const finish = useCallback(async () => {
+    if (!state.running || !state.finished) return;
+    await persistCompleted(state, state.finishedAt ?? Date.now());
+    commit(idleTimerState(state));
   }, [commit, state]);
 
   const extend = useCallback((seconds: number) => {
@@ -90,7 +99,7 @@ export function useTimer() {
     return { hours, minutes, seconds };
   }, [state.remainingSeconds]);
 
-  return { state, display, start, pause, stop, extend, setNote };
+  return { state, display, start, pause, stop, finish, extend, setNote };
 }
 
 async function persistCompleted(state: TimerState, endTime: number) {

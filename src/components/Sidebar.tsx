@@ -8,6 +8,8 @@ import {
   Menu,
   Settings,
 } from "lucide-react";
+import { useSettings } from "../hooks/useSettings";
+import { greeting } from "../settings";
 
 const items = [
   [Clock3, "Timer"],
@@ -27,6 +29,7 @@ type Props = {
 };
 
 export function Sidebar({ collapsed, onToggle, active, onNavigate }: Props) {
+  const { settings } = useSettings();
   return (
     <aside className={`sidebar ${collapsed ? "sidebar--collapsed" : ""}`}>
       <div className="brand-row">
@@ -55,7 +58,7 @@ export function Sidebar({ collapsed, onToggle, active, onNavigate }: Props) {
         <div className="sidebar-greeting">
           <div className="moon">◒</div>
           <div>
-            <div>Good evening, Daniel</div>
+            <div>{greeting(settings.displayName)}</div>
             <span>Stay consistent.</span>
           </div>
         </div>

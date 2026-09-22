@@ -2,7 +2,7 @@ import "fake-indexeddb/auto";
 import Dexie from "dexie";
 import { afterEach, describe, expect, it } from "vitest";
 import { FocusDatabase } from "./db";
-import { deleteSession, deleteSubjectIfUnused, setAcademicYearArchived } from "./management";
+import { canDeleteManagedRecord, deleteAcademicYearCascade, deleteSession, deleteSessions, deleteSubjectCascade, setAcademicYearArchived } from "./management";
 import { managementViewState } from "./managementViewState";
 
 const opened: Dexie[] = [];
@@ -27,20 +27,41 @@ describe("management archive and deletion integrity", () => {
     expect((await testDb.academicYears.get("year"))?.archived).toBe(false);
   });
 
-  it("blocks Subject deletion when Sessions would be orphaned", async () => {
-    const testDb=database();
-    await testDb.subjects.add({id:"subject",academicYearId:"year",name:"Subject",color:"#fff",archived:false});
-    await testDb.sessions.add({id:"session",subjectId:"subject",subjectName:"Subject",academicYearId:"year",academicYearName:"Year",startTime:1,endTime:2,focusedDurationSeconds:1,archived:false});
-    expect(await deleteSubjectIfUnused("subject",testDb)).toBe(false);
-    expect(await testDb.subjects.get("subject")).toBeTruthy();
+  it("uses archive-first deletion visibility unless direct deletion is enabled", () => {
+    expect(canDeleteManagedRecord(false, false)).toBe(false);
+    expect(canDeleteManagedRecord(true, false)).toBe(true);
+    expect(canDeleteManagedRecord(false, true)).toBe(true);
   });
 
-  it("deletes only confirmed, unreferenced records through deletion helpers", async () => {
+  it("deletes a Subject and its Sessions while preserving unrelated records", async () => {
     const testDb=database();
-    await testDb.subjects.bulkAdd([{id:"one",academicYearId:"year",name:"One",color:"#fff",archived:false},{id:"two",academicYearId:"year",name:"Two",color:"#fff",archived:false}]);
-    expect(await deleteSubjectIfUnused("one",testDb)).toBe(true);
-    expect((await testDb.subjects.toArray()).map((row)=>row.id)).toEqual(["two"]);
-    await testDb.sessions.add({id:"session",subjectId:"two",subjectName:"Two",academicYearId:"year",academicYearName:"Year",startTime:1,endTime:2,focusedDurationSeconds:1,archived:false});
-    await deleteSession("session",testDb); expect(await testDb.sessions.count()).toBe(0);
+    await testDb.subjects.bulkAdd([{id:"subject",academicYearId:"year",name:"Subject",color:"#fff",archived:true},{id:"other",academicYearId:"year",name:"Other",color:"#fff",archived:false}]);
+    await testDb.sessions.bulkAdd([{id:"session",subjectId:"subject",subjectName:"Subject",academicYearId:"year",academicYearName:"Year",startTime:1,endTime:2,focusedDurationSeconds:1,archived:false},{id:"other-session",subjectId:"other",subjectName:"Other",academicYearId:"year",academicYearName:"Year",startTime:1,endTime:3,focusedDurationSeconds:2,archived:false}]);
+    await deleteSubjectCascade("subject",testDb);
+    expect(await testDb.subjects.get("subject")).toBeUndefined();
+    expect(await testDb.sessions.get("session")).toBeUndefined();
+    expect(await testDb.subjects.get("other")).toBeTruthy();
+    expect(await testDb.sessions.get("other-session")).toBeTruthy();
+  });
+
+  it("deletes an Academic Year with all Subjects and Sessions atomically", async () => {
+    const testDb=database();
+    await testDb.academicYears.bulkAdd([{id:"year",name:"Year",archived:true},{id:"other-year",name:"Other Year",archived:false}]);
+    await testDb.subjects.bulkAdd([{id:"one",academicYearId:"year",name:"One",color:"#fff",archived:true},{id:"two",academicYearId:"year",name:"Two",color:"#fff",archived:true},{id:"other",academicYearId:"other-year",name:"Other",color:"#fff",archived:false}]);
+    const session=(id:string,subjectId:string,academicYearId:string)=>({id,subjectId,subjectName:subjectId,academicYearId,academicYearName:academicYearId,startTime:1,endTime:2,focusedDurationSeconds:1,archived:false});
+    await testDb.sessions.bulkAdd([session("one-session","one","year"),session("two-session","two","year"),session("other-session","other","other-year")]);
+    await deleteAcademicYearCascade("year",testDb);
+    expect((await testDb.academicYears.toArray()).map((row)=>row.id)).toEqual(["other-year"]);
+    expect((await testDb.subjects.toArray()).map((row)=>row.id)).toEqual(["other"]);
+    expect((await testDb.sessions.toArray()).map((row)=>row.id)).toEqual(["other-session"]);
+  });
+
+  it("bulk deletion removes exactly the selected Sessions", async () => {
+    const testDb=database();
+    const session=(id:string)=>({id,subjectId:"subject",subjectName:"Subject",academicYearId:"year",academicYearName:"Year",startTime:1,endTime:2,focusedDurationSeconds:1,archived:false});
+    await testDb.sessions.bulkAdd([session("one"),session("two"),session("three")]);
+    await deleteSessions(["one","three"],testDb);
+    expect((await testDb.sessions.toArray()).map((row)=>row.id)).toEqual(["two"]);
+    await deleteSession("two",testDb); expect(await testDb.sessions.count()).toBe(0);
   });
 });
