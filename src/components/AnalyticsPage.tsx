@@ -467,7 +467,7 @@ function TimeTrends({ sessions, subjects }: { sessions: FocusSession[]; subjects
               <XAxis dataKey="label" stroke="#7890a4" fontSize={10} />
               <YAxis tickFormatter={durationTick} stroke="#7890a4" />
               <Tooltip content={<DurationTooltip />} />
-              <Line type="monotone" dataKey="cumulativeSeconds" stroke="#a879ff" dot={false} />
+              <Line type="monotone" dataKey="cumulativeSeconds" name={t("Cumulative Focus Time")} stroke="#a879ff" dot={false} />
             </LineChart>
           </ScrollChart>
         </Panel>
