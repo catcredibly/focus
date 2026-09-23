@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { POPOUT_SIZE, clampFreePosition, cornerPosition, defaultEdgeForCorner, nearestDockCorner, type WorkArea } from "./popoutPlacement";
+import { POPOUT_SIZE, clampFreePosition, cornerPosition, defaultEdgeForCorner, edgeOffset, nearestDockCorner, nearestEdge, type WorkArea } from "./popoutPlacement";
 
 const work: WorkArea = { x: 100, y: 50, width: 1200, height: 800 };
 
@@ -21,5 +21,7 @@ describe("popout placement", () => {
 
   it("maps dock corners to their reveal-tab edge", () => {
     expect(defaultEdgeForCorner("bottom-right")).toBe("right");
+    expect(nearestEdge({ x: 100, y: 300 }, work, POPOUT_SIZE)).toBe("left");
+    expect(edgeOffset({ x: 500, y: 365 }, work, POPOUT_SIZE, "right")).toBe(0.5);
   });
 });

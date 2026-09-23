@@ -421,6 +421,14 @@ const ja: Record<keyof typeof en, string> = {
   "1 second": "1 秒",
   "2 seconds": "2 秒",
   "90th percentile: {{percentile}} · Four intervals of {{interval}}": "90 パーセンタイル：{{percentile}} · {{interval}} ごとの 4 区間",
+  "Dock": "ドッキング",
+  "Auto-hide popout": "ポップアウトを自動的に隠す",
+  "Auto-hide delay": "自動非表示の遅延",
+  "Auto-hide delay in seconds": "自動非表示の遅延（秒）",
+  "Seconds before the popout hides after you leave it.": "ポインターが離れてからポップアウトを隠すまでの秒数です。",
+  "Auto-hide tab size": "自動非表示タブのサイズ",
+  "Show accent indicator on auto-hide tab": "自動非表示タブにアクセント表示を表示する",
+  "Enter zero or a positive number.": "0 または正の数を入力してください。",
 };
 
 export default ja;

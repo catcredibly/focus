@@ -182,7 +182,7 @@ fn open_timer_popout(app: tauri::AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn open_timer_menu(app: tauri::AppHandle) -> Result<(), String> {
+fn open_timer_menu(app: tauri::AppHandle, view: Option<String>) -> Result<(), String> {
     let timer = app.get_webview_window("timer").ok_or_else(|| "The timer window is unavailable".to_string())?;
     let menu = app.get_webview_window("timer-menu").ok_or_else(|| "The timer menu is unavailable".to_string())?;
     let timer_position = timer.outer_position().map_err(|e| e.to_string())?;
@@ -199,6 +199,7 @@ fn open_timer_menu(app: tauri::AppHandle) -> Result<(), String> {
     let y = if below + menu_size.height as i32 <= area_bottom { below } else { above }
         .clamp(area.y, (area_bottom - menu_size.height as i32).max(area.y));
     menu.set_position(tauri::PhysicalPosition::new(x, y)).map_err(|e| e.to_string())?;
+    menu.emit("focus://popout-menu-view", view.unwrap_or_else(|| "more".into())).map_err(|e| e.to_string())?;
     menu.show().map_err(|e| e.to_string())?;
     menu.set_focus().map_err(|e| e.to_string())?;
     Ok(())
@@ -215,15 +216,24 @@ fn hide_timer_menu(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+fn auto_hide_tab_size(edge: &str, tab_size: &str) -> (i32, i32) {
+    let vertical = edge == "left" || edge == "right";
+    let (thickness, length) = match tab_size {
+        "small" => (14, 46),
+        "large" => (24, 76),
+        _ => (18, 58),
+    };
+    if vertical { (thickness, length) } else { (length, thickness) }
+}
+
 #[tauri::command]
-fn show_timer_auto_hide_tab(app: tauri::AppHandle, monitor_id: String, edge: String, offset: f64) -> Result<(), String> {
+fn show_timer_auto_hide_tab(app: tauri::AppHandle, monitor_id: String, edge: String, offset: f64, tab_size: String) -> Result<(), String> {
     let timer = app.get_webview_window("timer").ok_or_else(|| "The timer window is unavailable".to_string())?;
     if !timer.is_visible().map_err(|e| e.to_string())? {
         return Ok(());
     }
     let tab = app.get_webview_window("timer-tab").ok_or_else(|| "The timer reveal tab is unavailable".to_string())?;
-    let vertical = edge == "left" || edge == "right";
-    let (width, height) = if vertical { (18, 58) } else { (58, 18) };
+    let (width, height) = auto_hide_tab_size(&edge, &tab_size);
     tab.set_size(tauri::LogicalSize::new(width, height)).map_err(|e| e.to_string())?;
     let size = tab.outer_size().map_err(|e| e.to_string())?;
     let area = timer_work_area(&timer, Some(&monitor_id))?;
@@ -240,8 +250,39 @@ fn show_timer_auto_hide_tab(app: tauri::AppHandle, monitor_id: String, edge: Str
         _ => tauri::PhysicalPosition::new(along_x, area.y + area.height as i32 - size.height as i32),
     };
     tab.set_position(position).map_err(|e| e.to_string())?;
+    tab.emit("focus://auto-hide-tab-edge", edge).map_err(|e| e.to_string())?;
     tab.show().map_err(|e| e.to_string())?;
     timer.hide().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn resize_timer_auto_hide_tab(app: tauri::AppHandle, edge: String, tab_size: String) -> Result<(), String> {
+    let tab = app.get_webview_window("timer-tab").ok_or_else(|| "The timer reveal tab is unavailable".to_string())?;
+    if !tab.is_visible().map_err(|e| e.to_string())? {
+        return Ok(());
+    }
+    let area = timer_work_area(&tab, None)?;
+    let old_position = tab.outer_position().map_err(|e| e.to_string())?;
+    let old_size = tab.outer_size().map_err(|e| e.to_string())?;
+    let inset = (10.0 * tab.scale_factor().map_err(|e| e.to_string())?).round() as i32;
+    let old_span = if edge == "left" || edge == "right" { area.height as i32 - old_size.height as i32 - inset * 2 } else { area.width as i32 - old_size.width as i32 - inset * 2 };
+    let old_value = if edge == "left" || edge == "right" { old_position.y - area.y - inset } else { old_position.x - area.x - inset };
+    let offset = if old_span <= 0 { 0.0 } else { (old_value as f64 / old_span as f64).clamp(0.0, 1.0) };
+    let (width, height) = auto_hide_tab_size(&edge, &tab_size);
+    tab.set_size(tauri::LogicalSize::new(width, height)).map_err(|e| e.to_string())?;
+    let size = tab.outer_size().map_err(|e| e.to_string())?;
+    let x_span = (area.width as i32 - size.width as i32 - inset * 2).max(0);
+    let y_span = (area.height as i32 - size.height as i32 - inset * 2).max(0);
+    let along_x = area.x + inset + (offset * x_span as f64).round() as i32;
+    let along_y = area.y + inset + (offset * y_span as f64).round() as i32;
+    let position = match edge.as_str() {
+        "left" => tauri::PhysicalPosition::new(area.x, along_y),
+        "right" => tauri::PhysicalPosition::new(area.x + area.width as i32 - size.width as i32, along_y),
+        "top" => tauri::PhysicalPosition::new(along_x, area.y),
+        _ => tauri::PhysicalPosition::new(along_x, area.y + area.height as i32 - size.height as i32),
+    };
+    tab.set_position(position).map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -418,6 +459,7 @@ pub fn run() {
             open_timer_menu,
             hide_timer_menu,
             show_timer_auto_hide_tab,
+            resize_timer_auto_hide_tab,
             request_timer_reveal,
             cancel_timer_auto_hide,
             set_timer_always_on_top,

@@ -21,6 +21,9 @@ describe("application settings", () => {
     expect(DEFAULT_SETTINGS.accentColour).toBe("orange");
     expect(DEFAULT_SETTINGS.popoutDockingEnabled).toBe(false);
     expect(DEFAULT_SETTINGS.popoutDocked).toBe(false);
+    expect(DEFAULT_SETTINGS.popoutAutoHideDelaySeconds).toBe(0.4);
+    expect(DEFAULT_SETTINGS.popoutAutoHideTabSize).toBe("medium");
+    expect(DEFAULT_SETTINGS.popoutAutoHideShowAccent).toBe(true);
   });
 
   it("persists typed preferences and falls back from invalid enum values", async () => {
@@ -30,6 +33,7 @@ describe("application settings", () => {
     await saveSetting("popoutAlwaysOnTop", false, testDb);
     await saveSetting("popoutTransparency", 0, testDb);
     await testDb.settings.put({ key: "uiScale", value: "enormous" });
+    await testDb.settings.put({ key: "popoutAutoHideDelaySeconds", value: "-2" });
     const settings = await loadSettings(testDb);
     expect(settings.displayName).toBe("Alex");
     expect(settings.accentColour).toBe("miku");
@@ -37,6 +41,7 @@ describe("application settings", () => {
     expect(settings.popoutTransparency).toBe(0);
     expect(settings.uiScale).toBe("medium");
     expect(settings.allowDirectActiveDeletion).toBe(false);
+    expect(settings.popoutAutoHideDelaySeconds).toBe(0);
     await saveSetting("allowDirectActiveDeletion", true, testDb);
     expect((await loadSettings(testDb)).allowDirectActiveDeletion).toBe(true);
   });

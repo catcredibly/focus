@@ -39,3 +39,20 @@ export function clampFreePosition(position: Point, workArea: WorkArea, size: Siz
 export function defaultEdgeForCorner(corner: DockCorner): DockEdge {
   return corner.endsWith("left") ? "left" : "right";
 }
+
+export function nearestEdge(position: Point, workArea: WorkArea, size: Size): DockEdge {
+  const centre = { x: position.x + size.width / 2, y: position.y + size.height / 2 };
+  const distances: [DockEdge, number][] = [
+    ["left", Math.abs(centre.x - workArea.x)],
+    ["right", Math.abs(workArea.x + workArea.width - centre.x)],
+    ["top", Math.abs(centre.y - workArea.y)],
+    ["bottom", Math.abs(workArea.y + workArea.height - centre.y)],
+  ];
+  return distances.sort((left, right) => left[1] - right[1])[0][0];
+}
+
+export function edgeOffset(position: Point, workArea: WorkArea, size: Size, edge: DockEdge): number {
+  const span = edge === "left" || edge === "right" ? workArea.height - size.height : workArea.width - size.width;
+  const value = edge === "left" || edge === "right" ? position.y - workArea.y : position.x - workArea.x;
+  return span <= 0 ? 0 : clamp(value / span, 0, 1);
+}

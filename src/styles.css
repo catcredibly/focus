@@ -137,7 +137,7 @@ button { color: inherit; }
 }
 
 .popout-root { width: 100vw; height: 100vh; background: rgba(7,18,29,var(--popout-surface-alpha,1)); border: 1px solid rgba(34,61,82,var(--popout-surface-alpha,1)); border-radius: 10px; position: relative; font-size: var(--ui-font-size,14px); user-select: none; transition: background-color 160ms ease, border-color 160ms ease; }
-.popout-drag-edge { position: absolute; top: 0; left: 10px; right: 40px; z-index: 12; height: 14px; cursor: move; }
+.popout-drag-edge { position: absolute; top: 0; left: 10px; right: 70px; z-index: 12; height: 14px; cursor: move; }
 .popout-subject-row { width: 100%; display: flex; align-items: center; justify-content: center; gap: 12px; }
 .popout-subject-row time { color: #8fa5b8; font-size: 11px; white-space: nowrap; }
 .popout-root[data-size="small"] .popout-content { padding: 8px 14px 7px; }
@@ -159,11 +159,15 @@ button { color: inherit; }
 .popout-labels { width: 172px; display: grid; grid-template-columns: repeat(3,1fr); margin-top: -2px; color: #71889a; font-size: 8px; text-align: center; transition: transform 160ms ease; }
 .popout-status { min-height: 18px; margin-top: 4px; color: #aebfcd; font-size: 11px; text-align: center; transition: transform 160ms ease; }
 .popout-controls { display: flex; justify-content: center; gap: 16px; opacity: 1; transform: translateY(0); transition: opacity 150ms ease, transform 150ms ease; }
-.popout-controls button, .popout-close { width: 34px; height: 30px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #c6d4df; cursor: pointer; display: grid; place-items: center; }
-.popout-controls button:hover, .popout-close:hover { color: var(--accent,#ff922b); background: rgba(255,255,255,.055); }
+.popout-controls button, .popout-close, .popout-pin { width: 34px; height: 30px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #c6d4df; cursor: pointer; display: grid; place-items: center; }
+.popout-controls button:hover, .popout-close:hover, .popout-pin:hover { color: var(--accent,#ff922b); background: rgba(255,255,255,.055); }
 .popout-controls svg { width: 18px; height: 18px; }
-.popout-close { position: absolute; top: 5px; right: 6px; width: 28px; height: 28px; opacity: 1; transition: opacity 150ms ease; }
+.popout-close, .popout-pin { position: absolute; top: 5px; z-index: 20; width: 28px; height: 28px; opacity: 1; transition: opacity 150ms ease; }
+.popout-close { right: 6px; }
+.popout-pin { right: 36px; color: var(--accent,#ff922b); opacity: 0; pointer-events: none; }
+.popout-root:hover .popout-pin, .popout-root:focus-within .popout-pin { opacity: 1; pointer-events: auto; }
 .popout-close svg { width: 15px; height: 15px; }
+.popout-pin svg { width: 14px; height: 14px; }
 .popout-root--hover-controls:not(:hover):not(:focus-within) .popout-controls { opacity: 0; pointer-events: none; transform: translateY(4px); transition-delay: var(--controls-hide-delay,1s); }
 .popout-root--hover-controls:hover .popout-controls, .popout-root--hover-controls:focus-within .popout-controls { transition-delay: 0ms; }
 .popout-root--hover-controls .popout-content { justify-content: center; }

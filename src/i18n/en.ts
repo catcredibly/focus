@@ -419,6 +419,14 @@ const en = {
   "1 second": "1 second",
   "2 seconds": "2 seconds",
   "90th percentile: {{percentile}} · Four intervals of {{interval}}": "90th percentile: {{percentile}} · Four intervals of {{interval}}",
+  "Dock": "Dock",
+  "Auto-hide popout": "Auto-hide popout",
+  "Auto-hide delay": "Auto-hide delay",
+  "Auto-hide delay in seconds": "Auto-hide delay in seconds",
+  "Seconds before the popout hides after you leave it.": "Seconds before the popout hides after you leave it.",
+  "Auto-hide tab size": "Auto-hide tab size",
+  "Show accent indicator on auto-hide tab": "Show accent indicator on auto-hide tab",
+  "Enter zero or a positive number.": "Enter zero or a positive number.",
 } as const;
 
 export default en;

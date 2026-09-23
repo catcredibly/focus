@@ -1,11 +1,11 @@
-import { Check, MoreHorizontal, Pause, Play, Plus, Square, X } from "lucide-react";
+import { Check, MoreHorizontal, Pause, Pin, Play, Plus, Square, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useTranslation } from "react-i18next";
 import { useTimer } from "../hooks/useTimer";
 import { useSettings } from "../hooks/useSettings";
-import { cornerPosition, defaultEdgeForCorner, nearestDockCorner, type Point, type Size, type WorkArea } from "../popoutPlacement";
+import { cornerPosition, defaultEdgeForCorner, edgeOffset, nearestDockCorner, nearestEdge, type Point, type Size, type WorkArea } from "../popoutPlacement";
 import type { DockCorner } from "../settings";
 import { TimerExtendMenu } from "./TimerExtendMenu";
 import { formatTimerClock } from "../dateTime";
@@ -24,7 +24,7 @@ export function PopoutTimer() {
   const { t } = useTranslation();
   const { settings, loaded, setSetting } = useSettings();
   const [menu, setMenu] = useState<"extend" | null>(null);
-  const [revealed, setRevealed] = useState(false);
+  const [revealed, setRevealed] = useState(true);
   const [stopping, setStopping] = useState(false);
   const [menuWindowOpen, setMenuWindowOpen] = useState(false);
   const [displays, setDisplays] = useState<{ id: string; label: string }[]>([]);
@@ -36,13 +36,14 @@ export function PopoutTimer() {
   const hideTimerRef = useRef(0);
   const dockedActive = settings.popoutDockingEnabled && settings.popoutDocked;
   const selectedMonitorAvailable = settings.popoutDockMonitor === "current" || displays.some((display) => display.id === settings.popoutDockMonitor);
-  const autoHideActive = dockedActive && settings.popoutDockAutoHide && selectedMonitorAvailable;
+  const autoHideActive = settings.popoutDockAutoHide;
 
   const geometry = useCallback(async () => {
     const window = getCurrentWindow();
-    const [workArea, size] = await Promise.all([invoke<WorkArea>("get_timer_work_area", { monitorId: selectedMonitorAvailable ? settings.popoutDockMonitor : "current" }), window.outerSize()]);
+    const monitorId = dockedActive && selectedMonitorAvailable ? settings.popoutDockMonitor : "current";
+    const [workArea, size] = await Promise.all([invoke<WorkArea>("get_timer_work_area", { monitorId }), window.outerSize()]);
     return { workArea, size: { width: size.width, height: size.height } as Size };
-  }, [selectedMonitorAvailable, settings.popoutDockMonitor]);
+  }, [dockedActive, selectedMonitorAvailable, settings.popoutDockMonitor]);
 
   const move = useCallback(async (position: Point, unchecked = false) => {
     programmaticUntilRef.current = Date.now() + 500;
@@ -58,16 +59,21 @@ export function PopoutTimer() {
   const clearHideTimer = () => window.clearTimeout(hideTimerRef.current);
   const reveal = useCallback(async () => {
     if (!autoHideActive || draggingRef.current) return;
-    clearHideTimer(); await placeDocked(); await invoke("cancel_timer_auto_hide"); setRevealed(true);
-  }, [autoHideActive, placeDocked]);
+    clearHideTimer(); if (dockedActive) await placeDocked(); await invoke("cancel_timer_auto_hide"); setRevealed(true);
+  }, [autoHideActive, dockedActive, placeDocked]);
   const hide = useCallback(async () => {
     if (!autoHideActive || draggingRef.current || menu !== null || menuWindowOpen) return;
+    const window = getCurrentWindow();
+    const [{ workArea, size }, position] = await Promise.all([geometry(), window.outerPosition()]);
+    const edge = dockedActive ? settings.popoutAutoHideEdge : nearestEdge(position, workArea, size);
+    const offset = dockedActive ? settings.popoutAutoHideOffset : edgeOffset(position, workArea, size, edge);
+    if (!dockedActive && settings.popoutRememberPosition) await Promise.all([setSetting("popoutPositionX", position.x), setSetting("popoutPositionY", position.y)]);
     setRevealed(false);
-    await invoke("show_timer_auto_hide_tab", { monitorId: settings.popoutDockMonitor, edge: settings.popoutAutoHideEdge, offset: settings.popoutAutoHideOffset });
-  }, [autoHideActive, menu, menuWindowOpen, settings.popoutAutoHideEdge, settings.popoutAutoHideOffset, settings.popoutDockMonitor]);
+    await invoke("show_timer_auto_hide_tab", { monitorId: dockedActive ? settings.popoutDockMonitor : "current", edge, offset, tabSize: settings.popoutAutoHideTabSize });
+  }, [autoHideActive, dockedActive, geometry, menu, menuWindowOpen, setSetting, settings.popoutAutoHideEdge, settings.popoutAutoHideOffset, settings.popoutAutoHideTabSize, settings.popoutDockMonitor, settings.popoutRememberPosition]);
   const scheduleHide = () => {
     clearHideTimer();
-    if (autoHideActive && revealed && menu === null && !menuWindowOpen && !draggingRef.current) hideTimerRef.current = window.setTimeout(() => void hide(), 400);
+    if (autoHideActive && revealed && menu === null && !menuWindowOpen && !draggingRef.current) hideTimerRef.current = window.setTimeout(() => void hide(), settings.popoutAutoHideDelaySeconds * 1000);
   };
 
   const settleDrag = async () => {
@@ -87,20 +93,19 @@ export function PopoutTimer() {
 
   const startDrag = (event: ReactPointerEvent) => {
     if (!isTauri() || dockedActive || event.button !== 0 || (event.target as HTMLElement).closest("[data-no-drag]")) return;
-    clearHideTimer(); setMenu(null);
-    const start = { x: event.clientX, y: event.clientY };
-    const cleanup = () => { window.removeEventListener("pointermove", movePointer); window.removeEventListener("pointerup", cleanup); window.removeEventListener("pointercancel", cleanup); };
-    const perform = async () => {
-      draggingRef.current = true;
-      try { await getCurrentWindow().startDragging(); } finally {
-        draggingRef.current = false; await settleDrag();
-      }
-    };
-    const movePointer = (pointer: PointerEvent) => {
-      if (Math.hypot(pointer.clientX - start.x, pointer.clientY - start.y) < 5) return;
-      cleanup(); pointer.preventDefault(); void perform();
-    };
-    window.addEventListener("pointermove", movePointer); window.addEventListener("pointerup", cleanup); window.addEventListener("pointercancel", cleanup);
+    event.preventDefault(); clearHideTimer(); setMenu(null); draggingRef.current = true;
+    void getCurrentWindow().startDragging().finally(() => { draggingRef.current = false; void settleDrag(); });
+  };
+
+  const toggleDock = async () => {
+    if (dockedActive) {
+      await setSetting("popoutDocked", false);
+      await invoke("restore_timer_floating_position", { x: settings.popoutPositionX, y: settings.popoutPositionY });
+    } else if (!settings.popoutDockingEnabled) {
+      clearHideTimer(); setMenuWindowOpen(true); await invoke("open_timer_menu", { view: "dock" }).catch(() => setMenuWindowOpen(false));
+    } else {
+      await setSetting("popoutDocked", true);
+    }
   };
 
   useEffect(() => {
@@ -116,6 +121,7 @@ export function PopoutTimer() {
     }
     wasDockedRef.current = dockedActive;
   }, [dockedActive, move, settings.popoutPositionX, settings.popoutPositionY, settings.popoutRememberPosition]);
+  useEffect(() => { if (!autoHideActive) setRevealed(true); }, [autoHideActive]);
 
   useEffect(() => {
     if (!loaded || undockingRef.current || !settings.popoutDockingEnabled || !settings.popoutDocked) return;
@@ -180,11 +186,12 @@ export function PopoutTimer() {
       <div className="popout-labels"><span>{t("Hours")}</span><span>{t("Minutes")}</span><span>{t("Seconds")}</span></div>
       <div className="popout-status">{timer.state.finished ? t("Finished") : timer.state.paused ? t("Paused") : ""}</div>
       <button data-no-drag className="popout-close tooltip-button" aria-label={t("Close popout")} data-tooltip={t("Close popout")} onClick={() => invoke("hide_timer_popout")}><X/></button>
+      <button data-no-drag className="popout-pin tooltip-button" aria-label={t(dockedActive ? "Undock" : "Dock")} data-tooltip={t(dockedActive ? "Undock" : "Dock")} onClick={() => void toggleDock()}><Pin fill={dockedActive ? "currentColor" : "none"}/></button>
       <div className="popout-controls" data-no-drag>
         <button className="tooltip-button" aria-label={timer.state.finished ? t("Finish") : timer.state.paused ? t("Resume") : t("Pause")} data-tooltip={timer.state.finished ? t("Finish") : timer.state.paused ? t("Resume") : t("Pause")} onClick={timer.state.finished ? timer.finish : timer.pause}>{timer.state.finished ? <Check/> : timer.state.paused ? <Play fill="currentColor"/> : <Pause fill="currentColor"/>}</button>
         <button className="tooltip-button" aria-label={t("Extend")} data-tooltip={t("Extend")} onClick={() => setMenu((value) => value === "extend" ? null : "extend")}><Plus size={18}/></button>
         <button className="tooltip-button" aria-label={t("Stop")} data-tooltip={t("Stop")} onClick={() => setStopping(true)}><Square size={15} fill="currentColor"/></button>
-        <button className="tooltip-button" aria-label={t("More")} data-tooltip={t("More")} data-popout-menu-button onClick={() => { clearHideTimer(); setMenuWindowOpen(true); void invoke("open_timer_menu").catch(() => setMenuWindowOpen(false)); }}><MoreHorizontal size={18}/></button>
+        <button className="tooltip-button" aria-label={t("More")} data-tooltip={t("More")} data-popout-menu-button onClick={() => { clearHideTimer(); setMenuWindowOpen(true); void invoke("open_timer_menu", { view: "more" }).catch(() => setMenuWindowOpen(false)); }}><MoreHorizontal size={18}/></button>
       </div>
       {menu === "extend" && <div data-no-drag data-popout-overlay><TimerExtendMenu compact onClose={() => setMenu(null)} onExtend={(seconds) => { timer.extend(seconds); setMenu(null); }}/></div>}
       {stopping && <div data-no-drag data-popout-overlay className="popout-menu popout-stop-confirm"><strong>{t("Stop timer?")}</strong><span>{t("Elapsed focus time will be saved.")}</span><button onClick={() => setStopping(false)}>{t("Cancel")}</button><button className="danger-action" onClick={async () => { setStopping(false); await timer.stop(); }}>{t("Stop and save")}</button></div>}

@@ -421,6 +421,14 @@ const zhTW: Record<keyof typeof en, string> = {
   "1 second": "1 秒",
   "2 seconds": "2 秒",
   "90th percentile: {{percentile}} · Four intervals of {{interval}}": "第 90 百分位：{{percentile}} · 四個區間，每個 {{interval}}",
+  "Dock": "停靠",
+  "Auto-hide popout": "自動隱藏彈出視窗",
+  "Auto-hide delay": "自動隱藏延遲",
+  "Auto-hide delay in seconds": "自動隱藏延遲（秒）",
+  "Seconds before the popout hides after you leave it.": "指標離開後，彈出視窗等待多少秒再隱藏。",
+  "Auto-hide tab size": "自動隱藏標籤大小",
+  "Show accent indicator on auto-hide tab": "在自動隱藏標籤上顯示強調色指示點",
+  "Enter zero or a positive number.": "請輸入零或正數。",
 };
 
 export default zhTW;

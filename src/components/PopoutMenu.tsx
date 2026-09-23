@@ -22,6 +22,11 @@ export function PopoutMenu() {
     void getCurrentWindow().onFocusChanged(({ payload }) => { if (!payload) close(); }).then((value) => { stop = value; });
     return () => stop?.();
   }, []);
+  useEffect(() => {
+    let stop: (() => void) | undefined;
+    void getCurrentWindow().listen<string>("focus://popout-menu-view", ({ payload }) => setView(payload === "dock" ? "dock" : "more")).then((value) => { stop = value; });
+    return () => stop?.();
+  }, []);
 
   const dock = async (corner: DockCorner) => {
     await Promise.all([
@@ -41,7 +46,7 @@ export function PopoutMenu() {
       }}>{t("Undock")}</button>}
       <button onClick={() => setView("dock")}>{t("Dock to")}<ChevronRight/></button>
       <label className="popout-menu-select">{t("Monitor")}<select title={displays.find((display) => display.id === settings.popoutDockMonitor)?.label} value={settings.popoutDockMonitor} onChange={async (event) => { await setSetting("popoutDockMonitor", event.target.value as FocusSettings["popoutDockMonitor"]); close(); }}><option value="current">{t("Current monitor")}</option>{displays.map((display) => <option value={display.id} key={display.id}>{display.label}</option>)}</select></label>
-      {docked && <button onClick={async () => { await setSetting("popoutDockAutoHide", !settings.popoutDockAutoHide); close(); }}>{t("Auto-hide")} <span>{t(settings.popoutDockAutoHide ? "On" : "Off")}</span></button>}
+      <button onClick={async () => { await setSetting("popoutDockAutoHide", !settings.popoutDockAutoHide); close(); }}>{t("Auto-hide")} <span>{t(settings.popoutDockAutoHide ? "On" : "Off")}</span></button>
       <button onClick={() => { close(); void invoke("focus_main_window"); }}>{t("Open Focus")}</button>
       <button onClick={() => { close(); void invoke("hide_timer_popout"); }}>{t("Close popout")}</button>
     </> : <>
