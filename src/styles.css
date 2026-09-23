@@ -142,13 +142,13 @@ button { color: inherit; }
 .popout-subject-row time { color: #8fa5b8; font-size: 11px; white-space: nowrap; }
 .popout-root[data-size="small"] .popout-content { padding: 8px 14px 7px; }
 .popout-root[data-size="small"] .popout-subject, .popout-root[data-size="small"] .popout-subject-row time { font-size: 9px; }
-.popout-root[data-size="small"] .popout-time { gap: 4px; margin-top: 0; font-size: 25px; line-height: 1.05; }
+.popout-root[data-size="small"] .popout-time { gap: 4px; margin-top: 0; font-size: 27px; line-height: 1.05; }
 .popout-root[data-size="small"] .popout-labels { width: 148px; margin-top: 0; font-size: 7px; }
 .popout-root[data-size="small"] .popout-status { min-height: 13px; margin-top: 1px; font-size: 9px; }
 .popout-root[data-size="small"] .popout-controls { gap: 12px; }
 .popout-root[data-size="small"] .popout-controls button { width: 30px; height: 26px; }
-.popout-root[data-size="medium"] .popout-time { font-size: 30px; }
-.popout-root[data-size="large"] .popout-time { margin-top: 6px; font-size: 38px; }
+.popout-root[data-size="medium"] .popout-time { font-size: 33px; }
+.popout-root[data-size="large"] .popout-time { margin-top: 6px; font-size: 41px; }
 .popout-root[data-size="large"] .popout-labels { width: 205px; font-size: 9px; }
 .popout-root[data-size="large"] .popout-controls { margin-top: 5px; gap: 20px; }
 .popout-content { width: 100%; height: 100%; padding: 12px 18px 10px; display: flex; flex-direction: column; align-items: center; opacity: 1; transition: opacity 120ms ease; }
@@ -174,9 +174,9 @@ button { color: inherit; }
 .popout-root--hover-controls .popout-subject-row { position: absolute; top: 9px; left: 38px; right: 38px; width: auto; }
 .popout-root--hover-controls .popout-controls { position: absolute; left: 0; right: 0; bottom: 8px; }
 .popout-root--hover-controls .popout-time { transition: font-size 160ms ease, margin 160ms ease; }
-.popout-root--hover-controls[data-size="small"]:not(:hover):not(:focus-within) .popout-time { margin-top: 8px; font-size: 34px; }
-.popout-root--hover-controls[data-size="medium"]:not(:hover):not(:focus-within) .popout-time { margin-top: 10px; font-size: 42px; }
-.popout-root--hover-controls[data-size="large"]:not(:hover):not(:focus-within) .popout-time { margin-top: 14px; font-size: 52px; }
+.popout-root--hover-controls[data-size="small"]:not(:hover):not(:focus-within) .popout-time { margin-top: 8px; font-size: 37px; }
+.popout-root--hover-controls[data-size="medium"]:not(:hover):not(:focus-within) .popout-time { margin-top: 10px; font-size: 46px; }
+.popout-root--hover-controls[data-size="large"]:not(:hover):not(:focus-within) .popout-time { margin-top: 14px; font-size: 56px; }
 .popout-root--hover-controls:hover .popout-time, .popout-root--hover-controls:focus-within .popout-time { transform: translateY(-9px); }
 .popout-root--hover-controls:hover .popout-labels, .popout-root--hover-controls:focus-within .popout-labels,
 .popout-root--hover-controls:hover .popout-status, .popout-root--hover-controls:focus-within .popout-status { transform: translateY(-9px); }
