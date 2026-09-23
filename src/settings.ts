@@ -199,7 +199,7 @@ function decode<K extends keyof FocusSettings>(key: K, raw: string | undefined):
     if (["lastTimerDurationSeconds", "fixedTimerDurationSeconds", "dailyGoalSeconds", "weeklyGoalSeconds"].includes(key)) value = Math.max(0, Math.floor(value));
     return value as FocusSettings[K];
   }
-  if (key === "lastBackupAt") return (raw || null) as FocusSettings[K];
+  if (key === "lastBackupAt") return (raw && raw !== "null" ? raw : null) as FocusSettings[K];
   const allowed: Partial<Record<keyof FocusSettings, readonly string[]>> = {
     language: ["en", "zh-CN", "zh-TW", "ja"], theme: ["dark", "light"], timerDurationMode: ["remember", "fixed"], subjectPickerMode: ["remember", "fixed"], dateFormat: ["full", "standard", "compact", "numeric"], clockFormat: ["system", "12-hour", "24-hour"],
     completionSoundChoice: ["soft-chime", "bell", "digital", "gentle", "bright"], popoutAutoHide: ["500", "1000", "2000", "never"],

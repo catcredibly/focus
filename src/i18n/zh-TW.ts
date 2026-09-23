@@ -444,6 +444,14 @@ const zhTW: Record<keyof typeof en, string> = {
   "Lock and update": "鎖定並更新",
   "Session not found.": "找不到該專注記錄。",
   "Invalid session": "無效的專注記錄",
+  "Accent color": "強調色",
+  "Custom": "自訂",
+  "Apply": "套用",
+  "End date cannot be before Start date.": "結束日期不能早於開始日期。",
+  "Void Session": "作廢專注時段",
+  "Void this Session?": "作廢此專注時段？",
+  "The recorded study time will be discarded.": "記錄的學習時間將被丟棄。",
+  "The recorded study time will be discarded and will not appear in History, Analytics, goals, or streaks.": "記錄的學習時間將被丟棄，並且不會出現在歷史記錄、分析、目標或連續記錄中。",
 };
 
 export default zhTW;

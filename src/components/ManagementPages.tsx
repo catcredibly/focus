@@ -333,10 +333,10 @@ export function SubjectsPage() {
   );
 }
 
-const timeInputValue = (stamp: number) => new Date(stamp).toTimeString().slice(0, 8);
+const timeInputValue = (stamp: number) => new Date(stamp).toTimeString().slice(0, 5);
 const durationInputFields = (seconds: number) => {
   const parts = durationParts(seconds);
-  return { hours: String(parts.hours).padStart(2, "0"), minutes: String(parts.minutes).padStart(2, "0"), seconds: String(parts.seconds).padStart(2, "0") };
+  return { hours: String(parts.hours).padStart(2, "0"), minutes: String(parts.minutes).padStart(2, "0") };
 };
 
 function SessionEditor({ session, years, subjects, onClose }: { session: FocusSession | null; years: AcademicYear[]; subjects: Subject[]; onClose: () => void }) {
@@ -345,13 +345,15 @@ function SessionEditor({ session, years, subjects, onClose }: { session: FocusSe
   const initialSubjectId = session?.subjectId ?? subjects.find((subject) => subject.academicYearId === initialYearId && !subject.archived)?.id ?? "";
   const initialStart = session?.startTime ?? new Date().setHours(9, 0, 0, 0);
   const initialEnd = session?.endTime ?? new Date().setHours(10, 0, 0, 0);
+  const initialMode = session ? inferDurationMode(session) : "locked";
   const [academicYearId, setAcademicYearId] = useState(initialYearId);
   const [subjectId, setSubjectId] = useState(initialSubjectId);
   const [date, setDate] = useState(localDateInputValue(initialStart));
   const [start, setStart] = useState(timeInputValue(initialStart));
   const [end, setEnd] = useState(timeInputValue(initialEnd));
-  const [mode, setMode] = useState<DurationMode>(session ? inferDurationMode(session) : "locked");
+  const [mode, setMode] = useState<DurationMode>(initialMode);
   const [duration, setDuration] = useState(() => durationInputFields(session?.focusedDurationSeconds ?? sessionSpanSeconds(initialStart, initialEnd)));
+  const [preserveStoredDuration, setPreserveStoredDuration] = useState(Boolean(session && initialMode === "unlocked"));
   const [note, setNote] = useState(session?.note ?? "");
   const [relockPending, setRelockPending] = useState(false);
   const [saveError, setSaveError] = useState("");
@@ -360,8 +362,8 @@ function SessionEditor({ session, years, subjects, onClose }: { session: FocusSe
   const endTime = new Date(`${date}T${end}`).getTime();
   const validSpan = Number.isFinite(startTime) && Number.isFinite(endTime) && endTime > startTime;
   const spanSeconds = validSpan ? sessionSpanSeconds(startTime, endTime) : 0;
-  const normalizedDuration = normalizeDurationParts(Number(duration.hours), Number(duration.minutes), Number(duration.seconds));
-  const focusedDurationSeconds = mode === "locked" ? spanSeconds : normalizedDuration.totalSeconds;
+  const normalizedDuration = normalizeDurationParts(Number(duration.hours), Number(duration.minutes), 0);
+  const focusedDurationSeconds = mode === "locked" ? spanSeconds : preserveStoredDuration && session ? session.focusedDurationSeconds : normalizedDuration.totalSeconds;
   const relationshipValid = Boolean(academicYearId && subjectId && availableSubjects.some((subject) => subject.id === subjectId));
   const durationError = mode === "unlocked" && focusedDurationSeconds <= 0
     ? t("Duration must be greater than zero.")
@@ -370,13 +372,16 @@ function SessionEditor({ session, years, subjects, onClose }: { session: FocusSe
       : "";
 
   useEffect(() => {
-    if (mode === "locked" && validSpan) setDuration(durationInputFields(spanSeconds));
+    if (mode === "locked" && validSpan) {
+      setDuration(durationInputFields(spanSeconds));
+      setPreserveStoredDuration(false);
+    }
   }, [date, start, end, mode, spanSeconds, validSpan]);
 
   const normalizeDuration = () => setDuration(durationInputFields(normalizedDuration.totalSeconds));
   const requestModeToggle = () => {
     setSaveError("");
-    if (mode === "locked") { setMode("unlocked"); return; }
+    if (mode === "locked") { setPreserveStoredDuration(false); setMode("unlocked"); return; }
     if (focusedDurationSeconds !== spanSeconds) setRelockPending(true);
     else setMode("locked");
   };
@@ -421,17 +426,17 @@ function SessionEditor({ session, years, subjects, onClose }: { session: FocusSe
         <input type="date" value={date} onChange={(event) => setDate(event.target.value)} required />
       </label>
       <div className="form-grid">
-        <label>{t("Start")}<input type="time" step="1" value={start} onChange={(event) => setStart(event.target.value)} required /></label>
-        <label>{t("End")}<input className={!validSpan ? "input-error" : ""} type="time" step="1" value={end} onChange={(event) => setEnd(event.target.value)} required /></label>
+        <label>{t("Start")}<input type="time" value={start} onChange={(event) => setStart(event.target.value)} required /></label>
+        <label>{t("End")}<input className={!validSpan ? "input-error" : ""} type="time" value={end} onChange={(event) => setEnd(event.target.value)} required /></label>
       </div>
       {!validSpan && <p className="field-error">{t("End time must be after start time.")}</p>}
       <div className="duration-field">
         <span className="field-label">{t("Duration")}</span>
         <div className={`duration-editor-fields ${durationError ? "has-error" : ""} ${mode === "locked" ? "is-locked" : ""}`}>
-          {(["hours", "minutes", "seconds"] as const).map((part, index) => <div className="duration-part" key={part}>
-            <input aria-label={t(part === "hours" ? "Hours" : part === "minutes" ? "Minutes" : "Seconds")} inputMode="numeric" pattern="[0-9]*" value={duration[part]} readOnly={mode === "locked"} onChange={(event) => setDuration((current) => ({ ...current, [part]: event.target.value.replace(/\D/g, "") }))} onBlur={normalizeDuration} />
-            <small>{t(part === "hours" ? "HH" : part === "minutes" ? "MM" : "SS")}</small>
-            {index < 2 && <b aria-hidden="true">:</b>}
+          {(["hours", "minutes"] as const).map((part, index) => <div className="duration-part" key={part}>
+            <input aria-label={t(part === "hours" ? "Hours" : "Minutes")} inputMode="numeric" pattern="[0-9]*" value={duration[part]} readOnly={mode === "locked"} onChange={(event) => { setPreserveStoredDuration(false); setDuration((current) => ({ ...current, [part]: event.target.value.replace(/\D/g, "") })); }} onBlur={normalizeDuration} />
+            <small>{t(part === "hours" ? "HH" : "MM")}</small>
+            {index === 0 && <b aria-hidden="true">:</b>}
           </div>)}
           <button type="button" className="duration-lock tooltip-button" aria-label={t(mode === "locked" ? "Unlock duration" : "Lock duration")} data-tooltip={t(mode === "locked" ? "Unlock duration" : "Lock duration")} onClick={requestModeToggle}>{mode === "locked" ? <Lock /> : <LockOpen />}</button>
         </div>
@@ -443,7 +448,7 @@ function SessionEditor({ session, years, subjects, onClose }: { session: FocusSe
     </form>
     {relockPending && <Modal title={t("Reconnect Duration to Start and End?")} onClose={() => setRelockPending(false)}>
       <p className="modal-copy">{t("Duration will change from {{current}} to {{next}}.", { current: formatClockDuration(focusedDurationSeconds), next: formatClockDuration(spanSeconds) })}</p>
-      <div className="modal-actions"><button type="button" onClick={() => setRelockPending(false)}>{t("Cancel")}</button><button type="button" className="primary-action" onClick={() => { setDuration(durationInputFields(spanSeconds)); setMode("locked"); setRelockPending(false); }}>{t("Lock and update")}</button></div>
+      <div className="modal-actions"><button type="button" onClick={() => setRelockPending(false)}>{t("Cancel")}</button><button type="button" className="primary-action" onClick={() => { setDuration(durationInputFields(spanSeconds)); setPreserveStoredDuration(false); setMode("locked"); setRelockPending(false); }}>{t("Lock and update")}</button></div>
     </Modal>}
   </>;
 }

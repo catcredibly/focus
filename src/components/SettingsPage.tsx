@@ -155,7 +155,7 @@ function Appearance({ settings, setSetting }: SettingsProps) {
   const { t } = useTranslation();
   return <><SettingsHeader title={t("Appearance")}>{t("Customize the Focus interface.")}</SettingsHeader>
     <Row label={t("Theme")}><select value={settings.theme} onChange={(event) => void setSetting("theme", event.target.value as FocusSettings["theme"])}><option value="dark">{t("Dark")}</option><option value="light">{t("Light")}</option></select></Row>
-    <Row label={t("Accent colour")}><div className="accent-options">{accents.map((accent) => <button key={accent.value} title={t(accent.name)} aria-label={t(accent.name)} className={settings.accentColour === accent.value ? "active" : ""} style={{ "--swatch": accent.color } as CSSProperties} onClick={() => void setSetting("accentColour", accent.value)}><span/></button>)}</div></Row>
+    <Row label={t("Accent color")}><div className="accent-options">{accents.map((accent) => <button key={accent.value} title={t(accent.name)} aria-label={t(accent.name)} className={settings.accentColour === accent.value ? "active" : ""} style={{ "--swatch": accent.color } as CSSProperties} onClick={() => void setSetting("accentColour", accent.value)}><span/></button>)}</div></Row>
     <Row label={t("UI scale")}><select value={settings.uiScale} onChange={(event) => void setSetting("uiScale", event.target.value as FocusSettings["uiScale"])}><option value="small">{t("Small")}</option><option value="medium">{t("Medium")}</option><option value="large">{t("Large")}</option><option value="extra-large">{t("Extra large")}</option></select></Row>
     <RestoreSection keys={["theme", "accentColour", "uiScale"]}/>
   </>;

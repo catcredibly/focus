@@ -477,6 +477,17 @@ pub fn run() {
             is_main_fullscreen
         ])
         .on_window_event(|window, event| {
+            if window.label() == "main" {
+                match event {
+                    tauri::WindowEvent::CloseRequested { api, .. } => {
+                        api.prevent_close();
+                        std::process::exit(0);
+                    }
+                    tauri::WindowEvent::Destroyed => std::process::exit(0),
+                    _ => {}
+                }
+                return;
+            }
             if window.label() == "timer" || window.label() == "timer-menu" || window.label() == "timer-tab" {
                 if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                     api.prevent_close();
@@ -495,6 +506,13 @@ pub fn run() {
                 }
             }
         })
-        .run(tauri::generate_context!())
-        .expect("error while running Focus");
+        .build(tauri::generate_context!())
+        .expect("error while building Focus")
+        .run(|_app, event| {
+            if let tauri::RunEvent::WindowEvent { label, event, .. } = event {
+                if label == "main" && matches!(event, tauri::WindowEvent::CloseRequested { .. } | tauri::WindowEvent::Destroyed) {
+                    std::process::exit(0);
+                }
+            }
+        });
 }

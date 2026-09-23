@@ -27,5 +27,5 @@ export function normalizeDurationParts(hours: number, minutes: number, seconds: 
 
 export function formatClockDuration(totalSeconds: number) {
   const parts = durationParts(totalSeconds);
-  return `${String(parts.hours).padStart(2, "0")}:${String(parts.minutes).padStart(2, "0")}:${String(parts.seconds).padStart(2, "0")}`;
+  return `${String(parts.hours).padStart(2, "0")}:${String(parts.minutes).padStart(2, "0")}`;
 }

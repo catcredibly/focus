@@ -1,19 +1,26 @@
 import { db, type FocusDatabase } from "../db";
+import { loadSettings, SETTINGS_KEYS, type FocusSettings } from "../settings";
 import type { AcademicYear, AppSetting, FocusSession, Subject } from "../types";
 import type { BackupAnalysis, ConflictPolicy, FocusBackup, ImportSummary, RestoreMode } from "./types";
 
 export const BACKUP_FORMAT = "focus-backup" as const;
 export const BACKUP_VERSION = 1 as const;
-export const APP_VERSION = "1.1.0";
+export const APP_VERSION = "1.2.0";
 
 const isObject = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === "object" && !Array.isArray(value);
 const isBoolean = (value: unknown) => typeof value === "boolean";
 const isFiniteNumber = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
 
 export async function createBackup(database: FocusDatabase = db): Promise<FocusBackup> {
-  const [academicYears, subjects, sessions, settings] = await Promise.all([
+  const [academicYears, subjects, sessions, storedSettings, currentSettings] = await Promise.all([
     database.academicYears.toArray(), database.subjects.toArray(), database.sessions.toArray(), database.settings.toArray(),
+    loadSettings(database),
   ]);
+  const settingsByKey = new Map(storedSettings.map((setting) => [setting.key, setting]));
+  for (const key of Object.keys(SETTINGS_KEYS) as (keyof FocusSettings)[]) {
+    settingsByKey.set(SETTINGS_KEYS[key], { key: SETTINGS_KEYS[key], value: String(currentSettings[key]) });
+  }
+  const settings = [...settingsByKey.values()];
   return { format: BACKUP_FORMAT, formatVersion: BACKUP_VERSION, exportedAt: new Date().toISOString(), appVersion: APP_VERSION, data: { academicYears, subjects, sessions, settings } };
 }
 

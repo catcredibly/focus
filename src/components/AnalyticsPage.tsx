@@ -21,18 +21,25 @@ const ACCENT_COLORS = {
   green: { primary: "#4da778", tint: "#91c9aa" },
   cappuccino: { primary: "#ad8466", tint: "#d0ae95" },
 } as const;
-const ranges = ["7D", "30D", "3M", "1Y", "All"] as const;
+const ranges = ["7D", "30D", "3M", "1Y", "All", "Custom"] as const;
 type Range = (typeof ranges)[number];
 const tabs = ["Overview", "Subjects", "Academic Years", "Time Trends", "Study Patterns"] as const;
 type Tab = (typeof tabs)[number];
 const rangeStart = (range: Range) => {
-  if (range === "All") return undefined;
+  if (range === "All" || range === "Custom") return undefined;
   const d = new Date();
   d.setHours(0, 0, 0, 0);
   d.setDate(d.getDate() - (range === "7D" ? 6 : range === "30D" ? 29 : range === "3M" ? 89 : 364));
   return d.getTime();
 };
 const durationTick = formatDurationAxis;
+const dateInputValue = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+const startOfInputDay = (value: string) => new Date(`${value}T00:00:00`).getTime();
+const endOfInputDay = (value: string) => {
+  const date = new Date(`${value}T00:00:00`);
+  date.setDate(date.getDate() + 1);
+  return date.getTime();
+};
 
 export function AnalyticsPage() {
   const { t } = useTranslation();
@@ -47,12 +54,24 @@ export function AnalyticsPage() {
   const [tab, setTab] = useState<Tab>("Overview"),
     [yearId, setYearId] = useState(""),
     [subjectId, setSubjectId] = useState(""),
-    [range, setRange] = useState<Range>("All");
+    [range, setRange] = useState<Range>("All"),
+    [customOpen, setCustomOpen] = useState(false),
+    [customRange, setCustomRange] = useState<{ start: string; end: string }>(),
+    [customDraft, setCustomDraft] = useState(() => {
+      const today = dateInputValue(new Date());
+      return { start: today, end: today };
+    });
+  const customValid = Boolean(customDraft.start && customDraft.end && customDraft.end >= customDraft.start);
+  const filterStart = range === "Custom" && customRange ? startOfInputDay(customRange.start) : rangeStart(range);
+  const filterEnd = range === "Custom" && customRange ? endOfInputDay(customRange.end) : undefined;
   const effectiveSessions = useMemo(() => (sessions ?? []).filter((session) => {
     const subject = subjects?.find((item) => item.id === session.subjectId);
     const year = years?.find((item) => item.id === session.academicYearId);
     return subject && year && !subject.archived && !year.archived;
   }), [sessions, subjects, years]);
+  useEffect(() => {
+    if (subjectId && subjects && !subjects.some((subject) => !subject.archived && subject.id === subjectId && (!yearId || subject.academicYearId === yearId))) setSubjectId("");
+  }, [subjectId, subjects, yearId]);
   const scopedSessions = useMemo(() => filterSessions(effectiveSessions, {
     academicYearId: yearId || undefined,
     subjectId: subjectId || undefined,
@@ -60,10 +79,23 @@ export function AnalyticsPage() {
   const filtered = useMemo(
     () =>
       filterSessions(scopedSessions, {
-        start: rangeStart(range),
+        start: filterStart,
+        end: filterEnd,
       }),
-    [range, scopedSessions],
+    [filterEnd, filterStart, scopedSessions],
   );
+  const selectRange = (next: Range) => {
+    if (next === "Custom") {
+      if (customRange) setCustomDraft(customRange);
+      setCustomOpen(true);
+      return;
+    }
+    setCustomOpen(false);
+    setRange(next);
+  };
+  const customRangeLabel = customRange
+    ? `${new Date(`${customRange.start}T12:00:00`).toLocaleDateString(localeCode(), { day: "numeric", month: "short" })} – ${new Date(`${customRange.end}T12:00:00`).toLocaleDateString(localeCode(), { day: "numeric", month: "short" })}`
+    : undefined;
   if (!years || !subjects || !sessions)
     return (
       <main className="page analytics-page">
@@ -95,12 +127,21 @@ export function AnalyticsPage() {
             <option value="">{t("All Subjects")}</option>
             {subjects.filter((subject) => !subject.archived && (!yearId || subject.academicYearId === yearId)).map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}
           </select>
-          <div className="range-control" aria-label={t("Date range")}>
-            {ranges.map((r) => (
-              <button key={r} className={range === r ? "active" : ""} onClick={() => setRange(r)}>
-                {t(r)}
-              </button>
-            ))}
+          <div className="custom-range-wrap">
+            <div className="range-control" aria-label={t("Date range")}>
+              {ranges.map((r) => (
+                <button key={r} className={range === r || (r === "Custom" && customOpen) ? "active" : ""} onClick={() => selectRange(r)}>
+                  {t(r)}
+                </button>
+              ))}
+            </div>
+            {range === "Custom" && customRangeLabel && <span className="custom-range-label">{customRangeLabel}</span>}
+            {customOpen && <div className="custom-range-popover">
+              <label>{t("Start date")}<input type="date" value={customDraft.start} max={customDraft.end || undefined} onChange={(event) => setCustomDraft((current) => ({ ...current, start: event.target.value }))}/></label>
+              <label>{t("End date")}<input type="date" value={customDraft.end} min={customDraft.start || undefined} onChange={(event) => setCustomDraft((current) => ({ ...current, end: event.target.value }))}/></label>
+              {!customValid && <span className="field-error">{t("End date cannot be before Start date.")}</span>}
+              <div className="custom-range-actions"><button onClick={() => setCustomOpen(false)}>{t("Cancel")}</button><button className="primary-action" disabled={!customValid} onClick={() => { setCustomRange(customDraft); setRange("Custom"); setCustomOpen(false); }}>{t("Apply")}</button></div>
+            </div>}
           </div>
         </div>
       </header>
@@ -118,7 +159,7 @@ export function AnalyticsPage() {
           <p>{t("Try another date range or Academic Year.")}</p>
         </div>
       ) : tab === "Overview" ? (
-        <Overview sessions={filtered} comparisonSessions={scopedSessions} years={years} subjects={subjects} range={range} />
+        <Overview sessions={filtered} comparisonSessions={scopedSessions} years={years} subjects={subjects} rangeStartTime={filterStart} rangeEndTime={filterEnd} />
       ) : tab === "Subjects" ? (
         <SubjectsAnalytics sessions={filtered} subjects={subjects} years={years} />
       ) : tab === "Academic Years" ? (
@@ -138,7 +179,7 @@ function GoalSummary({ label, current, target }: { label: string; current: numbe
   return <section><div><strong>{label}</strong><span>{reached ? t("Goal reached") : t("{{duration}} left", { duration: formatDuration(Math.max(0, target - current)) })}</span></div><progress max={Math.max(1, target)} value={Math.min(current, target)}/><small>{formatDuration(current)} / {formatDuration(target)}</small></section>;
 }
 
-function Overview({ sessions, comparisonSessions, years, subjects, range }: { sessions: FocusSession[]; comparisonSessions: FocusSession[]; years: AcademicYear[]; subjects: Subject[]; range: Range }) {
+function Overview({ sessions, comparisonSessions, years, subjects, rangeStartTime, rangeEndTime }: { sessions: FocusSession[]; comparisonSessions: FocusSession[]; years: AcademicYear[]; subjects: Subject[]; rangeStartTime?: number; rangeEndTime?: number }) {
   const { t } = useTranslation();
   const { settings } = useSettings();
   const goals = goalProgress(sessions);
@@ -170,8 +211,8 @@ function Overview({ sessions, comparisonSessions, years, subjects, range }: { se
     return { label: new Date(`${key}-01T12:00:00`).toLocaleDateString(localeCode(), { month: "short", year: "2-digit" }), ...Object.fromEntries(top.map((subject) => [subject.subjectId, (values.get(subject.subjectId) ?? 0) / Math.max(1, total) * 100])) };
   });
   const currentSeconds = totalFocusedSeconds(sessions);
-  const currentStart = rangeStart(range);
-  const periodLength = currentStart ? Date.now() - currentStart : 0;
+  const currentStart = rangeStartTime;
+  const periodLength = currentStart ? (rangeEndTime ?? Date.now()) - currentStart : 0;
   const previousSessions = currentStart ? comparisonSessions.filter((session) => session.startTime >= currentStart - periodLength && session.startTime < currentStart) : [];
   const previousSeconds = totalFocusedSeconds(previousSessions);
   const comparisonPercent = previousSeconds ? Math.round((currentSeconds - previousSeconds) / previousSeconds * 100) : undefined;

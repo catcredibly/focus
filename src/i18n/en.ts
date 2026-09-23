@@ -442,6 +442,14 @@ const en = {
   "Lock and update": "Lock and update",
   "Session not found.": "Session not found.",
   "Invalid session": "Invalid session",
+  "Accent color": "Accent color",
+  "Custom": "Custom",
+  "Apply": "Apply",
+  "End date cannot be before Start date.": "End date cannot be before Start date.",
+  "Void Session": "Void Session",
+  "Void this Session?": "Void this Session?",
+  "The recorded study time will be discarded.": "The recorded study time will be discarded.",
+  "The recorded study time will be discarded and will not appear in History, Analytics, goals, or streaks.": "The recorded study time will be discarded and will not appear in History, Analytics, goals, or streaks.",
 } as const;
 
 export default en;

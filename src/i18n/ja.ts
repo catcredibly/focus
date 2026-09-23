@@ -444,6 +444,14 @@ const ja: Record<keyof typeof en, string> = {
   "Lock and update": "ロックして更新",
   "Session not found.": "セッションが見つかりません。",
   "Invalid session": "無効なセッション",
+  "Accent color": "アクセントカラー",
+  "Custom": "カスタム",
+  "Apply": "適用",
+  "End date cannot be before Start date.": "終了日は開始日より前にできません。",
+  "Void Session": "セッションを無効化",
+  "Void this Session?": "このセッションを無効にしますか？",
+  "The recorded study time will be discarded.": "記録された学習時間は破棄されます。",
+  "The recorded study time will be discarded and will not appear in History, Analytics, goals, or streaks.": "記録された学習時間は破棄され、履歴、分析、目標、連続記録には表示されません。",
 };
 
 export default ja;

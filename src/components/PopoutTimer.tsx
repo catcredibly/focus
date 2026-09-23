@@ -26,6 +26,7 @@ export function PopoutTimer() {
   const [menu, setMenu] = useState<"extend" | null>(null);
   const [revealed, setRevealed] = useState(true);
   const [stopping, setStopping] = useState(false);
+  const [voiding, setVoiding] = useState(false);
   const [menuWindowOpen, setMenuWindowOpen] = useState(false);
   const [displays, setDisplays] = useState<{ id: string; label: string }[]>([]);
   const [now, setNow] = useState(() => new Date());
@@ -194,7 +195,8 @@ export function PopoutTimer() {
         <button className="tooltip-button" aria-label={t("More")} data-tooltip={t("More")} data-popout-menu-button onClick={() => { clearHideTimer(); setMenuWindowOpen(true); void invoke("open_timer_menu", { view: "more" }).catch(() => setMenuWindowOpen(false)); }}><MoreHorizontal size={18}/></button>
       </div>
       {menu === "extend" && <div data-no-drag data-popout-overlay><TimerExtendMenu compact onClose={() => setMenu(null)} onExtend={(seconds) => { timer.extend(seconds); setMenu(null); }}/></div>}
-      {stopping && <div data-no-drag data-popout-overlay className="popout-menu popout-stop-confirm"><strong>{t("Stop timer?")}</strong><span>{t("Elapsed focus time will be saved.")}</span><button onClick={() => setStopping(false)}>{t("Cancel")}</button><button className="danger-action" onClick={async () => { setStopping(false); await timer.stop(); }}>{t("Stop and save")}</button></div>}
+      {stopping && <div data-no-drag data-popout-overlay className="popout-menu popout-stop-confirm"><strong>{t("Stop timer?")}</strong><span>{t("Elapsed focus time will be saved.")}</span><button className="secondary-action" onClick={() => setStopping(false)}>{t("Cancel")}</button><button className="danger-outline" onClick={() => { setStopping(false); setVoiding(true); }}>{t("Void Session")}</button><button className="primary-action" onClick={async () => { setStopping(false); await timer.stop(); }}>{t("Stop and save")}</button></div>}
+      {voiding && <div data-no-drag data-popout-overlay className="popout-menu popout-stop-confirm"><strong>{t("Void this Session?")}</strong><span>{t("The recorded study time will be discarded.")}</span><button className="secondary-action" onClick={() => setVoiding(false)}>{t("Cancel")}</button><button className="danger-action" onClick={() => { timer.discard(); setVoiding(false); }}>{t("Void Session")}</button></div>}
     </div>
   </main>;
 }

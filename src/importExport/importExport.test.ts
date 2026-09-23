@@ -2,6 +2,7 @@ import "fake-indexeddb/auto";
 import Dexie from "dexie";
 import { afterEach, describe, expect, it } from "vitest";
 import { FocusDatabase } from "../db";
+import { DEFAULT_SETTINGS, loadSettings, SETTINGS_KEYS, type FocusSettings } from "../settings";
 import type { FocusSession } from "../types";
 import { analyzeBackup, createBackup, restoreBackup, validateBackup } from "./backup";
 import { escapeCsv, exportSessionsCsv, importCsvPreview, parseCsv, previewCsv } from "./csv";
@@ -13,9 +14,21 @@ afterEach(async()=>{await Promise.all(opened.splice(0).map((value)=>value.delete
 async function seeded(){const value=database();await value.academicYears.add({id:"year",name:"IB",archived:false});await value.subjects.add({id:"subject",academicYearId:"year",name:"Japanese, Intermediate",color:"#ff922b",archived:false});await value.sessions.add({id:"session",academicYearId:"year",academicYearName:"IB",subjectId:"subject",subjectName:"Japanese, Intermediate",startTime:new Date(2026,8,21,23,45).getTime(),endTime:new Date(2026,8,22,0,30).getTime(),focusedDurationSeconds:2700,note:'Review "Section A", then Section B',archived:true});await value.settings.bulkPut([{key:"currentAcademicYearId",value:"year"},{key:"theme",value:"dark"}]);return value;}
 
 describe("Focus JSON backups",()=>{
-  it("serializes and restores all persistent data losslessly",async()=>{const source=await seeded();const backup=validateBackup(JSON.parse(JSON.stringify(await createBackup(source))));const target=database();await restoreBackup(backup,"replace","use-imported",target);expect(await target.academicYears.toArray()).toEqual(await source.academicYears.toArray());expect(await target.subjects.toArray()).toEqual(await source.subjects.toArray());expect(await target.sessions.toArray()).toEqual(await source.sessions.toArray());expect(await target.settings.toArray()).toEqual(await source.settings.toArray());});
+  it("serializes and restores all persistent data losslessly",async()=>{const source=await seeded();const backup=validateBackup(JSON.parse(JSON.stringify(await createBackup(source))));const target=database();await restoreBackup(backup,"replace","use-imported",target);expect(await target.academicYears.toArray()).toEqual(await source.academicYears.toArray());expect(await target.subjects.toArray()).toEqual(await source.subjects.toArray());expect(await target.sessions.toArray()).toEqual(await source.sessions.toArray());expect(await loadSettings(target)).toEqual(await loadSettings(source));expect((await target.settings.get("currentAcademicYearId"))?.value).toBe("year");});
+  it("includes every canonical setting and restores representative values",async()=>{
+    const source=await seeded();
+    const expected:FocusSettings={...DEFAULT_SETTINGS,displayName:"Alex & Sam",sidebarSubtitle:"Keep going!",language:"ja",theme:"light",startMaximized:false,launchAtStartup:true,fixedTimerDurationSeconds:5430,dailyGoalEnabled:true,dailyGoalSeconds:7200,completionSoundChoice:"bright",completionSoundVolume:37,popoutSize:"large",popoutTransparency:73,popoutDocked:true,popoutDockCorner:"bottom-left",popoutDockAutoHide:true,popoutAutoHideDelaySeconds:1.25,popoutAutoHideTabSize:"large",popoutAutoHideShowAccent:false,popoutAlwaysOnTop:false,accentColour:"miku",uiScale:"large",allowDirectActiveDeletion:true};
+    await source.settings.bulkPut((Object.keys(SETTINGS_KEYS) as (keyof FocusSettings)[]).map((key)=>({key:SETTINGS_KEYS[key],value:String(expected[key])})));
+    const backup=await createBackup(source);
+    const backupKeys=new Set(backup.data.settings.map((setting)=>setting.key));
+    expect(Object.values(SETTINGS_KEYS).every((key)=>backupKeys.has(key))).toBe(true);
+    const target=database();
+    await restoreBackup(backup,"replace","use-imported",target);
+    expect(await loadSettings(target)).toEqual(expected);
+    expect((await target.settings.get("currentAcademicYearId"))?.value).toBe("year");
+  });
   it("rejects unsupported versions and corrupt references",async()=>{const backup=await createBackup(await seeded());expect(()=>validateBackup({...backup,formatVersion:99})).toThrow(/Unsupported/);expect(()=>validateBackup({...backup,data:{...backup.data,subjects:[{...backup.data.subjects[0],academicYearId:"missing"}]}})).toThrow(/missing Academic Year/);});
-  it("detects merge duplicates and conflicts without silently overwriting",async()=>{const source=await seeded();const backup=await createBackup(source);const target=database();await restoreBackup(backup,"merge","keep-existing",target);expect((await analyzeBackup(backup,target)).duplicates).toBe(5);await target.subjects.update("subject",{name:"Local name"});const analysis=await analyzeBackup(backup,target);expect(analysis.conflicts).toBe(1);await restoreBackup(backup,"merge","keep-existing",target);expect((await target.subjects.get("subject"))?.name).toBe("Local name");});
+  it("detects merge duplicates and conflicts without silently overwriting",async()=>{const source=await seeded();const backup=await createBackup(source);const target=database();await restoreBackup(backup,"merge","keep-existing",target);const expectedDuplicates=backup.data.academicYears.length+backup.data.subjects.length+backup.data.sessions.length+backup.data.settings.length;expect((await analyzeBackup(backup,target)).duplicates).toBe(expectedDuplicates);await target.subjects.update("subject",{name:"Local name"});const analysis=await analyzeBackup(backup,target);expect(analysis.conflicts).toBe(1);await restoreBackup(backup,"merge","keep-existing",target);expect((await target.subjects.get("subject"))?.name).toBe("Local name");});
 });
 
 describe("Focus CSV",()=>{

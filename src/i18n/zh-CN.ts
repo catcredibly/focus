@@ -444,6 +444,14 @@ const zhCN: Record<keyof typeof en, string> = {
   "Lock and update": "锁定并更新",
   "Session not found.": "找不到该专注记录。",
   "Invalid session": "无效的专注记录",
+  "Accent color": "强调色",
+  "Custom": "自定义",
+  "Apply": "应用",
+  "End date cannot be before Start date.": "结束日期不能早于开始日期。",
+  "Void Session": "作废专注时段",
+  "Void this Session?": "作废此专注时段？",
+  "The recorded study time will be discarded.": "记录的学习时间将被丢弃。",
+  "The recorded study time will be discarded and will not appear in History, Analytics, goals, or streaks.": "记录的学习时间将被丢弃，并且不会出现在历史记录、分析、目标或连续记录中。",
 };
 
 export default zhCN;
