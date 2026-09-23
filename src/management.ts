@@ -1,6 +1,8 @@
 import { db, type FocusDatabase } from "./db";
 import { CURRENT_YEAR_KEY } from "./data";
 import type { AcademicYear, FocusSession, Subject } from "./types";
+import type { DurationMode } from "./sessionDuration";
+import { sessionSpanSeconds } from "./sessionDuration";
 
 export function isSessionEffectivelyArchived(session: FocusSession, subjects: Subject[], years: AcademicYear[]) {
   const subject = subjects.find((item) => item.id === session.subjectId);
@@ -53,6 +55,32 @@ export async function moveSessions(ids: string[], subjectId: string, database: F
       subjectName: subject.name,
       academicYearId: academicYear.id,
       academicYearName: academicYear.name,
+    });
+  });
+}
+
+export async function updateSessionDetails(id: string, input: { academicYearId: string; subjectId: string; startTime: number; endTime: number; focusedDurationSeconds: number; durationMode: DurationMode; note?: string }, database: FocusDatabase = db) {
+  await database.transaction("rw", database.academicYears, database.subjects, database.sessions, async () => {
+    const session = await database.sessions.get(id);
+    const subject = await database.subjects.get(input.subjectId);
+    const academicYear = await database.academicYears.get(input.academicYearId);
+    if (!session) throw new Error("Session not found.");
+    if (!subject || !academicYear || subject.academicYearId !== academicYear.id) throw new Error("Choose a Subject from the selected Academic Year.");
+    if (!Number.isFinite(input.startTime) || !Number.isFinite(input.endTime) || input.endTime <= input.startTime) throw new Error("End time must be after start time.");
+    const spanSeconds = sessionSpanSeconds(input.startTime, input.endTime);
+    const focusedDurationSeconds = input.durationMode === "locked" ? spanSeconds : Math.round(input.focusedDurationSeconds);
+    if (focusedDurationSeconds <= 0) throw new Error("Duration must be greater than zero.");
+    if (focusedDurationSeconds > spanSeconds) throw new Error("Duration cannot exceed the available Start and End span.");
+    await database.sessions.update(id, {
+      subjectId: subject.id,
+      subjectName: subject.name,
+      academicYearId: academicYear.id,
+      academicYearName: academicYear.name,
+      startTime: input.startTime,
+      endTime: input.endTime,
+      focusedDurationSeconds,
+      durationMode: input.durationMode,
+      note: input.note?.trim() || undefined,
     });
   });
 }

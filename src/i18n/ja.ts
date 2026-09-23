@@ -429,6 +429,21 @@ const ja: Record<keyof typeof en, string> = {
   "Auto-hide tab size": "自動非表示タブのサイズ",
   "Show accent indicator on auto-hide tab": "自動非表示タブにアクセント表示を表示する",
   "Enter zero or a positive number.": "0 または正の数を入力してください。",
+  "HH": "時",
+  "MM": "分",
+  "SS": "秒",
+  "Unlock duration": "時間のロックを解除",
+  "Lock duration": "時間をロック",
+  "Choose an Academic Year.": "学年を選択してください。",
+  "Choose a Subject from the selected Academic Year.": "選択した学年の科目を選択してください。",
+  "End time must be after start time.": "終了時刻は開始時刻より後にしてください。",
+  "Duration must be greater than zero.": "時間は0より大きくしてください。",
+  "Duration cannot exceed the available Start and End span.": "時間は開始時刻から終了時刻までの範囲を超えることはできません。",
+  "Reconnect Duration to Start and End?": "時間を開始時刻と終了時刻に再接続しますか？",
+  "Duration will change from {{current}} to {{next}}.": "時間は {{current}} から {{next}} に変更されます。",
+  "Lock and update": "ロックして更新",
+  "Session not found.": "セッションが見つかりません。",
+  "Invalid session": "無効なセッション",
 };
 
 export default ja;

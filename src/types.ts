@@ -20,6 +20,7 @@ export type FocusSession = {
   startTime: number;
   endTime: number;
   focusedDurationSeconds: number;
+  durationMode?: "locked" | "unlocked";
   subjectName: string;
   academicYearId: string;
   academicYearName: string;

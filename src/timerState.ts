@@ -100,7 +100,7 @@ export function completedSession(state: TimerState, endTime: number): FocusSessi
   const closed = closeRunningInterval(state, endTime);
   const focusedDurationSeconds = Math.max(0, closed.accumulatedFocusedSeconds);
   if (!focusedDurationSeconds) return;
-  return { id: state.sessionId, subjectId: state.subjectId, subjectName: state.subject, academicYearId: state.academicYearId, academicYearName: state.academicYearName, startTime: state.startedAt, endTime, focusedDurationSeconds, note: state.note.trim() || undefined, archived: false, focusIntervals: closed.focusIntervals };
+  return { id: state.sessionId, subjectId: state.subjectId, subjectName: state.subject, academicYearId: state.academicYearId, academicYearName: state.academicYearName, startTime: state.startedAt, endTime, focusedDurationSeconds, durationMode: focusedDurationSeconds === Math.round((endTime - state.startedAt) / 1000) ? "locked" : "unlocked", note: state.note.trim() || undefined, archived: false, focusIntervals: closed.focusIntervals };
 }
 
 export function idleTimerState(state: TimerState): TimerState {

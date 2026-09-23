@@ -427,6 +427,21 @@ const en = {
   "Auto-hide tab size": "Auto-hide tab size",
   "Show accent indicator on auto-hide tab": "Show accent indicator on auto-hide tab",
   "Enter zero or a positive number.": "Enter zero or a positive number.",
+  "HH": "HH",
+  "MM": "MM",
+  "SS": "SS",
+  "Unlock duration": "Unlock duration",
+  "Lock duration": "Lock duration",
+  "Choose an Academic Year.": "Choose an Academic Year.",
+  "Choose a Subject from the selected Academic Year.": "Choose a Subject from the selected Academic Year.",
+  "End time must be after start time.": "End time must be after start time.",
+  "Duration must be greater than zero.": "Duration must be greater than zero.",
+  "Duration cannot exceed the available Start and End span.": "Duration cannot exceed the available Start and End span.",
+  "Reconnect Duration to Start and End?": "Reconnect Duration to Start and End?",
+  "Duration will change from {{current}} to {{next}}.": "Duration will change from {{current}} to {{next}}.",
+  "Lock and update": "Lock and update",
+  "Session not found.": "Session not found.",
+  "Invalid session": "Invalid session",
 } as const;
 
 export default en;

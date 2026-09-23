@@ -42,7 +42,7 @@ export function validateBackup(value: unknown): FocusBackup {
   });
   const sessionIds = new Set<string>();
   sessionRows.forEach((row, index) => {
-    if (!isObject(row) || typeof row.id !== "string" || !row.id.trim() || typeof row.subjectId !== "string" || typeof row.subjectName !== "string" || typeof row.academicYearId !== "string" || typeof row.academicYearName !== "string" || !isFiniteNumber(row.startTime) || !isFiniteNumber(row.endTime) || !isFiniteNumber(row.focusedDurationSeconds) || !isBoolean(row.archived) || row.endTime <= row.startTime || row.focusedDurationSeconds <= 0) throw new Error(`Invalid Session at item ${index + 1}.`);
+    if (!isObject(row) || typeof row.id !== "string" || !row.id.trim() || typeof row.subjectId !== "string" || typeof row.subjectName !== "string" || typeof row.academicYearId !== "string" || typeof row.academicYearName !== "string" || !isFiniteNumber(row.startTime) || !isFiniteNumber(row.endTime) || !isFiniteNumber(row.focusedDurationSeconds) || !isBoolean(row.archived) || row.endTime <= row.startTime || row.focusedDurationSeconds <= 0 || (row.durationMode !== undefined && row.durationMode !== "locked" && row.durationMode !== "unlocked")) throw new Error(`Invalid Session at item ${index + 1}.`);
     if (!subjectIds.has(row.subjectId)) throw new Error(`Session ${row.id} references a missing Subject.`);
     if (sessionIds.has(row.id)) throw new Error(`Duplicate Session ID: ${row.id}.`);
     sessionIds.add(row.id);

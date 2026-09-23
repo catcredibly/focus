@@ -296,6 +296,19 @@ select, input { color-scheme: dark; }
 .form { display: flex; flex-direction: column; gap: 16px; }
 .form input, .form select { width: 100%; min-width: 0; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.duration-field { display: flex; flex-direction: column; gap: 7px; }
+.field-label { color: #8fa4b7; font-size: 12px; }
+.duration-editor-fields { display: flex; align-items: flex-start; gap: 14px; }
+.duration-part { position: relative; width: 72px; display: grid; gap: 4px; text-align: center; }
+.duration-part input { width: 72px; min-width: 0; height: 46px; padding: 0 6px; border: 1px solid #1b374b; border-radius: 6px; background: #0c1b28; color: #eef5fb; font-size: 19px; font-weight: 650; text-align: center; }
+.duration-part small { color: #71899d; font-size: 9px; }
+.duration-part b { position: absolute; top: 10px; right: -10px; color: #71899d; font-size: 18px; font-weight: 400; }
+.duration-editor-fields.is-locked .duration-part input { color: #7f93a3; background: #0a1721; cursor: default; }
+.duration-editor-fields.has-error .duration-part input, .form input.input-error { border-color: #b64d58; box-shadow: 0 0 0 1px rgba(182,77,88,.24); }
+.duration-lock { width: 40px; height: 40px; margin: 3px 0 0 2px; display: grid; place-items: center; border: 1px solid #29465b; border-radius: 6px; background: #102333; color: #a9bac8; cursor: pointer; }
+.duration-lock svg { width: 17px; }
+.field-error { margin: -5px 0 0; color: #ff9299; font-size: 12px; line-height: 1.4; }
+.modal-copy { color: #9db0c0; line-height: 1.55; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; }
 .modal-actions > button:not(.primary-action), .pagination button { height: 38px; padding: 0 14px; border: 1px solid #29465b; border-radius: 6px; background: #102333; cursor: pointer; }
 .history-filters { display: grid; grid-template-columns: repeat(3, minmax(180px, 260px)); margin-bottom: 20px; }
@@ -553,6 +566,8 @@ select, input { color-scheme: dark; }
 [data-theme="light"] .timer-shell, [data-theme="light"] .page { color: #172431; background: #eef3f6; }
 [data-theme="light"] .time-entry input, [data-theme="light"] .running-time { color: #13202a; }
 [data-theme="light"] .subject-select, [data-theme="light"] .note-field, [data-theme="light"] select, [data-theme="light"] input, [data-theme="light"] .settings-content, [data-theme="light"] .analytics-panel, [data-theme="light"] .metric, [data-theme="light"] .data-row, [data-theme="light"] .history-row, [data-theme="light"] .history-head, [data-theme="light"] .today-panel { color: #1c2b37; border-color: #c8d5dd; background: #fff; }
+[data-theme="light"] .duration-editor-fields.is-locked .duration-part input { color: #71818d; background: #edf1f3; }
+[data-theme="light"] .duration-editor-fields.has-error .duration-part input, [data-theme="light"] .form input.input-error { border-color: #b33f4b; }
 [data-theme="light"] .metric-card, [data-theme="light"] .control-button, [data-theme="light"] .setting-row, [data-theme="light"] .filter-bar, [data-theme="light"] .selection-toolbar { color: #1c2b37; border-color: #d4dee4; background: #f8fafb; }
 [data-theme="light"] .page-header p, [data-theme="light"] .date, [data-theme="light"] .running-labels, [data-theme="light"] .setting-row span { color: #607585; }
 [data-theme="light"] .analytics-table-head { background: #f7fafb; }

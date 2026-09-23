@@ -47,10 +47,17 @@ export async function createSession(input: {
   startTime: number;
   endTime: number;
   note?: string;
+  focusedDurationSeconds?: number;
+  durationMode?: "locked" | "unlocked";
 }) {
   if (!Number.isFinite(input.startTime) || !Number.isFinite(input.endTime) || input.endTime <= input.startTime) {
     throw new Error("End time must be after start time.");
   }
+  if (input.subject.academicYearId !== input.academicYear.id) throw new Error("Choose a Subject from the selected Academic Year.");
+  const spanSeconds = Math.round((input.endTime - input.startTime) / 1000);
+  const durationMode = input.durationMode ?? "locked";
+  const focusedDurationSeconds = durationMode === "locked" ? spanSeconds : Math.round(input.focusedDurationSeconds ?? spanSeconds);
+  if (focusedDurationSeconds <= 0 || focusedDurationSeconds > spanSeconds) throw new Error("Duration cannot exceed the available Start and End span.");
   const session: FocusSession = {
     id: makeId(),
     subjectId: input.subject.id,
@@ -59,7 +66,8 @@ export async function createSession(input: {
     academicYearName: input.academicYear.name,
     startTime: input.startTime,
     endTime: input.endTime,
-    focusedDurationSeconds: Math.round((input.endTime - input.startTime) / 1000),
+    focusedDurationSeconds,
+    durationMode,
     note: input.note?.trim() || undefined,
     archived: false,
   };

@@ -2,7 +2,7 @@ import "fake-indexeddb/auto";
 import Dexie from "dexie";
 import { afterEach, describe, expect, it } from "vitest";
 import { FocusDatabase } from "./db";
-import { canDeleteManagedRecord, deleteAcademicYearCascade, deleteSession, deleteSessions, deleteSubjectCascade, isSessionEffectivelyArchived, moveSessions, setAcademicYearArchived } from "./management";
+import { canDeleteManagedRecord, deleteAcademicYearCascade, deleteSession, deleteSessions, deleteSubjectCascade, isSessionEffectivelyArchived, moveSessions, setAcademicYearArchived, updateSessionDetails } from "./management";
 import { managementViewState } from "./managementViewState";
 
 const opened: Dexie[] = [];
@@ -91,5 +91,23 @@ describe("management archive and deletion integrity", () => {
     await testDb.academicYears.add({id:"year",name:"Year",archived:false});
     await testDb.subjects.add({id:"archived",academicYearId:"year",name:"Archived",color:"#fff",archived:true});
     await expect(moveSessions(["one"],"archived",testDb)).rejects.toThrow("active Subject");
+  });
+
+  it("updates Session relationships and preserves an unlocked focused duration", async () => {
+    const testDb=database();
+    await testDb.academicYears.bulkAdd([{id:"old-year",name:"Old Year",archived:false},{id:"new-year",name:"New Year",archived:false}]);
+    await testDb.subjects.bulkAdd([{id:"old",academicYearId:"old-year",name:"Old",color:"#fff",archived:false},{id:"new",academicYearId:"new-year",name:"New",color:"#fff",archived:false}]);
+    await testDb.sessions.add({id:"session",subjectId:"old",subjectName:"Old",academicYearId:"old-year",academicYearName:"Old Year",startTime:0,endTime:7200000,focusedDurationSeconds:5400,archived:false});
+    await updateSessionDetails("session",{academicYearId:"new-year",subjectId:"new",startTime:1800000,endTime:7200000,focusedDurationSeconds:4500,durationMode:"unlocked",note:"Updated"},testDb);
+    expect(await testDb.sessions.get("session")).toMatchObject({subjectId:"new",subjectName:"New",academicYearId:"new-year",academicYearName:"New Year",startTime:1800000,endTime:7200000,focusedDurationSeconds:4500,durationMode:"unlocked",note:"Updated"});
+  });
+
+  it("rejects an unlocked duration longer than the Session span", async () => {
+    const testDb=database();
+    await testDb.academicYears.add({id:"year",name:"Year",archived:false});
+    await testDb.subjects.add({id:"subject",academicYearId:"year",name:"Subject",color:"#fff",archived:false});
+    await testDb.sessions.add({id:"session",subjectId:"subject",subjectName:"Subject",academicYearId:"year",academicYearName:"Year",startTime:0,endTime:3600000,focusedDurationSeconds:3600,archived:false});
+    await expect(updateSessionDetails("session",{academicYearId:"year",subjectId:"subject",startTime:0,endTime:3600000,focusedDurationSeconds:5400,durationMode:"unlocked"},testDb)).rejects.toThrow("cannot exceed");
+    expect((await testDb.sessions.get("session"))?.focusedDurationSeconds).toBe(3600);
   });
 });

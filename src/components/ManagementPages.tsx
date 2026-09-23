@@ -1,15 +1,16 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Archive, CalendarDays, Check, FolderInput, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { Archive, CalendarDays, Check, FolderInput, Lock, LockOpen, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { db } from "../db";
 import { createSession, CURRENT_YEAR_KEY, formatDuration, makeId, setCurrentAcademicYear } from "../data";
 import type { AcademicYear, FocusSession, Subject } from "../types";
 import { localDateInputValue } from "../timerState";
-import { canDeleteManagedRecord, deleteAcademicYearCascade, deleteSession, deleteSessions, deleteSubjectCascade, isSessionEffectivelyArchived, moveSessions, setAcademicYearArchived } from "../management";
+import { canDeleteManagedRecord, deleteAcademicYearCascade, deleteSession, deleteSessions, deleteSubjectCascade, isSessionEffectivelyArchived, moveSessions, setAcademicYearArchived, updateSessionDetails } from "../management";
 import { managementViewState } from "../managementViewState";
 import { useSettings } from "../hooks/useSettings";
 import { useTranslation } from "react-i18next";
 import { localeCode } from "../i18n";
+import { durationParts, formatClockDuration, inferDurationMode, normalizeDurationParts, sessionSpanSeconds, type DurationMode } from "../sessionDuration";
 
 const COLORS = ["#4da3ff", "#ff4d57", "#ffad3b", "#4dd39a", "#a879ff", "#ff7eb6"];
 const activeTimerRelationship = () => {
@@ -332,6 +333,121 @@ export function SubjectsPage() {
   );
 }
 
+const timeInputValue = (stamp: number) => new Date(stamp).toTimeString().slice(0, 8);
+const durationInputFields = (seconds: number) => {
+  const parts = durationParts(seconds);
+  return { hours: String(parts.hours).padStart(2, "0"), minutes: String(parts.minutes).padStart(2, "0"), seconds: String(parts.seconds).padStart(2, "0") };
+};
+
+function SessionEditor({ session, years, subjects, onClose }: { session: FocusSession | null; years: AcademicYear[]; subjects: Subject[]; onClose: () => void }) {
+  const { t } = useTranslation();
+  const initialYearId = session?.academicYearId ?? years.find((year) => !year.archived)?.id ?? years[0]?.id ?? "";
+  const initialSubjectId = session?.subjectId ?? subjects.find((subject) => subject.academicYearId === initialYearId && !subject.archived)?.id ?? "";
+  const initialStart = session?.startTime ?? new Date().setHours(9, 0, 0, 0);
+  const initialEnd = session?.endTime ?? new Date().setHours(10, 0, 0, 0);
+  const [academicYearId, setAcademicYearId] = useState(initialYearId);
+  const [subjectId, setSubjectId] = useState(initialSubjectId);
+  const [date, setDate] = useState(localDateInputValue(initialStart));
+  const [start, setStart] = useState(timeInputValue(initialStart));
+  const [end, setEnd] = useState(timeInputValue(initialEnd));
+  const [mode, setMode] = useState<DurationMode>(session ? inferDurationMode(session) : "locked");
+  const [duration, setDuration] = useState(() => durationInputFields(session?.focusedDurationSeconds ?? sessionSpanSeconds(initialStart, initialEnd)));
+  const [note, setNote] = useState(session?.note ?? "");
+  const [relockPending, setRelockPending] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const availableSubjects = subjects.filter((subject) => subject.academicYearId === academicYearId);
+  const startTime = new Date(`${date}T${start}`).getTime();
+  const endTime = new Date(`${date}T${end}`).getTime();
+  const validSpan = Number.isFinite(startTime) && Number.isFinite(endTime) && endTime > startTime;
+  const spanSeconds = validSpan ? sessionSpanSeconds(startTime, endTime) : 0;
+  const normalizedDuration = normalizeDurationParts(Number(duration.hours), Number(duration.minutes), Number(duration.seconds));
+  const focusedDurationSeconds = mode === "locked" ? spanSeconds : normalizedDuration.totalSeconds;
+  const relationshipValid = Boolean(academicYearId && subjectId && availableSubjects.some((subject) => subject.id === subjectId));
+  const durationError = mode === "unlocked" && focusedDurationSeconds <= 0
+    ? t("Duration must be greater than zero.")
+    : mode === "unlocked" && focusedDurationSeconds > spanSeconds
+      ? t("Duration cannot exceed the available Start and End span.")
+      : "";
+
+  useEffect(() => {
+    if (mode === "locked" && validSpan) setDuration(durationInputFields(spanSeconds));
+  }, [date, start, end, mode, spanSeconds, validSpan]);
+
+  const normalizeDuration = () => setDuration(durationInputFields(normalizedDuration.totalSeconds));
+  const requestModeToggle = () => {
+    setSaveError("");
+    if (mode === "locked") { setMode("unlocked"); return; }
+    if (focusedDurationSeconds !== spanSeconds) setRelockPending(true);
+    else setMode("locked");
+  };
+  const save = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSaveError("");
+    if (!academicYearId) { setSaveError(t("Choose an Academic Year.")); return; }
+    if (!relationshipValid) { setSaveError(t("Choose a Subject from the selected Academic Year.")); return; }
+    if (!validSpan) { setSaveError(t("End time must be after start time.")); return; }
+    if (durationError) return;
+    try {
+      if (session) await updateSessionDetails(session.id, { academicYearId, subjectId, startTime, endTime, focusedDurationSeconds, durationMode: mode, note });
+      else {
+        const subject = subjects.find((item) => item.id === subjectId)!;
+        const academicYear = years.find((item) => item.id === academicYearId)!;
+        await createSession({ subject, academicYear, startTime, endTime, focusedDurationSeconds, durationMode: mode, note });
+      }
+      onClose();
+    } catch (error) {
+      setSaveError(t(error instanceof Error ? error.message : "Invalid session"));
+    }
+  };
+
+  return <>
+    <form onSubmit={save} className="form session-editor">
+      <label>
+        {t("Academic Year")}
+        <select value={academicYearId} onChange={(event) => { const next = event.target.value; setAcademicYearId(next); if (!subjects.some((subject) => subject.id === subjectId && subject.academicYearId === next)) setSubjectId(""); }} required autoFocus>
+          <option value="">{t("Choose Academic Year")}</option>
+          {years.map((year) => <option key={year.id} value={year.id}>{year.name}</option>)}
+        </select>
+      </label>
+      <label>
+        {t("Subject")}
+        <select value={subjectId} onChange={(event) => setSubjectId(event.target.value)} disabled={!academicYearId} required>
+          <option value="">{t("Choose Subject")}</option>
+          {availableSubjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}
+        </select>
+      </label>
+      <label>
+        {t("Date")}
+        <input type="date" value={date} onChange={(event) => setDate(event.target.value)} required />
+      </label>
+      <div className="form-grid">
+        <label>{t("Start")}<input type="time" step="1" value={start} onChange={(event) => setStart(event.target.value)} required /></label>
+        <label>{t("End")}<input className={!validSpan ? "input-error" : ""} type="time" step="1" value={end} onChange={(event) => setEnd(event.target.value)} required /></label>
+      </div>
+      {!validSpan && <p className="field-error">{t("End time must be after start time.")}</p>}
+      <div className="duration-field">
+        <span className="field-label">{t("Duration")}</span>
+        <div className={`duration-editor-fields ${durationError ? "has-error" : ""} ${mode === "locked" ? "is-locked" : ""}`}>
+          {(["hours", "minutes", "seconds"] as const).map((part, index) => <div className="duration-part" key={part}>
+            <input aria-label={t(part === "hours" ? "Hours" : part === "minutes" ? "Minutes" : "Seconds")} inputMode="numeric" pattern="[0-9]*" value={duration[part]} readOnly={mode === "locked"} onChange={(event) => setDuration((current) => ({ ...current, [part]: event.target.value.replace(/\D/g, "") }))} onBlur={normalizeDuration} />
+            <small>{t(part === "hours" ? "HH" : part === "minutes" ? "MM" : "SS")}</small>
+            {index < 2 && <b aria-hidden="true">:</b>}
+          </div>)}
+          <button type="button" className="duration-lock tooltip-button" aria-label={t(mode === "locked" ? "Unlock duration" : "Lock duration")} data-tooltip={t(mode === "locked" ? "Unlock duration" : "Lock duration")} onClick={requestModeToggle}>{mode === "locked" ? <Lock /> : <LockOpen />}</button>
+        </div>
+        {durationError && <p className="field-error">{durationError}</p>}
+      </div>
+      <label>{t("Note")}<input value={note} onChange={(event) => setNote(event.target.value)} placeholder={t("Add a note (optional)...")} /></label>
+      {saveError && <p className="field-error">{saveError}</p>}
+      <div className="modal-actions"><button type="button" onClick={onClose}>{t("Cancel")}</button><button className="primary-action" disabled={!relationshipValid || !validSpan || Boolean(durationError)}>{t("Save")}</button></div>
+    </form>
+    {relockPending && <Modal title={t("Reconnect Duration to Start and End?")} onClose={() => setRelockPending(false)}>
+      <p className="modal-copy">{t("Duration will change from {{current}} to {{next}}.", { current: formatClockDuration(focusedDurationSeconds), next: formatClockDuration(spanSeconds) })}</p>
+      <div className="modal-actions"><button type="button" onClick={() => setRelockPending(false)}>{t("Cancel")}</button><button type="button" className="primary-action" onClick={() => { setDuration(durationInputFields(spanSeconds)); setMode("locked"); setRelockPending(false); }}>{t("Lock and update")}</button></div>
+    </Modal>}
+  </>;
+}
+
 export function HistoryPage() {
   const { t } = useTranslation();
   const years = useLiveQuery(() => db.academicYears.toArray(), []) ?? [];
@@ -353,42 +469,6 @@ export function HistoryPage() {
   const [moveSubjectId, setMoveSubjectId] = useState("");
   const pageSize = 20;
   const filtered = useMemo(() => sessions.filter((session) => (status === "all" || isSessionEffectivelyArchived(session, subjects, years) === (status === "archived")) && (!yearId || session.academicYearId === yearId) && (!subjectId || session.subjectId === subjectId)), [sessions, status, yearId, subjectId, subjects, years]);
-  const save = async (form: FormData) => {
-    const subject = subjects.find((s) => s.id === String(form.get("subject")));
-    const year = years.find((y) => y.id === subject?.academicYearId);
-    if (!subject || !year) return;
-    const date = String(form.get("date")),
-      start = String(form.get("start")),
-      end = String(form.get("end")),
-      note = String(form.get("note") ?? "").trim() || undefined;
-    const startTime = new Date(`${date}T${start}`).getTime(),
-      endTime = new Date(`${date}T${end}`).getTime();
-    try {
-      if (editing) {
-        if (endTime <= startTime) throw new Error("End time must be after start time.");
-        await db.sessions.update(editing.id, {
-          subjectId: subject.id,
-          subjectName: subject.name,
-          academicYearId: year.id,
-          academicYearName: year.name,
-          startTime,
-          endTime,
-          focusedDurationSeconds: Math.round((endTime - startTime) / 1000),
-          note,
-        });
-      } else
-        await createSession({
-          subject,
-          academicYear: year,
-          startTime,
-          endTime,
-          note,
-        });
-      setEditing(undefined);
-    } catch (error) {
-      alert(t(error instanceof Error ? error.message : "Invalid session"));
-    }
-  };
   return (
     <main className="page">
       <PageHeader
@@ -512,44 +592,7 @@ export function HistoryPage() {
       </div>
       {editing !== undefined && (
         <Modal title={t(editing ? "Edit Session" : "Add Session")} onClose={() => setEditing(undefined)}>
-          <form action={save} className="form">
-            <label>
-              {t("Subject")}
-              <select name="subject" defaultValue={editing?.subjectId} required>
-                {subjects
-                  .filter((s) => !s.archived || s.id === editing?.subjectId)
-                  .map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} · {years.find((y) => y.id === s.academicYearId)?.name}
-                    </option>
-                  ))}
-              </select>
-            </label>
-            <label>
-              {t("Date")}
-              <input type="date" name="date" required defaultValue={localDateInputValue(editing?.startTime ?? Date.now())} />
-            </label>
-            <div className="form-grid">
-              <label>
-                {t("Start")}
-                <input type="time" name="start" required defaultValue={editing ? new Date(editing.startTime).toTimeString().slice(0, 5) : "09:00"} />
-              </label>
-              <label>
-                {t("End")}
-                <input type="time" name="end" required defaultValue={editing ? new Date(editing.endTime).toTimeString().slice(0, 5) : "10:00"} />
-              </label>
-            </div>
-            <label>
-              {t("Note")}
-              <input name="note" placeholder={t("Add a note (optional)...")} defaultValue={editing?.note ?? ""} />
-            </label>
-            <div className="modal-actions">
-              <button type="button" onClick={() => setEditing(undefined)}>
-                {t("Cancel")}
-              </button>
-              <button className="primary-action">{t("Save")}</button>
-            </div>
-          </form>
+          <SessionEditor session={editing} years={years} subjects={subjects} onClose={() => setEditing(undefined)} />
         </Modal>
       )}
       {deleting && <DeleteConfirmation title={t("Delete Session?")} onCancel={() => setDeleting(undefined)} onDelete={async () => { await deleteSession(deleting.id); setDeleting(undefined); }}>{t("This permanently removes this Session.")}</DeleteConfirmation>}

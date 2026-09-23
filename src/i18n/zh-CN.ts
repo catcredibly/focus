@@ -429,6 +429,21 @@ const zhCN: Record<keyof typeof en, string> = {
   "Auto-hide tab size": "自动隐藏标签大小",
   "Show accent indicator on auto-hide tab": "在自动隐藏标签上显示强调色指示点",
   "Enter zero or a positive number.": "请输入零或正数。",
+  "HH": "时",
+  "MM": "分",
+  "SS": "秒",
+  "Unlock duration": "解锁时长",
+  "Lock duration": "锁定时长",
+  "Choose an Academic Year.": "请选择一个学年。",
+  "Choose a Subject from the selected Academic Year.": "请选择所选学年中的科目。",
+  "End time must be after start time.": "结束时间必须晚于开始时间。",
+  "Duration must be greater than zero.": "时长必须大于零。",
+  "Duration cannot exceed the available Start and End span.": "时长不能超过开始与结束时间之间的可用时段。",
+  "Reconnect Duration to Start and End?": "将时长重新关联到开始和结束时间吗？",
+  "Duration will change from {{current}} to {{next}}.": "时长将从 {{current}} 更改为 {{next}}。",
+  "Lock and update": "锁定并更新",
+  "Session not found.": "找不到该专注记录。",
+  "Invalid session": "无效的专注记录",
 };
 
 export default zhCN;

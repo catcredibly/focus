@@ -429,6 +429,21 @@ const zhTW: Record<keyof typeof en, string> = {
   "Auto-hide tab size": "自動隱藏標籤大小",
   "Show accent indicator on auto-hide tab": "在自動隱藏標籤上顯示強調色指示點",
   "Enter zero or a positive number.": "請輸入零或正數。",
+  "HH": "時",
+  "MM": "分",
+  "SS": "秒",
+  "Unlock duration": "解除鎖定時長",
+  "Lock duration": "鎖定時長",
+  "Choose an Academic Year.": "請選擇一個學年。",
+  "Choose a Subject from the selected Academic Year.": "請選擇所選學年中的科目。",
+  "End time must be after start time.": "結束時間必須晚於開始時間。",
+  "Duration must be greater than zero.": "時長必須大於零。",
+  "Duration cannot exceed the available Start and End span.": "時長不能超過開始與結束時間之間的可用時段。",
+  "Reconnect Duration to Start and End?": "將時長重新連結到開始和結束時間嗎？",
+  "Duration will change from {{current}} to {{next}}.": "時長將從 {{current}} 變更為 {{next}}。",
+  "Lock and update": "鎖定並更新",
+  "Session not found.": "找不到該專注記錄。",
+  "Invalid session": "無效的專注記錄",
 };
 
 export default zhTW;
