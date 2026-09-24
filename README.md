@@ -71,7 +71,7 @@ Generated installers and executables belong outside source control.
 - Dexie and IndexedDB
 - Recharts
 
-See [Architecture](docs/ARCHITECTURE.md) for implementation details and [Releasing](docs/RELEASING.md) for the private release workflow.
+See [Architecture](docs/ARCHITECTURE.md) for implementation details and [Releasing](docs/RELEASING.md) for the release workflow.
 
 ## Security
 
