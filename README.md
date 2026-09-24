@@ -28,7 +28,7 @@ Export regular backups if the data matters to you. Removing the application or i
 
 ## Availability
 
-Focus currently targets Windows. Version 1.0.0 is being prepared for limited private distribution as an NSIS installer; there is no public download yet.
+Focus currently targets Windows only.
 
 ## Development
 
