@@ -108,7 +108,7 @@ Rust in `src-tauri/src/lib.rs` owns the custom window commands and lifecycle han
 ## Release identity
 
 - Product name: `Focus`
-- Version: `1.0.0`
+- Version: `1.2.0`
 - Tauri application identifier: `com.focus.timer`
 - Dexie database name: `focus`
 - Windows installer: NSIS

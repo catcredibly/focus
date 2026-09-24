@@ -28,7 +28,7 @@ Export regular backups if the data matters to you. Removing the application or i
 
 ## Availability
 
-Focus currently targets Windows. Version 1.0.0 is being prepared for limited private distribution as an NSIS installer; there is no public download yet.
+Focus currently targets Windows only.
 
 ## Development
 
@@ -71,7 +71,7 @@ Generated installers and executables belong outside source control.
 - Dexie and IndexedDB
 - Recharts
 
-See [Architecture](docs/ARCHITECTURE.md) for implementation details and [Releasing](docs/RELEASING.md) for the private release workflow.
+See [Architecture](docs/ARCHITECTURE.md) for implementation details and [Releasing](docs/RELEASING.md) for the release workflow.
 
 ## Security
 
