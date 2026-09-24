@@ -11,7 +11,7 @@ Focus is a Windows desktop focus timer and study tracker. It combines a clean co
 ## Features
 
 - Focus timer with pause, extend, recovery, notes, and completion notifications
-- Compact always-on-top timer popout with docking and auto-hide
+- Compact always-on-top timer popout with corner docking and auto-hide features
 - Subjects grouped into Academic Years
 - Searchable, editable Session history
 - Daily and weekly study goals
@@ -22,13 +22,16 @@ Focus is a Windows desktop focus timer and study tracker. It combines a clean co
 
 ## Privacy
 
-Focus is local-first. Academic Years, Subjects, Sessions, settings, and notes are stored in IndexedDB on the device where Focus runs. The application does not upload study data to a Focus account or bundled cloud service.
+Focus is local-first. Academic Years, Subjects, Sessions, settings, and notes are stored in IndexedDB on the device where Focus runs.
+The application does not upload study data to a Focus account or bundled cloud service.
 
-Export regular backups if the data matters to you. Removing the application or its WebView storage may remove local data.
+Export regular backups if the data matters to you.
+Removing the application or its WebView storage may remove local data.
 
 ## Availability
 
 Focus currently targets Windows only.
+Releases to other platforms may be considered.
 
 ## Development
 
