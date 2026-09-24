@@ -3,6 +3,9 @@ import { db } from "../db";
 import type { AcademicYear, Subject } from "../types";
 import { ACTIVE_TIMER_STORAGE_KEY, closeRunningInterval, completedSession, extendTimerState, finishTimerState, focusedSecondsAt, idleTimerState, initialTimerState, normalizeTimerState, startTimerState, type TimerState } from "../timerState";
 import { handleTimerCompletion } from "../timerCompletion";
+import { saveFocusSession } from "../saveFocusSession";
+import { showToast } from "../toasts";
+import { TIMER_STATE_CHANGED } from "../popoutLifecycle";
 
 const CHANNEL = "focus-timer";
 const TIMER_INITIALIZED_KEY = "focus.timerInitialized";
@@ -33,10 +36,12 @@ export function useTimer() {
   const completingRef = useRef(false);
   const noteTimerRef = useRef(0);
   const startupHandledRef = useRef(false);
+  const retryLiveRef = useRef(false);
 
   const persist = useCallback((next: TimerState) => {
     if (next.running) localStorage.setItem(ACTIVE_TIMER_STORAGE_KEY, JSON.stringify(next));
     else localStorage.removeItem(ACTIVE_TIMER_STORAGE_KEY);
+    window.dispatchEvent(new Event(TIMER_STATE_CHANGED));
   }, []);
 
   const commit = useCallback((next: TimerState, shouldPersist = true) => {
@@ -45,13 +50,17 @@ export function useTimer() {
     channelRef.current?.postMessage(next);
   }, [persist]);
 
-  const saveAndClear = useCallback(async (snapshot: TimerState, endTime: number) => {
+  const saveAndClear = useCallback(async (snapshot: TimerState, endTime: number, live = false) => {
     const session = completedSession(snapshot, endTime);
     try {
-      if (session) await db.transaction("rw", db.sessions, async () => { await db.sessions.put(session); });
+      const notifications = session ? await saveFocusSession(session, live) : [];
+      retryLiveRef.current = false;
       setSaveError(false); setRecovery(null); commit(idleTimerState(snapshot));
+      // A notification transport failure must never turn a committed save into a failed one.
+      for (const toast of notifications) { try { showToast(toast.message, toast.kind); } catch { /* Session is already safely saved. */ } }
       return true;
     } catch {
+      retryLiveRef.current = live;
       const preserved = { ...snapshot, saveFailed: true, finished: true, finishedAt: endTime, targetEnd: null, remainingSeconds: 0 };
       setSaveError(true); setRecovery("save-failed"); commit(preserved);
       return false;
@@ -138,17 +147,17 @@ export function useTimer() {
 
   const stop = useCallback(async () => {
     const current = stateAt(stateRef.current), now = Date.now();
-    if (current.running) await saveAndClear(current, current.finishedAt ?? now);
+    if (current.running) await saveAndClear(current, current.finishedAt ?? now, true);
   }, [saveAndClear]);
 
   const finish = useCallback(async () => {
     const current = stateRef.current;
-    if (current.running && current.finished) await saveAndClear(current, current.finishedAt ?? Date.now());
+    if (current.running && current.finished) await saveAndClear(current, current.finishedAt ?? Date.now(), true);
   }, [saveAndClear]);
 
   const retrySave = useCallback(async () => {
     const current = stateRef.current;
-    await saveAndClear(current, current.finishedAt ?? Date.now());
+    await saveAndClear(current, current.finishedAt ?? Date.now(), retryLiveRef.current);
   }, [saveAndClear]);
 
   const extend = useCallback((seconds: number) => { const current = stateRef.current; if (current.running) commit(extendTimerState(current, seconds)); }, [commit]);

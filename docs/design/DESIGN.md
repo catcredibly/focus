@@ -137,9 +137,16 @@ Final V0.4 behavior:
 
 Current overrides:
 
-- Global filters are Academic Year, Subject, and 7D/30D/3M/1Y/All range controls.
-- Overview metrics are total focus time, total Sessions, average Session, longest streak, and active study days.
+- Analytics tabs are Overview, Study Patterns, Subjects, Academic Years, and Time Trends.
+- Global filters are Academic Year, Subject, and rolling 7D/30D/90D/1Y/All/Custom date ranges. Custom endpoints are inclusive; weeks run Monday through Sunday.
+- Overview metrics share one block without icons: total focus time, total Sessions, average Session, average active day, and active study days. Finite ranges compare with the preceding equal-length calendar period.
+- Daily and weekly goals use the current day/week independently of the date filter. Daily Activity is all-time; blank alignment cells before actual tracking are not measured history.
+- Subjects compares all Subjects while preserving the saved Subject selection. Academic Years compares all Years and Subjects while preserving both saved selections.
+- The Subjects tab contains its table, Subject donut, and Subject share timeline. Academic Years contains its list and the existing horizontal focus-time breakdown.
+- Study Patterns has three shared metrics (total Sessions, average Session, median Session), two fixed-category charts, and a full-row weekday/time heatmap. Ranges over seven days average each weekday bucket over all occurrences, including zero-study occurrences.
+- Time Trends stacks goal achievement, cumulative focus time, Sessions, average Session length, and rolling calendar-day averages. Partial weekly/monthly buckets are clipped to the selected range.
 - Focus time over time shows daily totals plus 7-day, 30-day, 3-month, and 1-year rolling averages.
+- Rolling averages use trailing 7/30/90/365 calendar days, including earlier history and zero-study days. Horizontal scrollbars provide historical navigation.
 - Single-series emphasis follows the selected app accent; category series retain stable distinct colours.
 
 ## History
@@ -253,6 +260,10 @@ Interaction notes:
 - Popout transparency and finish behaviour follow the corresponding Settings values.
 - The popout uses icon-only controls and a hover-linked close control; the main Timer retains labelled controls.
 - Closing the popout, including native close, only hides the utility window and never changes timer state.
+- The popout is available only while a Session is running or paused. Completion, Stop and save, and Void dismiss the timer, reveal tab, and menu without clearing persisted Popout preferences. A completed Session awaiting final save remains available in the main window, not as an empty popout.
+- Native transient open/session state is authoritative. Settings changes cannot request visibility; changing Docked/Floating keeps a closed popout closed and an auto-hidden popout hidden.
+- Floating auto-hide uses the current native rectangle and monitor work area, with DPI-scaled corner hysteresis. The reveal tab follows the rectangle's centre along the selected edge. Docked windows use their configured edge.
+- Settings uses compact separate HH/MM goal fields, a decimal delay input with an attached localized seconds unit, an input-style shortcut value, and a Docked/Floating segmented selector.
 - Extend choices are 5, 15, 30, and 60 minutes plus a custom amount editor. Custom is hidden until selected and adds to the current Session without changing its remembered base duration.
 
 ## Reference Precedence
@@ -265,3 +276,11 @@ When references disagree, use this order:
 4. Supplementary images for shared styling only.
 
 The newer `reference/analytics-all-years.png` supersedes every Analytics design visible in `reference/app-overview.png`.
+
+### Compact popout layout
+
+- Settings > Popout > Popout layout offers Regular (default) and Compact.
+- Compact uses a shallow native window: 280 x 70, 320 x 78, or 380 x 90 logical pixels for Small, Medium, and Large.
+- With controls-on-hover enabled, the timer shrinks to make room for a two-row control group on its right. Keyboard focus also reveals controls.
+- Extend and Stop use the separate popout menu window so their forms and confirmations remain usable within the shallow layout.
+- Both layouts share docking, auto-hide, transparency, session lifecycle, and timer controls.

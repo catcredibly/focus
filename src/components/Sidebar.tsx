@@ -41,7 +41,6 @@ export function Sidebar({ collapsed, onToggle, active, onNavigate }: Props) {
         {!collapsed && (
           <div>
             <div className="brand-name">Focus</div>
-            <div className="brand-subtitle">{t("Time well spent.")}</div>
           </div>
         )}
         <button className="icon-button sidebar-toggle" onClick={onToggle} aria-label={t("Toggle sidebar")}>

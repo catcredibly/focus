@@ -1,4 +1,4 @@
-import { isTauri, invoke } from "@tauri-apps/api/core";
+import { isTauri } from "@tauri-apps/api/core";
 import { isPermissionGranted, requestPermission, sendNotification } from "@tauri-apps/plugin-notification";
 import { formatDuration } from "./data";
 import { loadSettings } from "./settings";
@@ -56,5 +56,5 @@ export async function handleTimerCompletion(state: TimerState) {
       await sendFocusNotification(i18n.t("Focus session complete"), i18n.t("{{subject}} - {{duration}}", { subject: state.subject, duration: formatDuration(state.plannedDurationSeconds) }));
     } catch { /* Notification denial must not interrupt Session persistence. */ }
   }
-  if (settings.popoutCloseOnCompletion && isTauri()) await invoke("hide_timer_popout").catch(() => undefined);
+  // Popout closure follows active-session lifecycle, independently of feedback preferences.
 }

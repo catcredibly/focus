@@ -5,6 +5,11 @@ import zhCN from "./zh-CN";
 import zhTW from "./zh-TW";
 
 describe("translation resources", () => {
+  it("preserves Unicode translations without replacement characters", () => {
+    for (const locale of [en, zhCN, zhTW, ja]) {
+      for (const [key, value] of Object.entries(locale)) expect(value, key).not.toMatch(/\?\?|\uFFFD/);
+    }
+  });
   it("keeps every locale aligned with the canonical English key set", () => {
     const keys = Object.keys(en).sort();
     expect(Object.keys(zhCN).sort()).toEqual(keys);

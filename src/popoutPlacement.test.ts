@@ -4,6 +4,14 @@ import { POPOUT_SIZE, clampFreePosition, cornerPosition, defaultEdgeForCorner, e
 const work: WorkArea = { x: 100, y: 50, width: 1200, height: 800 };
 
 describe("popout placement", () => {
+  it("uses rectangle edges and DPI-scaled hysteresis on negative-coordinate displays", () => {
+    const area = { x: -1920, y: -100, width: 1920, height: 1080 };
+    const size = { width: 600, height: 250 };
+    expect(nearestEdge({ x: -610, y: 718 }, area, size)).toBe("right");
+    expect(nearestEdge({ x: -620, y: 725 }, area, size, "right", 1.5)).toBe("right");
+    expect(nearestEdge({ x: -680, y: 725 }, area, size, "right", 1.5)).toBe("bottom");
+    expect(edgeOffset({ x: -610, y: 315 }, area, size, "right")).toBe(0.5);
+  });
   it.each([
     ["top-left", { x: 112, y: 62 }],
     ["top-right", { x: 928, y: 62 }],

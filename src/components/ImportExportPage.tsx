@@ -1,3 +1,4 @@
+import { showToast } from "../toasts";
 import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { AlertTriangle, ArrowLeft, CheckCircle2, DatabaseBackup, Download, FileSpreadsheet, History, Upload } from "lucide-react";
@@ -27,7 +28,7 @@ export function ImportExportPage({ onNavigate }: { onNavigate: (page: string) =>
   const translateError = (reason: unknown, fallback: string) => t(reason instanceof Error ? reason.message : fallback);
 
   const exportJson = async () => { setBusy(true); setError(""); try { await exportFullBackup(); } catch (reason) { setError(translateError(reason, "Backup failed.")); } finally { setBusy(false); } };
-  const exportCsv = async () => { setBusy(true); setError(""); try { const sessions = await db.sessions.orderBy("startTime").toArray(); const date = backupFilename().replace("focus-backup-", "").replace(".json", ""); await saveTextFile(`focus-sessions-${date}.csv`, exportSessionsCsv(sessions), "csv"); } catch (reason) { setError(translateError(reason, "CSV export failed.")); } finally { setBusy(false); } };
+  const exportCsv = async () => { setBusy(true); setError(""); try { const sessions = await db.sessions.orderBy("startTime").toArray(); const date = backupFilename().replace("focus-backup-", "").replace(".json", ""); if (await saveTextFile(`focus-sessions-${date}.csv`, exportSessionsCsv(sessions), "csv")) showToast("CSV exported successfully"); } catch (reason) { setError(translateError(reason, "CSV export failed.")); } finally { setBusy(false); } };
   const inspect = async (file: { name: string; text: string }) => {
     setError(""); setResult(undefined);
     try {

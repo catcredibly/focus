@@ -3,25 +3,19 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSettings } from "../hooks/useSettings";
+import { refreshTimerAutoHideTab } from "../native";
 
 export function AutoHideTab() {
   const { t } = useTranslation();
   const { settings, loaded } = useSettings();
-  const active = settings.popoutDockAutoHide;
   const [edge, setEdge] = useState(settings.popoutAutoHideEdge);
-  const wasActive = useRef(false);
   const revealing = useRef(false);
+  const revealReset = useRef(0);
   const reveal = () => {
     if (revealing.current) return;
     revealing.current = true;
-    void invoke("request_timer_reveal").finally(() => window.setTimeout(() => { revealing.current = false; }, 500));
+    void invoke("request_timer_reveal").finally(() => { revealReset.current = window.setTimeout(() => { revealing.current = false; }, 500); });
   };
-
-  useEffect(() => {
-    if (!loaded) return;
-    if (wasActive.current && !active) void invoke("cancel_timer_auto_hide");
-    wasActive.current = active;
-  }, [active, loaded]);
 
   useEffect(() => {
     let stop: (() => void) | undefined;
@@ -29,8 +23,13 @@ export function AutoHideTab() {
     return () => stop?.();
   }, []);
   useEffect(() => {
-    if (loaded) void invoke("resize_timer_auto_hide_tab", { edge, tabSize: settings.popoutAutoHideTabSize });
-  }, [edge, loaded, settings.popoutAutoHideTabSize]);
+    if (loaded) void refreshTimerAutoHideTab();
+  }, [loaded, settings.popoutAutoHideTabSize]);
+  useEffect(() => {
+    const closed = () => { window.clearTimeout(revealReset.current); revealing.current = false; };
+    const subscription = getCurrentWindow().listen("focus://popout-closed", closed);
+    return () => { closed(); void subscription.then(stop => stop()); };
+  }, []);
 
   return <main className="auto-hide-tab-window" data-accent={settings.accentColour} data-edge={edge} data-size={settings.popoutAutoHideTabSize}>
     <button aria-label={t("Open Focus")} onPointerEnter={reveal} onClick={reveal}>{settings.popoutAutoHideShowAccent && <span/>}</button>

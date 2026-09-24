@@ -2,7 +2,17 @@ const isTauri = () => "__TAURI_INTERNALS__" in window;
 
 export async function saveTextFile(defaultName:string,contents:string,kind:"json"|"csv"){
   if(isTauri()){const {save}=await import("@tauri-apps/plugin-dialog"); const {writeTextFile}=await import("@tauri-apps/plugin-fs"); const path=await save({defaultPath:defaultName,filters:[{name:kind.toUpperCase(),extensions:[kind]}]}); if(!path)return false; await writeTextFile(path,contents); return true;}
-  const blob=new Blob([contents],{type:kind==="json"?"application/json":"text/csv;charset=utf-8"}); const url=URL.createObjectURL(blob); const anchor=document.createElement("a");anchor.href=url;anchor.download=defaultName;anchor.click();URL.revokeObjectURL(url);return true;
+  const picker = (window as Window & { showSaveFilePicker?: (options: { suggestedName: string }) => Promise<{ createWritable: () => Promise<{ write: (text: string) => Promise<void>; close: () => Promise<void> }> }> }).showSaveFilePicker;
+  if (picker) {
+    try {
+      const handle = await picker({ suggestedName: defaultName });
+      const stream = await handle.createWritable();
+      await stream.write(contents); await stream.close(); return true;
+    } catch (error) { if (error instanceof DOMException && error.name === "AbortError") return false; throw error; }
+  }
+  const blob=new Blob([contents],{type:kind==="json"?"application/json":"text/csv;charset=utf-8"}); const url=URL.createObjectURL(blob); const anchor=document.createElement("a");anchor.href=url;anchor.download=defaultName;anchor.click();URL.revokeObjectURL(url);
+  // A browser download has no write-completion signal. Never claim disk success.
+  return false;
 }
 
 export async function chooseTextFile(){

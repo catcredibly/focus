@@ -10,6 +10,9 @@ void i18n.use(initReactI18next).init({
   resources: { en: { translation: en }, "zh-CN": { translation: zhCN }, "zh-TW": { translation: zhTW }, ja: { translation: ja } },
   lng: "en",
   fallbackLng: "en",
+  // Translation keys are complete UI phrases, including punctuation such as colons.
+  nsSeparator: false,
+  keySeparator: false,
   interpolation: { escapeValue: false },
   returnNull: false,
 });

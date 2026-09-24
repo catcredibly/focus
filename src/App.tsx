@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { registerRevealShortcut } from "./shortcuts";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -10,10 +11,13 @@ import { AutoHideTab } from "./components/AutoHideTab";
 import { AcademicYearsPage, HistoryPage, SubjectsPage } from "./components/ManagementPages";
 import { ImportExportPage } from "./components/ImportExportPage";
 import { SettingsPage } from "./components/SettingsPage";
+import { UpdatePrompt } from "./components/Updater";
+import { ToastHost } from "./components/ToastHost";
 import { useSettings } from "./hooks/useSettings";
 import i18n from "./i18n";
 import { useTranslation } from "react-i18next";
 import { hasActiveTimer } from "./settings";
+import { usePopoutLifecycle } from "./hooks/usePopoutLifecycle";
 
 const AnalyticsPage = lazy(() => import("./components/AnalyticsPage").then((module) => ({ default: module.AnalyticsPage })));
 
@@ -23,15 +27,33 @@ export default function App() {
   const isPopoutMenu = window.location.hash.includes("popout-menu");
   const isAutoHideTab = window.location.hash.includes("auto-hide-tab");
   const isPopout = window.location.hash.includes("popout") || isAutoHideTab;
+  usePopoutLifecycle(!isPopout);
   const { settings, loaded } = useSettings();
   const { t } = useTranslation();
   const [closeWarning, setCloseWarning] = useState(false);
   const [secondInstanceWarning, setSecondInstanceWarning] = useState(false);
-
-  useEffect(() => { void i18n.changeLanguage(settings.language); }, [settings.language]);
+  const initialWindowStateApplied = useRef(false);
 
   useEffect(() => {
-    if (!isTauri() || isPopout || !loaded) return;
+    if (!isTauri() || isPopout) return;
+    // Analytics needs room for five metrics and its fixed weekday/time grid.
+    void invoke("set_main_minimum_width", { width: page === "Analytics" ? 1040 : 420 }).catch(console.error);
+  }, [page, isPopout]);
+
+  useEffect(() => {
+    if (isTauri() && !isPopout && loaded) void registerRevealShortcut(settings.popoutRevealShortcut).catch(() => undefined);
+  }, [isPopout, loaded, settings.popoutRevealShortcut]);
+
+  useEffect(() => { void i18n.changeLanguage(settings.language); }, [settings.language]);
+  useEffect(() => {
+    if (!loaded) return;
+    document.documentElement.dataset.theme = settings.theme;
+    try { localStorage.setItem("focus.theme", settings.theme); } catch { /* The database remains authoritative. */ }
+  }, [loaded, settings.theme]);
+
+  useEffect(() => {
+    if (!isTauri() || isPopout || !loaded || initialWindowStateApplied.current) return;
+    initialWindowStateApplied.current = true;
     const window = getCurrentWindow();
     void (settings.startMaximized ? window.maximize() : window.unmaximize()).catch(() => undefined);
   }, [isPopout, loaded, settings.startMaximized]);
@@ -55,6 +77,8 @@ export default function App() {
   return (
     <div className={`app-shell ${collapsed ? "app-shell--collapsed" : ""}`} data-accent={settings.accentColour} data-theme={settings.theme} data-scale={settings.uiScale}>
       <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((v) => !v)} active={page} onNavigate={setPage} />
+      <UpdatePrompt ready={loaded} />
+      <ToastHost />
       {page === "Timer" && <TimerPage />}
       {page === "Analytics" && <Suspense fallback={<main className="page"><div className="analytics-loading">{t("Loading analytics...")}</div></main>}><AnalyticsPage /></Suspense>}
       {page === "Academic Years" && <AcademicYearsPage />}

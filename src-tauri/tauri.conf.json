@@ -13,6 +13,7 @@
     "windows": [
       {
         "label": "main",
+        "backgroundColor": "#081521",
         "title": "Focus",
         "width": 1440,
         "height": 900,
@@ -29,8 +30,8 @@
         "url": "index.html#/popout",
         "width": 360,
         "height": 170,
-        "minWidth": 320,
-        "minHeight": 170,
+        "minWidth": 280,
+        "minHeight": 70,
         "resizable": false,
         "decorations": false,
         "transparent": true,
@@ -73,6 +74,15 @@
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": ["nsis"]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDEyNzYxODY2QzA0MUE1OQpSV1JaR2dSc2htRW5BZkhWdjc0WWhqMlBiTlE0b2l6cWRua2FJbjcyNm1lbXl3Mm43cGhSbS9TQQo=",
+      "endpoints": [
+        "https://github.com/qidanielqi/focus-app/releases/latest/download/latest.json"
+      ]
+    }
   }
 }

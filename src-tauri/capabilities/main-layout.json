@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main-layout",
+  "description": "Allow the main window to enforce page-specific minimum dimensions.",
+  "windows": ["main"],
+  "permissions": ["core:window:allow-set-min-size"]
+}

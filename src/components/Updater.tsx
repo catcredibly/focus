@@ -1,0 +1,47 @@
+import { useEffect, useRef, useSyncExternalStore } from "react";
+import { useTranslation } from "react-i18next";
+import { localeCode } from "../i18n";
+import { updater, type UpdateState } from "../updater";
+
+const useUpdater = () => useSyncExternalStore(updater.subscribe, updater.getSnapshot);
+const busy = (state: UpdateState) => ["checking", "downloading", "installing", "restarting"].includes(state.phase);
+function statusKey(state: UpdateState) {
+  if (state.error === "check" && state.checkCategory === "manifest-missing") return "Update information is not available yet.";
+  if (state.error === "install") return "Unable to install the update. Try again later.";
+  if (state.error === "restart") return "Update installed. Restart Focus to finish.";
+  return ({ checking: "Checking for updates…", current: "You're up to date.", available: "Update available", downloading: "Downloading update…", installing: "Installing update…", restarting: "Restarting…", error: "Unable to check for updates. Try again later.", idle: "" })[state.phase];
+}
+
+export function UpdateControls() {
+  const { t } = useTranslation();
+  const state = useUpdater();
+  return <section className="update-controls"><div><strong>{t("Updates")}</strong><span>{t("Current version")}: {state.currentVersion}</span></div><button className="secondary-action" disabled={busy(state)} onClick={() => void updater.check(true)}>{t(state.phase === "checking" ? "Checking for updates…" : "Check for updates")}</button><p role="status">{statusKey(state) ? t(statusKey(state)) : "\u00a0"}</p></section>;
+}
+
+export function UpdatePrompt({ ready = true }: { ready?: boolean }) {
+  const { t } = useTranslation();
+  const state = useUpdater();
+  const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    if (!ready) return;
+    let secondFrame = 0, backgroundTask = 0;
+    // Let the normal, restored UI paint before starting any updater IPC/network work.
+    const firstFrame = requestAnimationFrame(() => {
+      secondFrame = requestAnimationFrame(() => { backgroundTask = window.setTimeout(() => updater.start(), 0); });
+    });
+    return () => { cancelAnimationFrame(firstFrame); cancelAnimationFrame(secondFrame); window.clearTimeout(backgroundTask); };
+  }, [ready]);
+  useEffect(() => {
+    if (state.promptOpen && !dialog.current?.open) dialog.current?.showModal();
+    if (!state.promptOpen && dialog.current?.open) dialog.current?.close();
+  }, [state.promptOpen]);
+  const progress = state.contentLength ? Math.min(1, state.downloaded / state.contentLength) : undefined;
+  return <dialog ref={dialog} className="modal update-dialog" aria-labelledby="update-title" onCancel={event => { event.preventDefault(); if (!busy(state)) updater.later(); }}>
+    <h2 id="update-title">{t("Update available")}</h2>
+    <dl className="update-versions"><div><dt>{t("Current version")}</dt><dd>{state.currentVersion}</dd></div><div><dt>{t("Available version")}</dt><dd>{state.availableVersion}</dd></div></dl>
+    {state.notes && <section className="update-notes"><h3>{t("Release notes")}</h3><p>{state.notes}</p></section>}
+    <p role="status">{t(statusKey(state))}</p>
+    {state.phase === "downloading" && <><progress aria-label={t("Downloading update…")} max={1} value={progress}/><small>{progress === undefined ? new Intl.NumberFormat(localeCode(), { style: "unit", unit: "megabyte", maximumFractionDigits: 1 }).format(state.downloaded / 1_000_000) : progress.toLocaleString(localeCode(), { style: "percent", maximumFractionDigits: 0 })}</small></>}
+    <div className="modal-actions"><button disabled={busy(state)} onClick={() => updater.later()}>{t("Later")}</button><button className="primary-action" disabled={busy(state)} onClick={() => void updater.install()}>{t(state.error === "restart" ? "Restart Focus" : "Update now")}</button></div>
+  </dialog>;
+}

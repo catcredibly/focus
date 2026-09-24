@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Archive, CalendarDays, Check, FolderInput, Lock, LockOpen, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { Archive, CalendarDays, Check, Lock, LockOpen, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { db } from "../db";
 import { createSession, CURRENT_YEAR_KEY, formatDuration, makeId, setCurrentAcademicYear } from "../data";
 import type { AcademicYear, FocusSession, Subject } from "../types";
@@ -343,8 +343,10 @@ function SessionEditor({ session, years, subjects, onClose }: { session: FocusSe
   const { t } = useTranslation();
   const initialYearId = session?.academicYearId ?? years.find((year) => !year.archived)?.id ?? years[0]?.id ?? "";
   const initialSubjectId = session?.subjectId ?? subjects.find((subject) => subject.academicYearId === initialYearId && !subject.archived)?.id ?? "";
-  const initialStart = session?.startTime ?? new Date().setHours(9, 0, 0, 0);
-  const initialEnd = session?.endTime ?? new Date().setHours(10, 0, 0, 0);
+  const [openedAt] = useState(() => Date.now());
+  const initialEnd = session?.endTime ?? openedAt;
+  // This editor has one date field; keep the suggested start on that same day.
+  const initialStart = session?.startTime ?? Math.max(new Date(openedAt).setHours(0, 0, 0, 0), openedAt - 3_600_000);
   const initialMode = session ? inferDurationMode(session) : "locked";
   const [academicYearId, setAcademicYearId] = useState(initialYearId);
   const [subjectId, setSubjectId] = useState(initialSubjectId);
@@ -533,7 +535,7 @@ export function HistoryPage() {
           </select>
         </label>
       </div>
-      {selecting && <div className="selection-toolbar"><strong>{t("{{count}} selected", { count: selected.size })}</strong><button onClick={() => setSelected(new Set(filtered.map((session) => session.id)))}>{t("Select all")}</button><button disabled={!selected.size} onClick={() => { const first = activeYears[0]; setMoveYearId(first?.id ?? ""); setMoveSubjectId(""); setMoving(true); }}><FolderInput/> {t("Move")}</button><button className="danger-outline" disabled={!selected.size} onClick={() => setConfirmBulk(true)}><Trash2/> {t("Delete")}</button><button onClick={() => { setSelecting(false); setSelected(new Set()); }}>{t("Cancel")}</button></div>}
+      {selecting && <div className="selection-toolbar"><strong>{t("{{count}} selected", { count: selected.size })}</strong><button onClick={() => setSelected(new Set(filtered.map((session) => session.id)))}>{t("Select all")}</button><button disabled={!selected.size} onClick={() => { const first = activeYears[0]; setMoveYearId(first?.id ?? ""); setMoveSubjectId(""); setMoving(true); }}>{t("Move")}</button><button className="danger-outline" disabled={!selected.size} onClick={() => setConfirmBulk(true)}><Trash2/> {t("Delete")}</button><button onClick={() => { setSelecting(false); setSelected(new Set()); }}>{t("Cancel")}</button></div>}
       <div className="history-table">
         <div className="history-head">
           <span>{t("Date")}</span>

@@ -47,6 +47,7 @@ export type FocusSettings = {
   popoutRememberPosition: boolean;
   popoutShowSubject: boolean;
   popoutShowClock: boolean;
+  popoutLayout: "regular" | "compact";
   popoutSize: PopoutSize;
   popoutHideControls: boolean;
   popoutAutoHide: PopoutAutoHide;
@@ -56,11 +57,14 @@ export type FocusSettings = {
   popoutTransparency: number;
   popoutPositionX: number | null;
   popoutPositionY: number | null;
+  popoutFloatingWidth: number | null;
+  popoutFloatingHeight: number | null;
   popoutDockingEnabled: boolean;
   popoutDockCorner: DockCorner;
   popoutDockMonitor: DockMonitor;
   popoutDocked: boolean;
   popoutDockAutoHide: boolean;
+  popoutRevealShortcut: string;
   popoutAutoHideDelaySeconds: number;
   popoutAutoHideTabSize: AutoHideTabSize;
   popoutAutoHideShowAccent: boolean;
@@ -102,6 +106,7 @@ export const SETTINGS_KEYS: { [K in keyof FocusSettings]: string } = {
   popoutRememberPosition: "popoutRememberPosition",
   popoutShowSubject: "popoutShowSubject",
   popoutShowClock: "popoutShowClock",
+  popoutLayout: "popoutLayout",
   popoutSize: "popoutSize",
   popoutHideControls: "popoutHideControls",
   popoutAutoHide: "popoutAutoHide",
@@ -111,11 +116,14 @@ export const SETTINGS_KEYS: { [K in keyof FocusSettings]: string } = {
   popoutTransparency: "popoutTransparency",
   popoutPositionX: "popoutPositionX",
   popoutPositionY: "popoutPositionY",
+  popoutFloatingWidth: "popoutFloatingWidth",
+  popoutFloatingHeight: "popoutFloatingHeight",
   popoutDockingEnabled: "popoutDockingEnabled",
   popoutDockCorner: "popoutDockCorner",
   popoutDockMonitor: "popoutDockMonitor",
   popoutDocked: "popoutDocked",
   popoutDockAutoHide: "popoutDockAutoHide",
+  popoutRevealShortcut: "popoutRevealShortcut",
   popoutAutoHideDelaySeconds: "popoutAutoHideDelaySeconds",
   popoutAutoHideTabSize: "popoutAutoHideTabSize",
   popoutAutoHideShowAccent: "popoutAutoHideShowAccent",
@@ -157,6 +165,7 @@ export const DEFAULT_SETTINGS: FocusSettings = {
   popoutRememberPosition: true,
   popoutShowSubject: true,
   popoutShowClock: true,
+  popoutLayout: "regular",
   popoutSize: "medium",
   popoutHideControls: true,
   popoutAutoHide: "1000",
@@ -166,11 +175,14 @@ export const DEFAULT_SETTINGS: FocusSettings = {
   popoutTransparency: 100,
   popoutPositionX: null,
   popoutPositionY: null,
+  popoutFloatingWidth: null,
+  popoutFloatingHeight: null,
   popoutDockingEnabled: false,
   popoutDockCorner: "top-right",
   popoutDockMonitor: "current",
   popoutDocked: false,
   popoutDockAutoHide: false,
+  popoutRevealShortcut: "Ctrl+Alt+KeyF",
   popoutAutoHideDelaySeconds: 0.4,
   popoutAutoHideTabSize: "medium",
   popoutAutoHideShowAccent: true,
@@ -183,7 +195,7 @@ export const DEFAULT_SETTINGS: FocusSettings = {
 };
 
 const booleans = new Set<keyof FocusSettings>(["startMaximized", "launchAtStartup", "showDate", "showWeekday", "showClock", "dailyGoalEnabled", "weeklyGoalEnabled", "completionSound", "completionNotification", "popoutAlwaysOnTop", "popoutRememberPosition", "popoutShowSubject", "popoutShowClock", "popoutHideControls", "popoutAutoOpen", "popoutShowInTaskbar", "popoutCloseOnCompletion", "popoutDockingEnabled", "popoutDocked", "popoutDockAutoHide", "popoutAutoHideShowAccent", "allowDirectActiveDeletion"]);
-const numbers = new Set<keyof FocusSettings>(["lastTimerDurationSeconds", "fixedTimerDurationSeconds", "dailyGoalSeconds", "weeklyGoalSeconds", "completionSoundVolume", "popoutTransparency", "popoutPositionX", "popoutPositionY", "popoutAutoHideOffset", "popoutAutoHideDelaySeconds"]);
+const numbers = new Set<keyof FocusSettings>(["lastTimerDurationSeconds", "fixedTimerDurationSeconds", "dailyGoalSeconds", "weeklyGoalSeconds", "completionSoundVolume", "popoutTransparency", "popoutPositionX", "popoutPositionY", "popoutFloatingWidth", "popoutFloatingHeight", "popoutAutoHideOffset", "popoutAutoHideDelaySeconds"]);
 
 function decode<K extends keyof FocusSettings>(key: K, raw: string | undefined): FocusSettings[K] {
   if (raw === undefined) return DEFAULT_SETTINGS[key];
@@ -204,7 +216,7 @@ function decode<K extends keyof FocusSettings>(key: K, raw: string | undefined):
     language: ["en", "zh-CN", "zh-TW", "ja"], theme: ["dark", "light"], timerDurationMode: ["remember", "fixed"], subjectPickerMode: ["remember", "fixed"], dateFormat: ["full", "standard", "compact", "numeric"], clockFormat: ["system", "12-hour", "24-hour"],
     completionSoundChoice: ["soft-chime", "bell", "digital", "gentle", "bright"], popoutAutoHide: ["500", "1000", "2000", "never"],
     popoutDockCorner: ["top-left", "top-right", "bottom-left", "bottom-right"], popoutAutoHideEdge: ["top", "right", "bottom", "left"],
-    popoutSize: ["small", "medium", "large"], popoutAutoHideTabSize: ["small", "medium", "large"], accentColour: ["coral", "orange", "pink", "miku", "green", "cappuccino"], uiScale: ["small", "medium", "large", "extra-large"],
+    popoutLayout: ["regular", "compact"], popoutSize: ["small", "medium", "large"], popoutAutoHideTabSize: ["small", "medium", "large"], accentColour: ["coral", "orange", "pink", "miku", "green", "cappuccino"], uiScale: ["small", "medium", "large", "extra-large"],
   };
   if (key === "popoutDockMonitor") return (/^(current|display:\d+)$/.test(raw) ? raw : DEFAULT_SETTINGS[key]) as FocusSettings[K];
   return ((allowed[key] && !allowed[key]?.includes(raw)) ? DEFAULT_SETTINGS[key] : raw) as FocusSettings[K];

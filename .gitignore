@@ -63,3 +63,6 @@ exports/
 focus-backup*.json
 focus-sessions*.csv
 /docs/todo.md
+Analytics_mockup.pdf
+tmp/
+.npm-cache/
