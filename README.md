@@ -6,7 +6,7 @@
 
 **Time well spent.**
 
-Focus is a Windows desktop focus timer and study tracker. It combines a clean countdown with Subjects, Academic Years, history, study goals, and long-term analytics without requiring a Focus account or cloud service.
+Focus is a desktop focus timer and study tracker. It combines a clean countdown with Subjects, Academic Years, history, study goals, and long-term analytics without requiring a Focus account or cloud service.
 
 ## Features
 
@@ -30,7 +30,10 @@ Removing the application or its WebView storage may remove local data.
 
 ## Availability
 
-Focus currently targets Windows only.
+Focus is available for Windows and Linux on x86-64 systems.
+
+Linux releases are provided as AppImage and Debian (`.deb`) packages and are currently experimental.
+Please note some platform-specific features may behave differently or be unavailable on Linux.
 Support for additional platforms may be considered in the future.
 
 ## Development
