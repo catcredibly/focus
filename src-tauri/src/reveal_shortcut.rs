@@ -25,6 +25,10 @@ fn parse(value: &str) -> Result<Option<Shortcut>, String> {
 pub async fn set_reveal_shortcut(window: tauri::WebviewWindow, shortcut: String) -> Result<(), String> {
     if window.label() != "main" { return Err("Only the main window can configure shortcuts".into()); }
     let app = window.app_handle();
+    #[cfg(target_os = "linux")]
+    if app.try_state::<tauri_plugin_global_shortcut::GlobalShortcut<tauri::Wry>>().is_none() {
+        return if shortcut.is_empty() { Ok(()) } else { Err("Global reveal shortcuts are unavailable on this Linux display backend".into()) };
+    }
     let state = app.state::<RevealShortcut>();
     let mut current = state.0.lock().map_err(|_| "Shortcut state unavailable")?;
     let next = parse(&shortcut)?;

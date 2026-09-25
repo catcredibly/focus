@@ -4,7 +4,7 @@ import { db } from "./db";
 import { loadSettings, saveSetting, type DockCorner, type DockEdge, type FocusSettings } from "./settings";
 import { cornerPosition, defaultEdgeForCorner, dockEdgeOffset, edgeOffset, nearestEdge, type WorkArea } from "./popoutPlacement";
 
-export type TimerGeometry = { x: number; y: number; width: number; height: number; scale: number; visible: boolean; tabVisible: boolean; requested: boolean; generation: number; workArea: WorkArea };
+export type TimerGeometry = { positioningSupported?: boolean; x: number; y: number; width: number; height: number; scale: number; visible: boolean; tabVisible: boolean; requested: boolean; generation: number; workArea: WorkArea };
 export const timerGeometry = (monitorId = "current") => invoke<TimerGeometry>("get_timer_geometry", { monitorId });
 let lastFloatingEdge: DockEdge | undefined;
 export function resetPopoutTransientState() { lastFloatingEdge = undefined; }
@@ -21,6 +21,7 @@ async function persist(values: Partial<FocusSettings>) {
 }
 async function placeDocked(settings: FocusSettings) {
   const target = await timerGeometry(settings.popoutDockMonitor);
+  if (target.positioningSupported === false) { await invoke("set_timer_size", { size: settings.popoutSize, layout: settings.popoutLayout }); return; }
   // Enter the target display before sizing in its logical pixels.
   if (settings.popoutDockMonitor !== "current") await invoke("set_timer_position_unchecked", { x: target.workArea.x + 24, y: target.workArea.y + 24 });
   await invoke("set_timer_size", { size: settings.popoutSize, layout: settings.popoutLayout });
@@ -39,6 +40,7 @@ export async function setPopoutDocked(docked: boolean, corner?: DockCorner) {
     if (!isTauri()) { await persist(changes); return; }
     await synchronizePopoutSession();
     const previous = await timerGeometry();
+    if (docked && previous.positioningSupported === false) throw new Error("Docking is unavailable on this display backend.");
     // Configuration never requests visibility. Closed windows are configured only
     // in storage, and hidden windows remain hidden throughout repositioning.
     if (!previous.requested) { await persist(changes); return; }
@@ -95,6 +97,7 @@ export async function openTimerPopout(_settings?: FocusSettings) {
   });
 }
 async function hide(settings: FocusSettings, geometry: TimerGeometry, generation = geometry.generation) {
+  if (geometry.positioningSupported === false) return;
   if ((!settings.popoutDockAutoHide && !geometry.tabVisible) || !geometry.requested || (!geometry.visible && !geometry.tabVisible)) return;
   const docked = settings.popoutDockingEnabled && settings.popoutDocked;
   const edge = docked ? settings.popoutAutoHideEdge : nearestEdge(geometry, geometry.workArea, geometry, lastFloatingEdge, geometry.scale);
@@ -131,7 +134,7 @@ export async function refreshTimerAutoHideTab() {
 export async function toggleTimerAutoHide() {
   return withPopoutGeometry(async () => {
     const settings = await loadSettings(), geometry = await timerGeometry();
-    if (!settings.popoutDockAutoHide || !geometry.requested || !activePopoutSession()) return;
+    if (geometry.positioningSupported === false || !settings.popoutDockAutoHide || !geometry.requested || !activePopoutSession()) return;
     if (geometry.tabVisible) { await invoke("cancel_timer_auto_hide", { generation: geometry.generation }); return "revealed" as const; }
     await hide(settings, geometry);
     return "hidden" as const;
@@ -142,6 +145,7 @@ export async function rememberFloatingPosition() {
     const settings = await loadSettings();
     if (settings.popoutDocked && settings.popoutDockingEnabled) return;
     const geometry = await timerGeometry();
+    if (geometry.positioningSupported === false) return;
     await persist({ popoutPositionX: geometry.x, popoutPositionY: geometry.y, popoutFloatingWidth: geometry.width, popoutFloatingHeight: geometry.height });
   });
 }

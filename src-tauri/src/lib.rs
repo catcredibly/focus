@@ -1,5 +1,16 @@
 use serde::Serialize;
 use tauri::{Emitter, Manager};
+#[cfg(target_os = "linux")]
+mod linux_desktop;
+
+#[tauri::command]
+fn supports_window_positioning() -> bool {
+    #[cfg(target_os = "linux")]
+    { linux_desktop::supports_positioning() }
+    #[cfg(not(target_os = "linux"))]
+    { true }
+}
+
 mod window_constraints;
 mod display_geometry;
 mod reveal_shortcut;
@@ -100,12 +111,13 @@ fn timer_work_area(
         .and_then(|index| window.available_monitors().ok()?.get(index).cloned());
     let monitor = explicit
         .or(window.current_monitor().map_err(|e| e.to_string())?)
+        .or(window.primary_monitor().map_err(|e| e.to_string())?)
         .ok_or_else(|| "No monitor is available".to_string())?;
     Ok(WorkArea {
-        x: monitor.position().x,
-        y: monitor.position().y,
-        width: monitor.size().width,
-        height: monitor.size().height,
+        x: monitor.work_area().position.x,
+        y: monitor.work_area().position.y,
+        width: monitor.work_area().size.width,
+        height: monitor.work_area().size.height,
     })
 }
 
@@ -128,10 +140,10 @@ fn list_monitor_work_areas(app: tauri::AppHandle) -> Result<Vec<MonitorWorkArea>
             )?;
             #[cfg(not(windows))]
             let area = WorkArea {
-                x: monitor.position().x,
-                y: monitor.position().y,
-                width: monitor.size().width,
-                height: monitor.size().height,
+                x: monitor.work_area().position.x,
+                y: monitor.work_area().position.y,
+                width: monitor.work_area().size.width,
+                height: monitor.work_area().size.height,
             };
             Ok(MonitorWorkArea {
                 id: format!("display:{}", index),
@@ -163,7 +175,7 @@ fn clamped_timer_position(window: &tauri::WebviewWindow, x: i32, y: i32) -> Resu
     #[cfg(windows)]
     let area = work_area_at_point(monitor.position().x + monitor.size().width as i32 / 2, monitor.position().y + monitor.size().height as i32 / 2)?;
     #[cfg(not(windows))]
-    let area = WorkArea { x: monitor.position().x, y: monitor.position().y, width: monitor.size().width, height: monitor.size().height };
+    let area = WorkArea { x: monitor.work_area().position.x, y: monitor.work_area().position.y, width: monitor.work_area().size.width, height: monitor.work_area().size.height };
     let size = window.outer_size().map_err(|e| e.to_string())?;
     let max_x = (area.x + area.width as i32 - size.width as i32).max(area.x);
     let max_y = (area.y + area.height as i32 - size.height as i32).max(area.y);
@@ -171,6 +183,8 @@ fn clamped_timer_position(window: &tauri::WebviewWindow, x: i32, y: i32) -> Resu
 }
 
 fn ensure_timer_on_screen(window: &tauri::WebviewWindow) -> Result<(), String> {
+    #[cfg(target_os = "linux")]
+    if !supports_window_positioning() { return Ok(()); }
     let position = window.outer_position().map_err(|e| e.to_string())?;
     window.set_position(clamped_timer_position(window, position.x, position.y)?).map_err(|e| e.to_string())
 }
@@ -197,20 +211,22 @@ fn open_timer_menu(app: tauri::AppHandle, view: Option<String>) -> Result<(), St
     if !lifecycle.requested || !lifecycle.active() { return Ok(()); }
     let timer = app.get_webview_window("timer").ok_or_else(|| "The timer window is unavailable".to_string())?;
     let menu = app.get_webview_window("timer-menu").ok_or_else(|| "The timer menu is unavailable".to_string())?;
-    let timer_position = timer.outer_position().map_err(|e| e.to_string())?;
-    let timer_size = timer.outer_size().map_err(|e| e.to_string())?;
-    let menu_size = menu.outer_size().map_err(|e| e.to_string())?;
-    let area = timer_work_area(&timer, None)?;
-    let margin = 8;
-    let area_right = area.x + area.width as i32;
-    let area_bottom = area.y + area.height as i32;
-    let preferred_x = timer_position.x + timer_size.width as i32 - menu_size.width as i32;
-    let below = timer_position.y + timer_size.height as i32 + margin;
-    let above = timer_position.y - menu_size.height as i32 - margin;
-    let x = preferred_x.clamp(area.x, (area_right - menu_size.width as i32).max(area.x));
-    let y = if below + menu_size.height as i32 <= area_bottom { below } else { above }
-        .clamp(area.y, (area_bottom - menu_size.height as i32).max(area.y));
-    menu.set_position(tauri::PhysicalPosition::new(x, y)).map_err(|e| e.to_string())?;
+    if supports_window_positioning() {
+        let timer_position = timer.outer_position().map_err(|e| e.to_string())?;
+        let timer_size = timer.outer_size().map_err(|e| e.to_string())?;
+        let menu_size = menu.outer_size().map_err(|e| e.to_string())?;
+        let area = timer_work_area(&timer, None)?;
+        let margin = 8;
+        let area_right = area.x + area.width as i32;
+        let area_bottom = area.y + area.height as i32;
+        let preferred_x = timer_position.x + timer_size.width as i32 - menu_size.width as i32;
+        let below = timer_position.y + timer_size.height as i32 + margin;
+        let above = timer_position.y - menu_size.height as i32 - margin;
+        let x = preferred_x.clamp(area.x, (area_right - menu_size.width as i32).max(area.x));
+        let y = if below + menu_size.height as i32 <= area_bottom { below } else { above }
+            .clamp(area.y, (area_bottom - menu_size.height as i32).max(area.y));
+        menu.set_position(tauri::PhysicalPosition::new(x, y)).map_err(|e| e.to_string())?;
+    }
     menu.emit("focus://popout-menu-view", view.unwrap_or_else(|| "more".into())).map_err(|e| e.to_string())?;
     menu.show().map_err(|e| e.to_string())?;
     menu.set_focus().map_err(|e| e.to_string())?;
@@ -249,16 +265,19 @@ fn show_without_focus(window: &tauri::WebviewWindow) -> Result<(), String> {
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-struct TimerGeometry { x: i32, y: i32, width: u32, height: u32, scale: f64, visible: bool, tab_visible: bool, requested: bool, generation: u64, work_area: WorkArea }
+struct TimerGeometry { positioning_supported: bool, x: i32, y: i32, width: u32, height: u32, scale: f64, visible: bool, tab_visible: bool, requested: bool, generation: u64, work_area: WorkArea }
 
 #[tauri::command]
 fn get_timer_geometry(app: tauri::AppHandle, monitor_id: Option<String>) -> Result<TimerGeometry, String> {
     let managed = app.state::<popout_lifecycle::PopoutLifecycle>();
     let lifecycle = popout_lifecycle::lock(&managed)?;
     let timer = app.get_webview_window("timer").ok_or("Timer unavailable")?;
+    #[cfg(not(target_os = "linux"))]
     let position = timer.outer_position().map_err(|e| e.to_string())?;
+    #[cfg(target_os = "linux")]
+    let position = if supports_window_positioning() { timer.outer_position().map_err(|e| e.to_string())? } else { tauri::PhysicalPosition::new(0, 0) };
     let size = timer.outer_size().map_err(|e| e.to_string())?;
-    Ok(TimerGeometry { x: position.x, y: position.y, width: size.width, height: size.height,
+    Ok(TimerGeometry { positioning_supported: supports_window_positioning(), x: position.x, y: position.y, width: size.width, height: size.height,
         requested: lifecycle.requested && lifecycle.active(), generation: lifecycle.generation,
         scale: timer.scale_factor().map_err(|e| e.to_string())?, visible: timer.is_visible().map_err(|e| e.to_string())?,
         tab_visible: app.get_webview_window("timer-tab").is_some_and(|tab| tab.is_visible().unwrap_or(false)),
@@ -268,7 +287,7 @@ fn get_timer_geometry(app: tauri::AppHandle, monitor_id: Option<String>) -> Resu
 #[tauri::command]
 fn restore_timer_bounds(app: tauri::AppHandle, x: i32, y: i32, width: u32, height: u32) -> Result<(), String> {
     let timer = app.get_webview_window("timer").ok_or("Timer unavailable")?;
-    timer.set_position(tauri::PhysicalPosition::new(x, y)).map_err(|e| e.to_string())?;
+    if supports_window_positioning() { timer.set_position(tauri::PhysicalPosition::new(x, y)).map_err(|e| e.to_string())?; }
     timer.set_size(tauri::PhysicalSize::new(width.max(1), height.max(1))).map_err(|e| e.to_string())?;
     ensure_timer_on_screen(&timer)
 }
@@ -291,6 +310,8 @@ fn reveal_tab_position(area: &WorkArea, width: u32, height: u32, inset: i32, edg
 
 #[tauri::command]
 fn show_timer_auto_hide_tab(app: tauri::AppHandle, edge: String, offset: f64, tab_size: String, generation: u64) -> Result<(), String> {
+    #[cfg(target_os = "linux")]
+    if !supports_window_positioning() { return Ok(()); }
     let managed = app.state::<popout_lifecycle::PopoutLifecycle>();
     let lifecycle = popout_lifecycle::lock(&managed)?;
     if !lifecycle.allows(generation) { return Ok(()); }
@@ -417,6 +438,8 @@ fn set_timer_size(app: tauri::AppHandle, size: String, layout: Option<String>) -
 
 #[tauri::command]
 fn set_timer_position(app: tauri::AppHandle, x: i32, y: i32) -> Result<(), String> {
+    #[cfg(target_os = "linux")]
+    if !supports_window_positioning() { return Ok(()); }
     if let Some(window) = app.get_webview_window("timer") {
         window.set_position(clamped_timer_position(&window, x, y)?).map_err(|e| e.to_string())?;
     }
@@ -425,6 +448,8 @@ fn set_timer_position(app: tauri::AppHandle, x: i32, y: i32) -> Result<(), Strin
 
 #[tauri::command]
 fn restore_timer_floating_position(app: tauri::AppHandle, x: Option<i32>, y: Option<i32>) -> Result<(), String> {
+    #[cfg(target_os = "linux")]
+    if !supports_window_positioning() { return Ok(()); }
     if let Some(window) = app.get_webview_window("timer") {
         let current = window.outer_position().map_err(|e| e.to_string())?;
         let position = clamped_timer_position(&window, x.unwrap_or(current.x), y.unwrap_or(current.y))?;
@@ -435,6 +460,8 @@ fn restore_timer_floating_position(app: tauri::AppHandle, x: Option<i32>, y: Opt
 
 #[tauri::command]
 fn set_timer_position_unchecked(app: tauri::AppHandle, x: i32, y: i32) -> Result<(), String> {
+    #[cfg(target_os = "linux")]
+    if !supports_window_positioning() { return Ok(()); }
     if let Some(window) = app.get_webview_window("timer") {
         window
             .set_position(tauri::PhysicalPosition::new(x, y))
@@ -507,6 +534,8 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_notification::init())
         .setup(|app| {
+            #[cfg(target_os = "linux")]
+            linux_desktop::install(app.handle())?;
             window_constraints::install(app.handle())?;
             display_geometry::install(app.handle())?;
             #[cfg(desktop)]
@@ -519,13 +548,22 @@ pub fn run() {
                 // Signature verification uses only the public key embedded in tauri.conf.json.
                 app.handle().plugin(tauri_plugin_updater::Builder::new().build())?;
                 app.handle().plugin(tauri_plugin_process::init())?;
+                #[cfg(not(target_os = "linux"))]
                 app.handle().plugin(tauri_plugin_global_shortcut::Builder::new().build())?;
+                #[cfg(target_os = "linux")]
+                if supports_window_positioning() {
+                    // Missing X11 hotkey support must not prevent normal app use.
+                    if let Err(error) = app.handle().plugin(tauri_plugin_global_shortcut::Builder::new().build()) {
+                        eprintln!("Global reveal shortcuts unavailable: {error}");
+                    }
+                }
             }
             Ok(())
         })
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
+            supports_window_positioning,
             window_constraints::set_main_minimum_width,
             reveal_shortcut::set_reveal_shortcut,
             get_timer_geometry,

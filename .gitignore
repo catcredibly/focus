@@ -69,3 +69,6 @@ focus-sessions*.csv
 /docs/releasing.md
 tmp/
 .npm-cache/
+
+# Developer instructions stay local.
+AGENTS.md

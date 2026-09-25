@@ -2,14 +2,14 @@ import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "./db";
 import { loadSettings, saveSetting } from "./settings";
-import { setPopoutDocked, syncPopoutLayout, toggleTimerAutoHide, refreshTimerAutoHideTab, hideTimerAutomatically } from "./native";
+import { setPopoutDocked, syncPopoutLayout, toggleTimerAutoHide, refreshTimerAutoHideTab, hideTimerAutomatically, rememberFloatingPosition } from "./native";
 
-const native = vi.hoisted(() => ({ invoke: vi.fn(), geometry: { x: 250, y: 300, width: 400, height: 200, scale: 1, visible: true, tabVisible: false, requested: true, generation: 0, workArea: { x: 0, y: 0, width: 1920, height: 1040 } }, failPosition: false }));
+const native = vi.hoisted(() => ({ invoke: vi.fn(), geometry: { positioningSupported: true, x: 250, y: 300, width: 400, height: 200, scale: 1, visible: true, tabVisible: false, requested: true, generation: 0, workArea: { x: 0, y: 0, width: 1920, height: 1040 } }, failPosition: false }));
 vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => true, invoke: native.invoke }));
 beforeEach(async () => {
   await db.settings.clear(); native.failPosition = false;
   vi.stubGlobal("localStorage", { getItem: () => JSON.stringify({ running: true, paused: false, sessionId: "live-session", targetEnd: Date.now() + 3600000 }) });
-  Object.assign(native.geometry, { x: 250, y: 300, width: 400, height: 200, visible: true, tabVisible: false, requested: true, workArea: { x: 0, y: 0, width: 1920, height: 1040 } });
+  Object.assign(native.geometry, { positioningSupported: true, x: 250, y: 300, width: 400, height: 200, visible: true, tabVisible: false, requested: true, workArea: { x: 0, y: 0, width: 1920, height: 1040 } });
   let tail = Promise.resolve();
   vi.stubGlobal("navigator", { locks: { request: (_name: string, operation: () => Promise<void>) => { const result = tail.catch(() => undefined).then(operation); tail = result; return result; } } });
   native.invoke.mockReset().mockImplementation(async (command: string, args: Record<string, unknown> = {}) => {
@@ -96,4 +96,21 @@ it("ignores delayed hides after Auto-hide was disabled without querying native g
   await saveSetting("popoutDockAutoHide",false);
   await hideTimerAutomatically();
   expect(native.invoke).not.toHaveBeenCalled();
+});
+
+describe("unsupported positioning capability (frontend policy only)", () => {
+  it("preserves a remembered position rather than saving unavailable coordinates", async () => {
+    await saveSetting("popoutPositionX", 123);
+    native.geometry.positioningSupported = false;
+    await rememberFloatingPosition();
+    expect((await loadSettings()).popoutPositionX).toBe(123);
+  });
+  it("does not hide or persist a new dock request when placement is unavailable", async () => {
+    native.geometry.positioningSupported = false;
+    await saveSetting("popoutDockAutoHide", true);
+    await hideTimerAutomatically();
+    await expect(setPopoutDocked(true)).rejects.toThrow("Docking is unavailable");
+    expect((await loadSettings()).popoutDocked).toBe(false);
+    expect(native.invoke.mock.calls.some(([command]) => command === "show_timer_auto_hide_tab")).toBe(false);
+  });
 });

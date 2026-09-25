@@ -3,9 +3,14 @@ name: Build Linux
 on:
     workflow_dispatch:
 
+permissions:
+    contents: read
+
 jobs:
     build-linux:
         runs-on: ubuntu-22.04
+        env:
+            RUSTFLAGS: "-D warnings"
 
         steps:
             - name: Checkout repository
@@ -27,11 +32,22 @@ jobs:
                     libwebkit2gtk-4.1-dev \
                     libappindicator3-dev \
                     librsvg2-dev \
+                    libxdo-dev \
+                    libssl-dev \
+                    build-essential \
+                    file \
                     patchelf \
                     xdg-utils
 
             - name: Install frontend dependencies
               run: npm ci
+
+            - name: Check frontend and native code
+              run: |
+                  npm run typecheck
+                  npm test
+                  cargo check --locked --all-targets --manifest-path src-tauri/Cargo.toml
+                  cargo test --locked --lib --manifest-path src-tauri/Cargo.toml
 
             - name: Build Focus for Linux
               uses: tauri-apps/tauri-action@v1
@@ -42,3 +58,24 @@ jobs:
               with:
                   args: --bundles appimage,deb
                   uploadWorkflowArtifacts: true
+            - name: Verify both Linux package formats
+              shell: bash
+              run: |
+                  set -euo pipefail
+                  shopt -s nullglob
+                  appimages=(src-tauri/target/release/bundle/appimage/*.AppImage)
+                  debs=(src-tauri/target/release/bundle/deb/*.deb)
+                  test "${#appimages[@]}" -gt 0
+                  test "${#debs[@]}" -gt 0
+                  for package in "${debs[@]}"; do
+                    test "$(dpkg-deb -f "$package" Architecture)" = amd64
+                    dpkg-deb -c "$package" > /tmp/focus-deb-contents.txt
+                    grep 'usr/share/icons/hicolor/.*focus.*png' /tmp/focus-deb-contents.txt
+                  done
+                  for package in "${appimages[@]}"; do
+                    file "$package" | grep 'x86-64'
+                    chmod +x "$package"
+                    "$package" --appimage-extract >/dev/null
+                    test -e squashfs-root/AppRun
+                    find squashfs-root/usr/share/icons -name '*.png' -print -quit | grep .
+                  done

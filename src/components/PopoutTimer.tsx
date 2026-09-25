@@ -39,7 +39,9 @@ export function PopoutTimer() {
   const lastSize = useRef(`${settings.popoutLayout}:${settings.popoutSize}`);
   const compact = settings.popoutLayout === "compact";
   const openMenu = (view: string) => { clearHideTimer(); setMenuWindowOpen(true); void invoke("open_timer_menu", { view }).catch(() => setMenuWindowOpen(false)); };
-  const dockedActive = settings.popoutDockingEnabled && settings.popoutDocked;
+  const [positioningSupported, setPositioningSupported] = useState(true);
+  useEffect(() => { if (isTauri()) void invoke<boolean>("supports_window_positioning").then(setPositioningSupported).catch(() => undefined); }, []);
+  const dockedActive = positioningSupported && settings.popoutDockingEnabled && settings.popoutDocked;
   const clearHideTimer = useCallback(() => window.clearTimeout(hideTimerRef.current), []);
   const report = (operation: Promise<unknown>) => operation.catch(() => setNativeError(true));
   const reveal = useCallback(async () => {
@@ -65,6 +67,7 @@ export function PopoutTimer() {
     try { await operation(); } finally { setInteracting(false); }
   };
   const settleDrag = async () => {
+    if (!positioningSupported) return;
     const geometry = await timerGeometry();
     await rememberFloatingPosition();
     await refreshTimerAutoHideTab();
@@ -77,6 +80,7 @@ export function PopoutTimer() {
     void report(getCurrentWindow().startDragging().finally(() => { draggingRef.current = false; void report(settleDrag().finally(() => { pointerInsideRef.current = document.querySelector(".popout-root")?.matches(":hover") ?? false; setInteracting(false); })); }));
   };
   const toggleDock = async () => {
+    if (!positioningSupported) return;
     clearHideTimer();
     if (!dockedActive && !settings.popoutDockingEnabled) {
       setMenuWindowOpen(true); await invoke("open_timer_menu", { view: "dock" }).catch(() => setMenuWindowOpen(false));

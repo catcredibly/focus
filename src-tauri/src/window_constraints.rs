@@ -1,4 +1,5 @@
 use std::sync::atomic::{AtomicU32, Ordering};
+#[cfg(windows)]
 use tauri::Manager;
 
 static MINIMUM_WIDTH: AtomicU32 = AtomicU32::new(420);
@@ -26,10 +27,10 @@ unsafe extern "system" fn minimum_size_proc(
     result
 }
 
-pub fn install(app: &tauri::AppHandle) -> Result<(), String> {
+pub fn install(_app: &tauri::AppHandle) -> Result<(), String> {
     #[cfg(windows)]
     {
-        let window = app.get_webview_window("main").ok_or("Main window unavailable")?;
+        let window = _app.get_webview_window("main").ok_or("Main window unavailable")?;
         let hwnd = window.hwnd().map_err(|e| e.to_string())?;
         if unsafe { windows_sys::Win32::UI::Shell::SetWindowSubclass(hwnd.0 as _, Some(minimum_size_proc), 1, 0) } == 0 {
             return Err("Unable to install main window constraints".into());

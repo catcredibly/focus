@@ -26,13 +26,13 @@ unsafe extern "system" fn display_proc(
     result
 }
 
-pub fn install(app: &tauri::AppHandle) -> Result<(), String> {
+pub fn install(_app: &tauri::AppHandle) -> Result<(), String> {
     #[cfg(windows)]
     {
         use tauri::Manager;
-        let window = app.get_webview_window("main").ok_or("Main window unavailable")?;
+        let window = _app.get_webview_window("main").ok_or("Main window unavailable")?;
         let hwnd = window.hwnd().map_err(|error| error.to_string())?;
-        let data = Box::into_raw(Box::new(app.clone()));
+        let data = Box::into_raw(Box::new(_app.clone()));
         if unsafe { windows_sys::Win32::UI::Shell::SetWindowSubclass(hwnd.0 as _, Some(display_proc), 2, data as usize) } == 0 {
             unsafe { drop(Box::from_raw(data)); }
             return Err("Unable to observe display geometry changes".into());
