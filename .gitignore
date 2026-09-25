@@ -43,7 +43,7 @@ Desktop.ini
 *.lnk
 .DS_Store
 
-# Local agent instructions
+# Local instructions
 /AGENTS.md
 
 # IDE-local state
@@ -66,6 +66,5 @@ exports/
 focus-backup*.json
 focus-sessions*.csv
 /docs/todo.md
-Analytics_mockup.pdf
 tmp/
 .npm-cache/
