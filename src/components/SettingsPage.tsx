@@ -1,3 +1,4 @@
+import { formatTimerDate } from "../dateTime";
 import { edgesForCorner, dockEdgeOffset } from "../popoutPlacement";
 import { setPopoutDocked } from "../native";
 import { ShortcutRecorder } from "./ShortcutRecorder";
@@ -9,7 +10,7 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 import { getVersion } from "@tauri-apps/api/app";
 import { exportFullBackup } from "../importExport/exportBackup";
 import { useSettings } from "../hooks/useSettings";
-import { clearAllFocusData, formatLastBackup, hasActiveTimer, normaliseDuration, goalDurationSeconds, normalizeGoalPart, restoreSettingDefaults, type AccentColour, type FocusSettings } from "../settings";
+import { clearAllFocusData, formatLastBackup, hasActiveTimer, normaliseDuration, goalDurationSeconds, normalizeGoalPart, GOAL_MAX_HOURS, DEFAULT_SIDEBAR_SUBTITLE, restoreSettingDefaults, type AccentColour, type FocusSettings } from "../settings";
 import { previewCompletionSound, testCompletionNotification } from "../timerCompletion";
 import { focusLogoForAccent } from "../branding";
 import { useLiveQuery } from "dexie-react-hooks";
@@ -34,7 +35,7 @@ export function SettingsPage({ onNavigate }: { onNavigate: (page: string) => voi
 type SettingsProps = { settings: FocusSettings; setSetting: <K extends keyof FocusSettings>(key: K, value: FocusSettings[K]) => Promise<void> };
 
 function SettingsHeader({ title, children }: { title: string; children: ReactNode }) { return <header className="settings-section-header"><h2>{title}</h2><p>{children}</p></header>; }
-function Row({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) { return <div className="setting-row"><div><strong>{label}</strong>{hint && <span>{hint}</span>}</div><div className="setting-control">{children}</div></div>; }
+function Row({ label, hint, children, disabled = false }: { label: string; hint?: string; children: ReactNode; disabled?: boolean }) { return <div className={`setting-row ${disabled ? "setting-row--disabled" : ""}`}><div><strong>{label}</strong>{hint && <span>{hint}</span>}</div><fieldset className="setting-control" disabled={disabled}>{children}</fieldset></div>; }
 function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (value: boolean) => void; label: string }) { return <button type="button" role="switch" aria-checked={checked} aria-label={label} className={`settings-toggle ${checked ? "on" : ""}`} onClick={() => onChange(!checked)}><span/></button>; }
 function RestoreSection({ keys }: { keys: (keyof FocusSettings)[] }) {
   const { t } = useTranslation();
@@ -52,7 +53,7 @@ function General({ settings, setSetting }: SettingsProps) {
   return <><SettingsHeader title={t("General")}>{t("Basic app settings.")}</SettingsHeader>
     <Row label={t("Language")}><select value={settings.language} onChange={(event) => void setSetting("language", event.target.value as FocusSettings["language"])}><option value="en">English</option><option value="zh-CN">简体中文</option><option value="zh-TW">繁體中文</option><option value="ja">日本語</option></select></Row>
     <Row label={t("Your name")} hint={t("Used in the sidebar greeting.")}><input className="settings-input" value={name} maxLength={60} placeholder={t("Your name")} onChange={(event) => setName(event.target.value)} onBlur={() => void setSetting("displayName", name.trim())}/></Row>
-    <Row label={t("Greeting subtitle")} hint={t("Leave blank to use the default brand line.")}><input className="settings-input" value={settings.sidebarSubtitle} maxLength={120} placeholder={t("Time well spent.")} onChange={(event) => void setSetting("sidebarSubtitle", event.target.value)}/></Row>
+    <Row label={t("Greeting subtitle")} hint={t("Leave blank to use the default brand line.")}><input className="settings-input" value={settings.sidebarSubtitle} maxLength={120} placeholder={DEFAULT_SIDEBAR_SUBTITLE} onChange={(event) => void setSetting("sidebarSubtitle", event.target.value)}/></Row>
     <Row label={t("Start Focus maximized")}><Toggle label={t("Start Focus maximized")} checked={settings.startMaximized} onChange={(value) => void setSetting("startMaximized", value)}/></Row>
     <Row label={t("Launch Focus at Windows startup")}><Toggle label={t("Launch Focus at Windows startup")} checked={settings.launchAtStartup} onChange={(value) => void startup(value)}/></Row>
     <RestoreSection keys={["displayName", "sidebarSubtitle", "language", "startMaximized", "launchAtStartup"]}/>
@@ -68,19 +69,19 @@ function DurationEditor({ value, onChange }: { value: number; onChange: (seconds
   return <div className="duration-editor"><label><input aria-label={t("Hours")} min="0" type="number" value={draft.hours} onChange={(event) => setDraft({ ...draft, hours: Number(event.target.value) })} onBlur={commit}/><span>{t("Hours")}</span></label><b>:</b><label><input aria-label={t("Minutes")} min="0" type="number" value={draft.minutes} onChange={(event) => setDraft({ ...draft, minutes: Number(event.target.value) })} onBlur={commit}/><span>{t("Minutes")}</span></label><b>:</b><label><input aria-label={t("Seconds")} min="0" type="number" value={draft.seconds} onChange={(event) => setDraft({ ...draft, seconds: Number(event.target.value) })} onBlur={commit}/><span>{t("Seconds")}</span></label></div>;
 }
 
-function GoalDurationEditor({ value, onChange }: { value: number; onChange: (seconds: number) => void }) {
+function GoalDurationEditor({ value, onChange, maxHours }: { value: number; maxHours: number; onChange: (seconds: number) => void }) {
   const { t } = useTranslation();
   const format = (seconds: number) => ({ hours: String(Math.floor(seconds / 3600)).padStart(2, "0"), minutes: String(Math.floor(seconds % 3600 / 60)).padStart(2, "0") });
   const [draft, setDraft] = useState(() => format(value));
   useEffect(() => setDraft(format(value)), [value]);
   const commit = () => {
     const hours = Number(draft.hours), minutes = Number(draft.minutes);
-    const total = goalDurationSeconds(hours, minutes);
+    const total = goalDurationSeconds(hours, minutes, maxHours);
     setDraft(format(total)); onChange(total);
   };
-  return <div className="goal-duration-editor">{(["hours", "minutes"] as const).map((part, index) => <span className="goal-duration-part" key={part}>{index > 0 && <b aria-hidden="true">:</b>}<label><input className="settings-value-input" type="text" inputMode="numeric" role="spinbutton" aria-label={t(part === "hours" ? "Hours" : "Minutes")} aria-valuemin={0} aria-valuemax={part === "minutes" ? 59 : 24} aria-valuenow={Number(draft[part])} value={draft[part]} onChange={event => setDraft({ ...draft, [part]: event.target.value.replace(/\D/g, "") })} onBlur={commit} onKeyDown={event => {
+  return <div className="goal-duration-editor">{(["hours", "minutes"] as const).map((part, index) => <span className="goal-duration-part" key={part}>{index > 0 && <b aria-hidden="true">:</b>}<label><input className="settings-value-input" type="text" inputMode="numeric" role="spinbutton" aria-label={t(part === "hours" ? "Hours" : "Minutes")} aria-valuemin={0} aria-valuemax={part === "minutes" ? 59 : maxHours} aria-valuenow={Number(draft[part])} value={draft[part]} onChange={event => setDraft({ ...draft, [part]: event.target.value.replace(/\D/g, "") })} onBlur={commit} onKeyDown={event => {
     if (event.key === "Enter") event.currentTarget.blur();
-    if (event.key === "ArrowUp" || event.key === "ArrowDown") { event.preventDefault(); const next = normalizeGoalPart(part, (Number(draft[part]) || 0) + (event.key === "ArrowUp" ? 1 : -1)); setDraft({ ...draft, [part]: String(next) }); }
+    if (event.key === "ArrowUp" || event.key === "ArrowDown") { event.preventDefault(); const next = normalizeGoalPart(part, (Number(draft[part]) || 0) + (event.key === "ArrowUp" ? 1 : -1), maxHours); setDraft({ ...draft, [part]: String(next) }); }
   }}/><small>{t(part === "hours" ? "HH" : "MM")}</small></label></span>)}</div>;
 }
 
@@ -102,16 +103,17 @@ function Timer({ settings, setSetting }: SettingsProps) {
     {settings.subjectPickerMode === "fixed" && <Row label={t("Default Subject")}><select value={settings.defaultSubjectId} onChange={(event) => void setSetting("defaultSubjectId", event.target.value)}><option value="">{t("Choose Subject")}</option>{subjects.map((subject) => <option value={subject.id} key={subject.id}>{subject.name}</option>)}</select></Row>}
     <div className="settings-subheading"><strong>{t("Date and clock")}</strong></div>
     <Row label={t("Show date")}><Toggle label={t("Show date")} checked={settings.showDate} onChange={(value) => void setSetting("showDate", value)}/></Row>
-    <Row label={t("Date format")}><select disabled={!settings.showDate} value={settings.dateFormat} onChange={(event) => void setSetting("dateFormat", event.target.value as FocusSettings["dateFormat"])}><option value="full">{t("Full")}</option><option value="standard">{t("Standard")}</option><option value="compact">{t("Compact")}</option><option value="numeric">{t("Numeric")}</option></select></Row>
+    <Row label={t("Date format")} hint={formatTimerDate(new Date(), settings.language, settings.dateFormat, false)}><select disabled={!settings.showDate} value={settings.dateFormat} onChange={(event) => void setSetting("dateFormat", event.target.value as FocusSettings["dateFormat"])}><option value="full">{t("Full")}</option><option value="standard">{t("Standard")}</option><option value="compact">{t("Compact")}</option><option value="numeric">{t("Numeric")}</option></select></Row>
     <Row label={t("Show weekday")}><Toggle label={t("Show weekday")} checked={settings.showWeekday} onChange={(value) => void setSetting("showWeekday", value)}/></Row>
+    <Row label={t("Weekday style")} disabled={!settings.showWeekday}><select aria-label={t("Weekday style")} value={settings.weekdayStyle} onChange={event => void setSetting("weekdayStyle", event.target.value as FocusSettings["weekdayStyle"])}><option value="full">{t("Full")}</option><option value="short">{t("Short")}</option></select></Row>
     <Row label={t("Show clock")}><Toggle label={t("Show clock")} checked={settings.showClock} onChange={(value) => void setSetting("showClock", value)}/></Row>
     <Row label={t("Clock format")}><select disabled={!settings.showClock} value={settings.clockFormat} onChange={(event) => void setSetting("clockFormat", event.target.value as FocusSettings["clockFormat"])}><option value="system">{t("System format")}</option><option value="12-hour">{t("12-hour")}</option><option value="24-hour">{t("24-hour")}</option></select></Row>
     <div className="settings-subheading"><strong>{t("Study goals")}</strong><span>{t("Goals count finalized focus Sessions in your local day and week.")}</span></div>
     <Row label={t("Daily goal")}><Toggle label={t("Daily goal")} checked={settings.dailyGoalEnabled} onChange={(value) => void setSetting("dailyGoalEnabled", value)}/></Row>
-    {settings.dailyGoalEnabled && <Row label={t("Daily goal duration")}><GoalDurationEditor value={settings.dailyGoalSeconds} onChange={(value) => void setSetting("dailyGoalSeconds", value)}/></Row>}
+    {settings.dailyGoalEnabled && <Row label={t("Daily goal duration")}><GoalDurationEditor maxHours={GOAL_MAX_HOURS.dailyGoalSeconds} value={settings.dailyGoalSeconds} onChange={(value) => void setSetting("dailyGoalSeconds", value)}/></Row>}
     <Row label={t("Weekly goal")}><Toggle label={t("Weekly goal")} checked={settings.weeklyGoalEnabled} onChange={(value) => void setSetting("weeklyGoalEnabled", value)}/></Row>
-    {settings.weeklyGoalEnabled && <Row label={t("Weekly goal duration")}><GoalDurationEditor value={settings.weeklyGoalSeconds} onChange={(value) => void setSetting("weeklyGoalSeconds", value)}/></Row>}
-    <RestoreSection keys={["timerDurationMode", "lastTimerDurationSeconds", "fixedTimerDurationSeconds", "subjectPickerMode", "defaultSubjectId", "lastSubjectId", "showDate", "dateFormat", "showWeekday", "showClock", "clockFormat", "dailyGoalEnabled", "dailyGoalSeconds", "weeklyGoalEnabled", "weeklyGoalSeconds"]}/>
+    {settings.weeklyGoalEnabled && <Row label={t("Weekly goal duration")}><GoalDurationEditor maxHours={GOAL_MAX_HOURS.weeklyGoalSeconds} value={settings.weeklyGoalSeconds} onChange={(value) => void setSetting("weeklyGoalSeconds", value)}/></Row>}
+    <RestoreSection keys={["timerDurationMode", "lastTimerDurationSeconds", "fixedTimerDurationSeconds", "subjectPickerMode", "defaultSubjectId", "lastSubjectId", "showDate", "dateFormat", "showWeekday", "weekdayStyle", "showClock", "clockFormat", "dailyGoalEnabled", "dailyGoalSeconds", "weeklyGoalEnabled", "weeklyGoalSeconds"]}/>
   </>;
 }
 
@@ -145,29 +147,30 @@ function Popout({ settings, setSetting }: SettingsProps) {
   const changeMode = async (docked: boolean) => { setDockError(false); try { await setPopoutDocked(docked); } catch { setDockError(true); } };
   useEffect(() => { if (isTauri()) void invoke<{ id: string; label: string }[]>("list_monitor_work_areas").then(setDisplays).catch(() => setDisplays([])); }, []);
   return <><SettingsHeader title={t("Popout")}>{t("Configure the floating timer window.")}</SettingsHeader>
+    <div className="settings-subheading popout-settings-subheading"><strong>{t("Window")}</strong></div>
     <Row label={t("Popout mode")} hint={dockError ? t("Unable to update the popout window. Try again.") : undefined}><div className="settings-segmented" role="group" aria-label={t("Popout mode")}>{[true, false].map(docked => <button key={String(docked)} aria-pressed={(settings.popoutDockingEnabled && settings.popoutDocked) === docked} className={(settings.popoutDockingEnabled && settings.popoutDocked) === docked ? "selected" : ""} onClick={() => void changeMode(docked)}>{t(docked ? "Docked" : "Floating")}</button>)}</div></Row>
-    {docked && <Row label={t("Dock position")}><select aria-label={t("Dock position")} value={settings.popoutDockCorner} onChange={(event) => { const corner = event.target.value as FocusSettings["popoutDockCorner"]; void setPopoutDocked(true, corner).catch(() => setDockError(true)); }}><option value="top-left">{t("Top Left")}</option><option value="top-right">{t("Top Right")}</option><option value="bottom-left">{t("Bottom Left")}</option><option value="bottom-right">{t("Bottom Right")}</option></select></Row>}
-    <Row label={t("Monitor")}><select aria-label={t("Monitor")} value={settings.popoutDockMonitor} disabled={!docked} onChange={(event) => void setSetting("popoutDockMonitor", event.target.value as FocusSettings["popoutDockMonitor"])}><option value="current">{t("Current monitor")}</option>{displays.map((display) => <option key={display.id} value={display.id}>{display.label}</option>)}</select></Row>
+    <Row disabled={!docked} label={t("Dock position")}><select aria-label={t("Dock position")} value={settings.popoutDockCorner} onChange={(event) => { const corner = event.target.value as FocusSettings["popoutDockCorner"]; void setPopoutDocked(true, corner).catch(() => setDockError(true)); }}><option value="top-left">{t("Top Left")}</option><option value="top-right">{t("Top Right")}</option><option value="bottom-left">{t("Bottom Left")}</option><option value="bottom-right">{t("Bottom Right")}</option></select></Row>
+    <Row disabled={!docked} label={t("Monitor")}><select aria-label={t("Monitor")} value={settings.popoutDockMonitor} disabled={!docked} onChange={(event) => void setSetting("popoutDockMonitor", event.target.value as FocusSettings["popoutDockMonitor"])}><option value="current">{t("Current monitor")}</option>{displays.map((display) => <option key={display.id} value={display.id}>{display.label}</option>)}</select></Row>
+    <div className="settings-subheading popout-settings-subheading"><strong>{t("Auto-hide")}</strong></div>
     <Row label={t("Auto-hide")}><Toggle label={t("Auto-hide")} checked={settings.popoutDockAutoHide} onChange={(v) => void setSetting("popoutDockAutoHide", v)}/></Row>
-    {settings.popoutDockAutoHide && <>
-      {docked && <Row label={t("Reveal edge")}><select aria-label={t("Reveal edge")} value={settings.popoutAutoHideEdge} onChange={async event => { const edge = event.target.value as FocusSettings["popoutAutoHideEdge"]; await db.transaction("rw", db.settings, async () => { await setSetting("popoutAutoHideOffset", dockEdgeOffset(settings.popoutDockCorner, edge)); await setSetting("popoutAutoHideEdge", edge); }); }}>{edgesForCorner(settings.popoutDockCorner).map(edge => <option key={edge} value={edge}>{t({ top: "Top", right: "Right", bottom: "Bottom", left: "Left" }[edge])}</option>)}</select></Row>}
-      <Row label={t("Auto-hide delay")} hint={t("Seconds before the popout hides after you leave it.")}><AutoHideDelayEditor value={settings.popoutAutoHideDelaySeconds} onChange={value => void setSetting("popoutAutoHideDelaySeconds", value)}/></Row>
-      <Row label={t("Reveal tab size")}><select value={settings.popoutAutoHideTabSize} onChange={(event) => void setSetting("popoutAutoHideTabSize", event.target.value as FocusSettings["popoutAutoHideTabSize"])}><option value="small">{t("Small")}</option><option value="medium">{t("Medium")}</option><option value="large">{t("Large")}</option></select></Row>
-      <Row label={t("Reveal shortcut")}><ShortcutRecorder value={settings.popoutRevealShortcut}/></Row>
-      <Row label={t("Show accent indicator on auto-hide tab")}><Toggle label={t("Show accent indicator on auto-hide tab")} checked={settings.popoutAutoHideShowAccent} onChange={(value) => void setSetting("popoutAutoHideShowAccent", value)}/></Row>
-    </>}
+    <Row disabled={!docked || !settings.popoutDockAutoHide} label={t("Auto-hide edge")}><select aria-label={t("Auto-hide edge")} value={docked ? settings.popoutAutoHideEdge : "automatic"} onChange={async event => { const edge = event.target.value as FocusSettings["popoutAutoHideEdge"]; await db.transaction("rw", db.settings, async () => { await setSetting("popoutAutoHideOffset", dockEdgeOffset(settings.popoutDockCorner, edge)); await setSetting("popoutAutoHideEdge", edge); }); }}>{!docked && <option value="automatic">{t("Automatic")}</option>}{edgesForCorner(settings.popoutDockCorner).map(edge => <option key={edge} value={edge}>{t({ top: "Top", right: "Right", bottom: "Bottom", left: "Left" }[edge])}</option>)}</select></Row>
+    <Row disabled={!settings.popoutDockAutoHide} label={t("Auto-hide delay")} hint={t("Seconds before the popout hides after you leave it.")}><AutoHideDelayEditor value={settings.popoutAutoHideDelaySeconds} onChange={value => void setSetting("popoutAutoHideDelaySeconds", value)}/></Row>
+    <Row disabled={!settings.popoutDockAutoHide} label={t("Reveal tab size")}><select value={settings.popoutAutoHideTabSize} onChange={(event) => void setSetting("popoutAutoHideTabSize", event.target.value as FocusSettings["popoutAutoHideTabSize"])}><option value="small">{t("Small")}</option><option value="medium">{t("Medium")}</option><option value="large">{t("Large")}</option></select></Row>
+    <Row disabled={!settings.popoutDockAutoHide} label={t("Reveal shortcut")}><ShortcutRecorder disabled={!settings.popoutDockAutoHide} value={settings.popoutRevealShortcut}/></Row>
+    <Row disabled={!settings.popoutDockAutoHide} label={t("Show accent indicator on auto-hide tab")}><Toggle label={t("Show accent indicator on auto-hide tab")} checked={settings.popoutAutoHideShowAccent} onChange={(value) => void setSetting("popoutAutoHideShowAccent", value)}/></Row>
+    <div className="settings-subheading popout-settings-subheading"><strong>{t("Appearance & behavior")}</strong></div>
     <Row label={t("Always on top by default")}><Toggle label={t("Always on top by default")} checked={settings.popoutAlwaysOnTop} onChange={(v) => void setSetting("popoutAlwaysOnTop", v)}/></Row>
-    <Row label={t("Remember popout position")}><Toggle label={t("Remember popout position")} checked={settings.popoutRememberPosition} onChange={(v) => void setSetting("popoutRememberPosition", v)}/></Row>
+    <Row label={t("Show popout in taskbar")}><Toggle label={t("Show popout in taskbar")} checked={settings.popoutShowInTaskbar} onChange={(v) => void setSetting("popoutShowInTaskbar", v)}/></Row>
+    <Row label={t("Open popout automatically when a timer starts")}><Toggle label={t("Open popout automatically")} checked={settings.popoutAutoOpen} onChange={(v) => void setSetting("popoutAutoOpen", v)}/></Row>
+    <Row label={t("Close popout when timer finishes")}><Toggle label={t("Close popout on completion")} checked={settings.popoutCloseOnCompletion} onChange={(v) => void setSetting("popoutCloseOnCompletion", v)}/></Row>
+    <Row hint={t("Reopen the floating popout at its last saved position.")} label={t("Restore floating position")}><Toggle label={t("Restore floating position")} checked={settings.popoutRememberPosition} onChange={(v) => void setSetting("popoutRememberPosition", v)}/></Row>
     <Row label={t("Show Subject")}><Toggle label={t("Show Subject")} checked={settings.popoutShowSubject} onChange={(v) => void setSetting("popoutShowSubject", v)}/></Row>
     <Row label={t("Show clock beside Subject")}><Toggle label={t("Show clock beside Subject")} checked={settings.popoutShowClock} onChange={(v) => void setSetting("popoutShowClock", v)}/></Row>
     <Row label={t("Popout layout")}><select value={settings.popoutLayout} onChange={async (event) => { const layout = event.target.value as FocusSettings["popoutLayout"]; await setSetting("popoutFloatingWidth", null); await setSetting("popoutFloatingHeight", null); await setSetting("popoutLayout", layout); }}><option value="regular">{t("Regular")}</option><option value="compact">{t("Compact")}</option></select></Row>
     <Row label={t("Popout size")}><select value={settings.popoutSize} onChange={(event) => void setSetting("popoutSize", event.target.value as FocusSettings["popoutSize"])}><option value="small">{t("Small")}</option><option value="medium">{t("Medium")}</option><option value="large">{t("Large")}</option></select></Row>
+    <Row label={t("Transparency")} hint={`${settings.popoutTransparency}%`}><input aria-label={t("Transparency")} type="range" min="0" max="100" step="5" value={settings.popoutTransparency} onChange={(event) => void setSetting("popoutTransparency", Number(event.target.value))}/></Row>
     <Row label={t("Hide controls until hovered")}><Toggle label={t("Hide controls until hovered")} checked={settings.popoutHideControls} onChange={(v) => void setSetting("popoutHideControls", v)}/></Row>
     <Row label={t("Auto-hide controls after")}><select value={settings.popoutAutoHide} disabled={!settings.popoutHideControls} onChange={(event) => void setSetting("popoutAutoHide", event.target.value as FocusSettings["popoutAutoHide"])}><option value="500">{t("0.5 seconds")}</option><option value="1000">{t("1 second")}</option><option value="2000">{t("2 seconds")}</option><option value="never">{t("Never")}</option></select></Row>
-    <Row label={t("Open popout automatically when a timer starts")}><Toggle label={t("Open popout automatically")} checked={settings.popoutAutoOpen} onChange={(v) => void setSetting("popoutAutoOpen", v)}/></Row>
-    <Row label={t("Show popout in taskbar")}><Toggle label={t("Show popout in taskbar")} checked={settings.popoutShowInTaskbar} onChange={(v) => void setSetting("popoutShowInTaskbar", v)}/></Row>
-    <Row label={t("Close popout when timer finishes")}><Toggle label={t("Close popout on completion")} checked={settings.popoutCloseOnCompletion} onChange={(v) => void setSetting("popoutCloseOnCompletion", v)}/></Row>
-    <Row label={t("Transparency")} hint={`${settings.popoutTransparency}%`}><input aria-label={t("Transparency")} type="range" min="0" max="100" step="5" value={settings.popoutTransparency} onChange={(event) => void setSetting("popoutTransparency", Number(event.target.value))}/></Row>
     <RestoreSection keys={["popoutAlwaysOnTop", "popoutRememberPosition", "popoutShowSubject", "popoutShowClock", "popoutSize", "popoutLayout", "popoutHideControls", "popoutAutoHide", "popoutAutoOpen", "popoutShowInTaskbar", "popoutCloseOnCompletion", "popoutTransparency", "popoutPositionX", "popoutPositionY", "popoutFloatingWidth", "popoutFloatingHeight", "popoutRevealShortcut", "popoutDockingEnabled", "popoutDockCorner", "popoutDockMonitor", "popoutDocked", "popoutDockAutoHide", "popoutAutoHideDelaySeconds", "popoutAutoHideTabSize", "popoutAutoHideShowAccent", "popoutAutoHideEdge", "popoutAutoHideOffset"]}/>
   </>;
 }

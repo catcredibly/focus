@@ -1,3 +1,4 @@
+import { DEFAULT_SIDEBAR_SUBTITLE } from "../settings";
 import {
   BarChart3,
   BookOpen,
@@ -62,7 +63,7 @@ export function Sidebar({ collapsed, onToggle, active, onNavigate }: Props) {
           <div className="moon">◒</div>
           <div>
             <div>{t(greetingKey, { name: greetingName })}</div>
-            <span className="greeting-subtitle"><b>{settings.sidebarSubtitle || t("Time well spent.")}</b></span>
+            <span className="greeting-subtitle"><b>{settings.sidebarSubtitle || DEFAULT_SIDEBAR_SUBTITLE}</b></span>
           </div>
         </div>
       )}

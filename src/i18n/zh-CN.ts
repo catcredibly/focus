@@ -530,6 +530,14 @@ const zhCN: Record<keyof typeof en, string> = {
   "Bottom": "底部",
   "Left": "左侧",
   "Average focus per active day": "每个学习日的平均专注时长",
+  "Restore floating position": "恢复悬浮位置",
+  "Reopen the floating popout at its last saved position.": "在上次保存的位置重新打开悬浮窗口。",
+  "Weekday style": "星期样式",
+  "Short": "简短",
+  "Window": "窗口",
+  "Appearance & behavior": "外观与行为",
+  "Auto-hide edge": "自动隐藏边缘",
+  "Automatic": "自动",
 };
 
 export default zhCN;

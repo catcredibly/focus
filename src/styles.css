@@ -187,12 +187,6 @@ button { color: inherit; }
 .popout-root--hover-controls .popout-subject-row { position: absolute; top: 9px; left: 38px; right: 38px; width: auto; }
 .popout-root--hover-controls .popout-controls { position: absolute; left: 0; right: 0; bottom: 8px; }
 .popout-root--hover-controls .popout-time { transition: font-size 160ms ease, margin 160ms ease; }
-.popout-root--hover-controls[data-size="small"]:not(:hover):not(:focus-within) .popout-time { margin-top: 8px; font-size: 37px; }
-.popout-root--hover-controls[data-size="medium"]:not(:hover):not(:focus-within) .popout-time { margin-top: 10px; font-size: 46px; }
-.popout-root--hover-controls[data-size="large"]:not(:hover):not(:focus-within) .popout-time { margin-top: 14px; font-size: 56px; }
-.popout-root--hover-controls:hover .popout-time, .popout-root--hover-controls:focus-within .popout-time { transform: translateY(-9px); }
-.popout-root--hover-controls:hover .popout-labels, .popout-root--hover-controls:focus-within .popout-labels,
-.popout-root--hover-controls:hover .popout-status, .popout-root--hover-controls:focus-within .popout-status { transform: translateY(-9px); }
 .popout-menu { position: absolute; right: 5px; top: 5px; width: 178px; max-height: 158px; overflow-y: auto; background: #0b1b28; border: 1px solid #2a465a; border-radius: 8px; padding: 4px; box-shadow: 0 10px 28px rgba(0,0,0,.42); z-index: 50; }
 .popout-menu button { width: 100%; min-height: 24px; border: 0; background: transparent; padding: 5px 7px; display: flex; align-items: center; justify-content: space-between; gap: 7px; border-radius: 5px; cursor: pointer; text-align: left; font-size: 11px; }
 .popout-menu button svg { width: 13px; height: 13px; flex: 0 0 auto; }
@@ -835,8 +829,7 @@ select, input { color-scheme: dark; }
 .popout-root[data-layout="compact"][data-size="small"] { --compact-time: 36px; --compact-hover-time: 23px; }
 .popout-root[data-layout="compact"][data-size="large"] { --compact-time: 48px; --compact-hover-time: 32px; }
 .popout-root[data-layout="compact"] .popout-content { padding: 5px 12px; justify-content: center; align-items: flex-start; }
-.popout-root[data-layout="compact"] .popout-time { width: calc(100% - 92px); font-size: var(--compact-hover-time); margin: 0; gap: 3px; line-height: 1.1; transform: none; transition: font-size 160ms ease, width 160ms ease; }
-.popout-root[data-layout="compact"].popout-root--hover-controls:not(:hover):not(:focus-within) .popout-time { width: 100%; font-size: var(--compact-time); margin: 0; }
+.popout-root[data-layout="compact"] .popout-time { width: calc(100% - 92px); font-size: var(--compact-hover-time); margin: 0; gap: 3px; line-height: 1.1; transform: none; font-variant-numeric: tabular-nums; }
 .popout-root[data-layout="compact"] .popout-subject-row { position: static; width: calc(100% - 92px); gap: 6px; height: 14px; }
 .popout-root[data-layout="compact"] .popout-subject, .popout-root[data-layout="compact"] .popout-subject-row time { font-size: 9px; min-height: 0; }
 .popout-root[data-layout="compact"] .popout-subject { min-width: 0; }
@@ -851,3 +844,18 @@ select, input { color-scheme: dark; }
 .popout-root[data-layout="compact"] .popout-drag-edge { right: 98px; height: 5px; }
 .popout-menu-window > .extend-menu { position: static; width: 100%; box-shadow: none; }
 .popout-menu-confirm { padding: 10px; }
+
+/* Hover controls occupy reserved space in both layouts; timer geometry never changes. */
+.popout-root--hover-controls .popout-content { padding-top: 30px; padding-bottom: 42px; }
+.popout-root--hover-controls .popout-time { transform: none; font-variant-numeric: tabular-nums; }
+.popout-root[data-layout="compact"] .popout-content { padding: 5px 12px; }
+fieldset.setting-control { border: 0; padding: 0; margin: 0; min-width: 0; }
+.setting-row--disabled { color: var(--text-disabled); }
+.setting-row--disabled .setting-control { opacity: .5; }
+.setting-row--disabled :disabled { cursor: not-allowed; }
+.popout-settings-subheading { padding: 14px 22px; background: var(--surface-control); border-bottom: 1px solid var(--border-soft); }
+.about-body .update-controls { border-top: 0; }
+[data-theme="light"] .danger-action { background: #c84249 !important; border-color: #c84249 !important; color: #fff !important; }
+[data-theme="light"] .danger-action:hover { background: #b5353c !important; border-color: #b5353c !important; }
+[data-theme="light"] .danger-action:active { background: #a92f36 !important; }
+[data-theme="light"] .danger-action:focus-visible { outline: 2px solid #c84249; outline-offset: 3px; }

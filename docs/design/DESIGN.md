@@ -289,6 +289,6 @@ The newer `reference/analytics-all-years.png` supersedes every Analytics design 
 
 - Popout settings show Mode, conditional Dock position, Monitor, Auto-hide, conditional Reveal edge, delay, tab size, and shortcut in that order. Corner and edge selections use standard dropdowns.
 - Docked reveal edges are explicit adjacent choices. Corner changes preserve the selected axis; floating mode retains automatic nearest-edge selection.
-- Daily and Weekly goal inputs remain HH : MM and normalize centrally to a maximum of 24:00.
+- Daily and Weekly goal inputs retain the hours : minutes format and normalize centrally to maximums of 24:00 and 168:00 respectively.
 - Academic Years contains two full-width, internally scrolling comparison panels: total focus with secondary Session counts, and average focus per active day. Existing global range filtering is shared by both.
 - Native Windows validation is documented in `../WINDOWS_POPOUT_CHECKLIST.md`.

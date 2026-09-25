@@ -125,8 +125,9 @@ export async function toggleTimerAutoHide() {
   return withPopoutGeometry(async () => {
     const settings = await loadSettings(), geometry = await timerGeometry();
     if (!settings.popoutDockAutoHide || !geometry.requested || !activePopoutSession()) return;
-    if (geometry.tabVisible) await invoke("cancel_timer_auto_hide", { generation: geometry.generation });
-    else await hide(settings, geometry);
+    if (geometry.tabVisible) { await invoke("cancel_timer_auto_hide", { generation: geometry.generation }); return "revealed" as const; }
+    await hide(settings, geometry);
+    return "hidden" as const;
   });
 }
 export async function rememberFloatingPosition() {

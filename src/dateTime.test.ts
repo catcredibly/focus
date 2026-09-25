@@ -20,3 +20,12 @@ describe("localized timer date and clock", () => {
     expect(formatTimerDateTime(date, "en", { showDate: true, dateFormat: "compact", showWeekday: false, showClock: true, clockFormat: "24-hour" })).toContain("·");
   });
 });
+
+it("keeps weekday style independent of date format and date-only previews", () => {
+  for (const format of ["full","standard","compact","numeric"] as const) {
+    expect(formatTimerDate(date,"en",format,true,"full")).toContain("Tuesday");
+    expect(formatTimerDate(date,"en",format,true,"short")).toContain("Tue");
+    expect(formatTimerDate(date,"en",format,true,"short")).not.toContain("Tuesday");
+    expect(formatTimerDate(date,"en",format,false,"full")).not.toContain("Tue");
+  }
+});

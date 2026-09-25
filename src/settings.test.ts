@@ -3,7 +3,7 @@ import Dexie from "dexie";
 import { afterEach, describe, expect, it } from "vitest";
 import { FocusDatabase } from "./db";
 import { ACTIVE_TIMER_STORAGE_KEY } from "./timerState";
-import { clearAllFocusData, DEFAULT_SETTINGS, formatLastBackup, greeting, hasActiveTimer, loadSettings, normaliseDuration, normalizeGoalSeconds, normalizeGoalPart, goalDurationSeconds, saveSetting, timerDefaultDuration } from "./settings";
+import { clearAllFocusData, DEFAULT_SETTINGS, GOAL_MAX_HOURS, formatLastBackup, greeting, hasActiveTimer, loadSettings, normaliseDuration, normalizeGoalSeconds, normalizeGoalPart, goalDurationSeconds, saveSetting, timerDefaultDuration } from "./settings";
 
 const opened: Dexie[] = [];
 const database = () => { const value = new FocusDatabase(`focus-settings-test-${crypto.randomUUID()}`); opened.push(value); return value; };
@@ -89,6 +89,15 @@ describe("goal duration limits", () => {
   it.each([[23,59,86340],[24,0,86400],[24,1,86400],[25,0,86400],[-1,-1,0],[2,80,10740]])("normalizes %i:%i", (hours,minutes,expected) => {
     expect(goalDurationSeconds(hours,minutes)).toBe(expected);
   });
+  it("allows weekly goals through 168:00 using the shared normalization", async () => {
+    const maximum = GOAL_MAX_HOURS.weeklyGoalSeconds;
+    expect(goalDurationSeconds(167,59,maximum)).toBe(604740);
+    for (const [hours,minutes] of [[168,0],[168,1],[169,0]]) expect(goalDurationSeconds(hours,minutes,maximum)).toBe(604800);
+    expect(normalizeGoalPart("hours",169,maximum)).toBe(168);
+    const testDb = database();
+    await saveSetting("weeklyGoalSeconds",100 * 3600,testDb);
+    expect((await loadSettings(testDb)).weeklyGoalSeconds).toBe(100 * 3600);
+  });
   it("clamps keyboard increments and malformed values", () => {
     expect(normalizeGoalPart("hours",24+1)).toBe(24);
     expect(normalizeGoalPart("hours",0-1)).toBe(0);
@@ -99,14 +108,26 @@ describe("goal duration limits", () => {
   it("enforces limits at save and legacy decode boundaries", async () => {
     const testDb = database();
     for (const key of ["dailyGoalSeconds", "weeklyGoalSeconds"] as const) {
+      const maximum = GOAL_MAX_HOURS[key] * 3600;
       await saveSetting(key,999999,testDb);
-      expect((await testDb.settings.get(key))?.value).toBe("86400");
-      await testDb.settings.put({key,value:"90000"});
-      expect((await loadSettings(testDb))[key]).toBe(86400);
+      expect((await testDb.settings.get(key))?.value).toBe(String(maximum));
+      await testDb.settings.put({key,value:String(maximum + 3600)});
+      expect((await loadSettings(testDb))[key]).toBe(maximum);
       for (const value of ["null","NaN","garbage",""]) {
         await testDb.settings.put({key,value});
         expect((await loadSettings(testDb))[key]).toBe(DEFAULT_SETTINGS[key]);
       }
     }
   });
+});
+
+it("applies new defaults only to missing values and preserves saved preferences", async () => {
+  const testDb = database();
+  expect(await loadSettings(testDb)).toMatchObject({dailyGoalEnabled:true,dailyGoalSeconds:7200,weeklyGoalEnabled:true,weeklyGoalSeconds:43200,popoutCloseOnCompletion:true,popoutRevealShortcut:"F12",weekdayStyle:"short"});
+  for (const key of ["dailyGoalEnabled","weeklyGoalEnabled","popoutCloseOnCompletion"] as const) await saveSetting(key,false,testDb);
+  await saveSetting("popoutRevealShortcut","Ctrl+Alt+KeyF",testDb);
+  await saveSetting("weekdayStyle","full",testDb);
+  await saveSetting("showWeekday",false,testDb);
+  await saveSetting("dateFormat","numeric",testDb);
+  expect(await loadSettings(testDb)).toMatchObject({dailyGoalEnabled:false,weeklyGoalEnabled:false,popoutCloseOnCompletion:false,popoutRevealShortcut:"Ctrl+Alt+KeyF",weekdayStyle:"full"});
 });

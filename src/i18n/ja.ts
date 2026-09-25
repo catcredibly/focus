@@ -530,6 +530,14 @@ const ja: Record<keyof typeof en, string> = {
   "Bottom": "下",
   "Left": "左",
   "Average focus per active day": "学習日あたりの平均集中時間",
+  "Restore floating position": "フローティング位置を復元",
+  "Reopen the floating popout at its last saved position.": "フローティングウィンドウを最後に保存した位置で再表示します。",
+  "Weekday style": "曜日の表示形式",
+  "Short": "省略",
+  "Window": "ウィンドウ",
+  "Appearance & behavior": "外観と動作",
+  "Auto-hide edge": "自動非表示の辺",
+  "Automatic": "自動",
 };
 
 export default ja;

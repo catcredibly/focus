@@ -16,6 +16,8 @@ export type DockEdge = "top" | "right" | "bottom" | "left";
 export type DockMonitor = "current" | `display:${number}`;
 export type CompletionSound = "soft-chime" | "bell" | "digital" | "gentle" | "bright";
 export type DateFormat = "full" | "standard" | "compact" | "numeric";
+export const DEFAULT_SIDEBAR_SUBTITLE = "\u2606*:.\uff61.o(\u2267\u25bd\u2266)o.\uff61.:*\u2606";
+export type WeekdayStyle = "full" | "short";
 export type ClockFormat = "system" | "12-hour" | "24-hour";
 
 export type FocusSettings = {
@@ -34,6 +36,7 @@ export type FocusSettings = {
   showDate: boolean;
   dateFormat: DateFormat;
   showWeekday: boolean;
+  weekdayStyle: WeekdayStyle;
   showClock: boolean;
   clockFormat: ClockFormat;
   dailyGoalEnabled: boolean;
@@ -93,6 +96,7 @@ export const SETTINGS_KEYS: { [K in keyof FocusSettings]: string } = {
   showDate: "showDate",
   dateFormat: "dateFormat",
   showWeekday: "showWeekday",
+  weekdayStyle: "weekdayStyle",
   showClock: "showClock",
   clockFormat: "clockFormat",
   dailyGoalEnabled: "dailyGoalEnabled",
@@ -152,11 +156,12 @@ export const DEFAULT_SETTINGS: FocusSettings = {
   showDate: true,
   dateFormat: "standard",
   showWeekday: true,
+  weekdayStyle: "short",
   showClock: true,
   clockFormat: "system",
-  dailyGoalEnabled: false,
+  dailyGoalEnabled: true,
   dailyGoalSeconds: 2 * 60 * 60,
-  weeklyGoalEnabled: false,
+  weeklyGoalEnabled: true,
   weeklyGoalSeconds: 12 * 60 * 60,
   completionSound: true,
   completionSoundChoice: "soft-chime",
@@ -172,7 +177,7 @@ export const DEFAULT_SETTINGS: FocusSettings = {
   popoutAutoHide: "1000",
   popoutAutoOpen: false,
   popoutShowInTaskbar: false,
-  popoutCloseOnCompletion: false,
+  popoutCloseOnCompletion: true,
   popoutTransparency: 100,
   popoutPositionX: null,
   popoutPositionY: null,
@@ -183,7 +188,7 @@ export const DEFAULT_SETTINGS: FocusSettings = {
   popoutDockMonitor: "current",
   popoutDocked: false,
   popoutDockAutoHide: false,
-  popoutRevealShortcut: "Ctrl+Alt+KeyF",
+  popoutRevealShortcut: "F12",
   popoutAutoHideDelaySeconds: 0.4,
   popoutAutoHideTabSize: "medium",
   popoutAutoHideShowAccent: true,
@@ -198,21 +203,21 @@ export const DEFAULT_SETTINGS: FocusSettings = {
 const booleans = new Set<keyof FocusSettings>(["startMaximized", "launchAtStartup", "showDate", "showWeekday", "showClock", "dailyGoalEnabled", "weeklyGoalEnabled", "completionSound", "completionNotification", "popoutAlwaysOnTop", "popoutRememberPosition", "popoutShowSubject", "popoutShowClock", "popoutHideControls", "popoutAutoOpen", "popoutShowInTaskbar", "popoutCloseOnCompletion", "popoutDockingEnabled", "popoutDocked", "popoutDockAutoHide", "popoutAutoHideShowAccent", "allowDirectActiveDeletion"]);
 const numbers = new Set<keyof FocusSettings>(["lastTimerDurationSeconds", "fixedTimerDurationSeconds", "dailyGoalSeconds", "weeklyGoalSeconds", "completionSoundVolume", "popoutTransparency", "popoutPositionX", "popoutPositionY", "popoutFloatingWidth", "popoutFloatingHeight", "popoutAutoHideOffset", "popoutAutoHideDelaySeconds"]);
 
-export const MAX_GOAL_SECONDS = 24 * 60 * 60;
-export function normalizeGoalSeconds(value: unknown, fallback = 0): number {
+export const GOAL_MAX_HOURS = { dailyGoalSeconds: 24, weeklyGoalSeconds: 168 } as const;
+export function normalizeGoalSeconds(value: unknown, fallback = 0, maxHours: number = GOAL_MAX_HOURS.dailyGoalSeconds): number {
   const parsed = typeof value === "number" || typeof value === "string" && value.trim() !== "" ? Number(value) : NaN;
-  return Number.isFinite(parsed) ? Math.min(MAX_GOAL_SECONDS, Math.max(0, Math.floor(parsed))) : fallback;
+  return Number.isFinite(parsed) ? Math.min(maxHours * 3600, Math.max(0, Math.floor(parsed))) : fallback;
 }
-export function normalizeGoalPart(part: "hours" | "minutes", value: number): number {
-  return Math.min(part === "hours" ? 24 : 59, Math.max(0, Math.floor(Number.isFinite(value) ? value : 0)));
+export function normalizeGoalPart(part: "hours" | "minutes", value: number, maxHours: number = GOAL_MAX_HOURS.dailyGoalSeconds): number {
+  return Math.min(part === "hours" ? maxHours : 59, Math.max(0, Math.floor(Number.isFinite(value) ? value : 0)));
 }
-export function goalDurationSeconds(hours: number, minutes: number): number {
-  return normalizeGoalSeconds(normalizeGoalPart("hours", hours) * 3600 + normalizeGoalPart("minutes", minutes) * 60);
+export function goalDurationSeconds(hours: number, minutes: number, maxHours: number = GOAL_MAX_HOURS.dailyGoalSeconds): number {
+  return normalizeGoalSeconds(normalizeGoalPart("hours", hours, maxHours) * 3600 + normalizeGoalPart("minutes", minutes) * 60, 0, maxHours);
 }
 
 function decode<K extends keyof FocusSettings>(key: K, raw: string | undefined): FocusSettings[K] {
   if (raw === undefined) return DEFAULT_SETTINGS[key];
-  if (key === "dailyGoalSeconds" || key === "weeklyGoalSeconds") return normalizeGoalSeconds(raw, Number(DEFAULT_SETTINGS[key])) as FocusSettings[K];
+  if (key === "dailyGoalSeconds" || key === "weeklyGoalSeconds") return normalizeGoalSeconds(raw, Number(DEFAULT_SETTINGS[key]), GOAL_MAX_HOURS[key as keyof typeof GOAL_MAX_HOURS]) as FocusSettings[K];
   if (booleans.has(key)) return (raw === "true") as FocusSettings[K];
   if (numbers.has(key)) {
     if (raw === "null") return null as FocusSettings[K];
@@ -227,7 +232,7 @@ function decode<K extends keyof FocusSettings>(key: K, raw: string | undefined):
   }
   if (key === "lastBackupAt") return (raw && raw !== "null" ? raw : null) as FocusSettings[K];
   const allowed: Partial<Record<keyof FocusSettings, readonly string[]>> = {
-    language: ["en", "zh-CN", "zh-TW", "ja"], theme: ["dark", "light"], timerDurationMode: ["remember", "fixed"], subjectPickerMode: ["remember", "fixed"], dateFormat: ["full", "standard", "compact", "numeric"], clockFormat: ["system", "12-hour", "24-hour"],
+    weekdayStyle: ["full", "short"], language: ["en", "zh-CN", "zh-TW", "ja"], theme: ["dark", "light"], timerDurationMode: ["remember", "fixed"], subjectPickerMode: ["remember", "fixed"], dateFormat: ["full", "standard", "compact", "numeric"], clockFormat: ["system", "12-hour", "24-hour"],
     completionSoundChoice: ["soft-chime", "bell", "digital", "gentle", "bright"], popoutAutoHide: ["500", "1000", "2000", "never"],
     popoutDockCorner: ["top-left", "top-right", "bottom-left", "bottom-right"], popoutAutoHideEdge: ["top", "right", "bottom", "left"],
     popoutLayout: ["regular", "compact"], popoutSize: ["small", "medium", "large"], popoutAutoHideTabSize: ["small", "medium", "large"], accentColour: ["coral", "orange", "pink", "miku", "green", "cappuccino"], uiScale: ["small", "medium", "large", "extra-large"],
@@ -244,7 +249,7 @@ export async function loadSettings(database: FocusDatabase = db): Promise<FocusS
 }
 
 export async function saveSetting<K extends keyof FocusSettings>(key: K, value: FocusSettings[K], database: FocusDatabase = db) {
-  const normalized = key === "dailyGoalSeconds" || key === "weeklyGoalSeconds" ? normalizeGoalSeconds(value, Number(DEFAULT_SETTINGS[key])) : value;
+  const normalized = key === "dailyGoalSeconds" || key === "weeklyGoalSeconds" ? normalizeGoalSeconds(value, Number(DEFAULT_SETTINGS[key]), GOAL_MAX_HOURS[key as keyof typeof GOAL_MAX_HOURS]) : value;
   await database.settings.put({ key: SETTINGS_KEYS[key], value: String(normalized) });
 }
 

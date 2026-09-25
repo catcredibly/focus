@@ -528,6 +528,14 @@ const en = {
   "Bottom": "Bottom",
   "Left": "Left",
   "Average focus per active day": "Average focus per active day",
+  "Restore floating position": "Restore floating position",
+  "Reopen the floating popout at its last saved position.": "Reopen the floating popout at its last saved position.",
+  "Weekday style": "Weekday style",
+  "Short": "Short",
+  "Window": "Window",
+  "Appearance & behavior": "Appearance & behavior",
+  "Auto-hide edge": "Auto-hide edge",
+  "Automatic": "Automatic",
 } as const;
 
 export default en;

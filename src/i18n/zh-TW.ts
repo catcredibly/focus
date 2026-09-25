@@ -530,6 +530,14 @@ const zhTW: Record<keyof typeof en, string> = {
   "Bottom": "底部",
   "Left": "左側",
   "Average focus per active day": "每個學習日的平均專注時間",
+  "Restore floating position": "還原浮動位置",
+  "Reopen the floating popout at its last saved position.": "在上次儲存的位置重新開啟浮動視窗。",
+  "Weekday style": "星期樣式",
+  "Short": "簡短",
+  "Window": "視窗",
+  "Appearance & behavior": "外觀與行為",
+  "Auto-hide edge": "自動隱藏邊緣",
+  "Automatic": "自動",
 };
 
 export default zhTW;

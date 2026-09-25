@@ -5,7 +5,8 @@ const punctuation: Record<string, string> = { Minus: "-", Equal: "=", BracketLef
 type KeyInput = Pick<KeyboardEvent, "code" | "ctrlKey" | "altKey" | "shiftKey" | "metaKey">;
 export function captureShortcut(event: KeyInput): string | undefined {
   const modifiers = [event.ctrlKey && "Ctrl", event.altKey && "Alt", event.shiftKey && "Shift"].filter(Boolean);
-  if (event.metaKey || modifiers.length < 2 || !(/^Key[A-Z]$|^Digit[0-9]$/.test(event.code) || event.code in punctuation)) return;
+  const functionKey = /^F([1-9]|1[0-2])$/.test(event.code);
+  if (event.metaKey || (!functionKey && (modifiers.length < 1 || !(/^Key[A-Z]$|^Digit[0-9]$/.test(event.code) || event.code in punctuation)))) return;
   return [...modifiers, event.code].join("+");
 }
 export function shortcutLabel(shortcut: string) {

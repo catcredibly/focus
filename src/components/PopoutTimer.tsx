@@ -29,6 +29,10 @@ export function PopoutTimer() {
   const [now, setNow] = useState(() => new Date());
   const [nativeError, setNativeError] = useState(false);
   const draggingRef = useRef(false);
+  const pointerInsideRef = useRef(false);
+  const closedRef = useRef(false);
+  const closeEpochRef = useRef(0);
+  const [interacting, setInteracting] = useState(false);
   const hideTimerRef = useRef(0);
   const lastSize = useRef(`${settings.popoutLayout}:${settings.popoutSize}`);
   const compact = settings.popoutLayout === "compact";
@@ -42,14 +46,19 @@ export function PopoutTimer() {
     await revealTimerAutomatically();
   }, [clearHideTimer]);
   const hide = useCallback(async () => {
-    if (draggingRef.current || menu || menuWindowOpen || stopping || voiding) return;
+    if (closedRef.current || pointerInsideRef.current || draggingRef.current || interacting || menu || menuWindowOpen || stopping || voiding) return;
     await hideTimerAutomatically();
-  }, [menu, menuWindowOpen, stopping, voiding]);
-  const scheduleHide = () => {
+  }, [interacting, menu, menuWindowOpen, stopping, voiding]);
+  const scheduleHide = useCallback(() => {
     clearHideTimer();
-    if (settings.popoutDockAutoHide && !menu && !menuWindowOpen && !stopping && !voiding && !draggingRef.current) {
+    if (!closedRef.current && !pointerInsideRef.current && settings.popoutDockAutoHide && !interacting && !menu && !menuWindowOpen && !stopping && !voiding && !draggingRef.current) {
       hideTimerRef.current = window.setTimeout(() => void report(hide()), settings.popoutAutoHideDelaySeconds * 1000);
     }
+  }, [clearHideTimer, hide, interacting, menu, menuWindowOpen, stopping, voiding, settings.popoutDockAutoHide, settings.popoutAutoHideDelaySeconds]);
+  useEffect(() => { scheduleHide(); return clearHideTimer; }, [scheduleHide, clearHideTimer]);
+  const runInteraction = async (operation: () => Promise<unknown>) => {
+    clearHideTimer(); setInteracting(true);
+    try { await operation(); } finally { setInteracting(false); }
   };
   const settleDrag = async () => {
     const geometry = await timerGeometry();
@@ -60,8 +69,8 @@ export function PopoutTimer() {
   };
   const startDrag = (event: ReactPointerEvent) => {
     if (!isTauri() || dockedActive || event.button !== 0 || (event.target as HTMLElement).closest("[data-no-drag]")) return;
-    event.preventDefault(); clearHideTimer(); setMenu(null); draggingRef.current = true;
-    void report(getCurrentWindow().startDragging().finally(() => { draggingRef.current = false; void report(settleDrag()); }));
+    event.preventDefault(); clearHideTimer(); setMenu(null); draggingRef.current = true; setInteracting(true);
+    void report(getCurrentWindow().startDragging().finally(() => { draggingRef.current = false; void report(settleDrag().finally(() => { pointerInsideRef.current = document.querySelector(".popout-root")?.matches(":hover") ?? false; setInteracting(false); })); }));
   };
   const toggleDock = async () => {
     clearHideTimer();
@@ -94,13 +103,24 @@ export function PopoutTimer() {
     const subscriptions = [
       getCurrentWindow().onFocusChanged(({ payload }) => { if (payload) { setMenu(null); setStopping(false); } }),
       getCurrentWindow().listen("focus://reveal-auto-hide", () => void report(reveal())),
-      getCurrentWindow().listen("focus://toggle-auto-hide", () => { clearHideTimer(); if (!draggingRef.current && !menu && !menuWindowOpen && !stopping && !voiding) void report(toggleTimerAutoHide()); }),
+      getCurrentWindow().listen("focus://toggle-auto-hide", () => {
+        clearHideTimer();
+        if (draggingRef.current || interacting || menu || menuWindowOpen || stopping || voiding) return;
+        const epoch = closeEpochRef.current;
+        void report(toggleTimerAutoHide().then(result => {
+          if (result === "revealed" && epoch === closeEpochRef.current) {
+            closedRef.current = false;
+            pointerInsideRef.current = document.querySelector(".popout-root")?.matches(":hover") ?? false;
+            scheduleHide();
+          }
+        }));
+      }),
       getCurrentWindow().listen("focus://popout-menu-closed", () => setMenuWindowOpen(false)),
     ];
     return () => { for (const subscription of subscriptions) void subscription.then(stop => stop()); };
-  }, [reveal, clearHideTimer, menu, menuWindowOpen, stopping, voiding]);
+  }, [reveal, clearHideTimer, scheduleHide, interacting, menu, menuWindowOpen, stopping, voiding]);
   useEffect(() => {
-    const closed = () => { clearHideTimer(); resetPopoutTransientState(); setMenu(null); setMenuWindowOpen(false); setStopping(false); setVoiding(false); draggingRef.current = false; };
+    const closed = () => { closedRef.current = true; closeEpochRef.current += 1; pointerInsideRef.current = false; clearHideTimer(); resetPopoutTransientState(); setMenu(null); setMenuWindowOpen(false); setStopping(false); setVoiding(false); draggingRef.current = false; };
     window.addEventListener(POPOUT_CLOSED, closed);
     const subscription = isTauri() ? getCurrentWindow().listen("focus://popout-closed", closed) : undefined;
     return () => { window.removeEventListener(POPOUT_CLOSED, closed); void subscription?.then(stop => stop()); };
@@ -114,7 +134,7 @@ export function PopoutTimer() {
 
   const controlsDelay = settings.popoutAutoHide === "never" ? "2147483647ms" : `${settings.popoutAutoHide}ms`;
   const time = parts(timer.state.remainingSeconds);
-  return <main className={`popout-root ${settings.popoutHideControls ? "popout-root--hover-controls" : ""}`} data-accent={settings.accentColour} data-theme={settings.theme} data-scale={settings.uiScale} data-edge={settings.popoutAutoHideEdge} data-layout={settings.popoutLayout} data-size={settings.popoutSize} style={{ "--controls-hide-delay": controlsDelay, "--popout-surface-alpha": settings.popoutTransparency / 100 } as CSSProperties} onPointerDown={startDrag} onMouseEnter={clearHideTimer} onMouseLeave={scheduleHide}>
+  return <main className={`popout-root ${settings.popoutHideControls ? "popout-root--hover-controls" : ""}`} data-accent={settings.accentColour} data-theme={settings.theme} data-scale={settings.uiScale} data-edge={settings.popoutAutoHideEdge} data-layout={settings.popoutLayout} data-size={settings.popoutSize} style={{ "--controls-hide-delay": controlsDelay, "--popout-surface-alpha": settings.popoutTransparency / 100 } as CSSProperties} onPointerDown={startDrag} onMouseEnter={() => { closedRef.current = false; pointerInsideRef.current = true; clearHideTimer(); }} onMouseLeave={() => { pointerInsideRef.current = false; scheduleHide(); }}>
     {!dockedActive && <div className="popout-drag-edge" aria-hidden="true"/>}
     <div className="popout-content">
       {nativeError && <button data-no-drag className="field-error" onClick={() => setNativeError(false)}>{t("Unable to update the popout window. Try again.")}</button>}
@@ -124,7 +144,7 @@ export function PopoutTimer() {
       <div className="popout-status">{timer.state.finished ? t("Finished") : timer.state.paused ? t("Paused") : ""}</div>
       <div className="popout-actions">
       <button data-no-drag className="popout-close tooltip-button" aria-label={t("Close popout")} data-tooltip={t("Close popout")} onClick={() => { clearHideTimer(); void report(closeTimerPopout()); }}><X/></button>
-      <button data-no-drag className="popout-pin tooltip-button" aria-label={t(dockedActive ? "Undock" : "Dock")} data-tooltip={t(dockedActive ? "Undock" : "Dock")} onClick={() => void report(toggleDock())}><Pin fill={dockedActive ? "currentColor" : "none"}/></button>
+      <button data-no-drag className="popout-pin tooltip-button" aria-label={t(dockedActive ? "Undock" : "Dock")} data-tooltip={t(dockedActive ? "Undock" : "Dock")} onClick={() => void report(runInteraction(toggleDock))}><Pin fill={dockedActive ? "currentColor" : "none"}/></button>
       <div className="popout-controls" data-no-drag>
         <button className="tooltip-button" aria-label={timer.state.finished ? t("Finish") : timer.state.paused ? t("Resume") : t("Pause")} data-tooltip={timer.state.finished ? t("Finish") : timer.state.paused ? t("Resume") : t("Pause")} onClick={timer.state.finished ? timer.finish : timer.pause}>{timer.state.finished ? <Check/> : timer.state.paused ? <Play fill="currentColor"/> : <Pause fill="currentColor"/>}</button>
         <button className="tooltip-button" aria-label={t("Extend")} data-tooltip={t("Extend")} onClick={() => compact ? openMenu("extend") : setMenu((value) => value === "extend" ? null : "extend")}><Plus size={18}/></button>
@@ -133,7 +153,7 @@ export function PopoutTimer() {
       </div>
       </div>
       {menu === "extend" && <div data-no-drag data-popout-overlay><TimerExtendMenu compact onClose={() => setMenu(null)} onExtend={(seconds) => { timer.extend(seconds); setMenu(null); }}/></div>}
-      {stopping && <div data-no-drag data-popout-overlay className="popout-menu popout-stop-confirm"><strong>{t("Stop timer?")}</strong><span>{t("Elapsed focus time will be saved.")}</span><button className="secondary-action" onClick={() => setStopping(false)}>{t("Cancel")}</button><button className="danger-outline" onClick={() => { setStopping(false); setVoiding(true); }}>{t("Void Session")}</button><button className="primary-action" onClick={async () => { setStopping(false); await timer.stop(); }}>{t("Stop and save")}</button></div>}
+      {stopping && <div data-no-drag data-popout-overlay className="popout-menu popout-stop-confirm"><strong>{t("Stop timer?")}</strong><span>{t("Elapsed focus time will be saved.")}</span><button className="secondary-action" onClick={() => setStopping(false)}>{t("Cancel")}</button><button className="danger-outline" onClick={() => { setStopping(false); setVoiding(true); }}>{t("Void Session")}</button><button className="primary-action" onClick={() => void report(runInteraction(async () => { await timer.stop(); setStopping(false); }))}>{t("Stop and save")}</button></div>}
       {voiding && <div data-no-drag data-popout-overlay className="popout-menu popout-stop-confirm"><strong>{t("Void this Session?")}</strong><span>{t("The recorded study time will be discarded.")}</span><button className="secondary-action" onClick={() => setVoiding(false)}>{t("Cancel")}</button><button className="danger-action" onClick={() => { timer.discard(); setVoiding(false); }}>{t("Void Session")}</button></div>}
     </div>
   </main>;
