@@ -31,7 +31,7 @@ Removing the application or its WebView storage may remove local data.
 ## Availability
 
 Focus currently targets Windows only.
-Releases to other platforms may be considered.
+Support for additional platforms may be considered in the future.
 
 ## Development
 
