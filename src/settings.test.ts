@@ -123,7 +123,7 @@ describe("goal duration limits", () => {
 
 it("applies new defaults only to missing values and preserves saved preferences", async () => {
   const testDb = database();
-  expect(await loadSettings(testDb)).toMatchObject({dailyGoalEnabled:true,dailyGoalSeconds:7200,weeklyGoalEnabled:true,weeklyGoalSeconds:43200,popoutCloseOnCompletion:true,popoutRevealShortcut:"F12",weekdayStyle:"short"});
+  expect(await loadSettings(testDb)).toMatchObject({dailyGoalEnabled:true,dailyGoalSeconds:7200,weeklyGoalEnabled:true,weeklyGoalSeconds:43200,popoutCloseOnCompletion:true,popoutRevealShortcut:"Alt+Backquote",weekdayStyle:"short"});
   for (const key of ["dailyGoalEnabled","weeklyGoalEnabled","popoutCloseOnCompletion"] as const) await saveSetting(key,false,testDb);
   await saveSetting("popoutRevealShortcut","Ctrl+Alt+KeyF",testDb);
   await saveSetting("weekdayStyle","full",testDb);

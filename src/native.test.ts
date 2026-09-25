@@ -2,7 +2,7 @@ import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "./db";
 import { loadSettings, saveSetting } from "./settings";
-import { setPopoutDocked, syncPopoutLayout, toggleTimerAutoHide, refreshTimerAutoHideTab } from "./native";
+import { setPopoutDocked, syncPopoutLayout, toggleTimerAutoHide, refreshTimerAutoHideTab, hideTimerAutomatically } from "./native";
 
 const native = vi.hoisted(() => ({ invoke: vi.fn(), geometry: { x: 250, y: 300, width: 400, height: 200, scale: 1, visible: true, tabVisible: false, requested: true, generation: 0, workArea: { x: 0, y: 0, width: 1920, height: 1040 } }, failPosition: false }));
 vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => true, invoke: native.invoke }));
@@ -90,4 +90,10 @@ describe("serialized native popout transitions", () => {
     expect((await loadSettings()).popoutDocked).toBe(false);
     expect(native.invoke.mock.calls.some(([command]) => command === "set_timer_position")).toBe(false);
   });
+});
+
+it("ignores delayed hides after Auto-hide was disabled without querying native geometry", async () => {
+  await saveSetting("popoutDockAutoHide",false);
+  await hideTimerAutomatically();
+  expect(native.invoke).not.toHaveBeenCalled();
 });

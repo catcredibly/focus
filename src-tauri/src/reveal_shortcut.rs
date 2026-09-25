@@ -54,7 +54,7 @@ mod tests {
     use super::parse;
     #[test]
     fn accepts_only_constrained_shortcuts() {
-        for value in ["F1", "F12", "Ctrl+KeyF", "Alt+Digit7", "Shift+Slash", "Ctrl+Alt+F12", "Ctrl+Shift+F9", "Alt+Shift+F4", "Ctrl+Alt+Shift+F7", "Ctrl+Alt+Shift+BracketLeft"] { assert!(parse(value).is_ok(), "{value}"); }
+        for value in ["Alt+Backquote", "F1", "F12", "Ctrl+KeyF", "Alt+Digit7", "Shift+Slash", "Ctrl+Alt+F12", "Ctrl+Shift+F9", "Alt+Shift+F4", "Ctrl+Alt+Shift+F7", "Ctrl+Alt+Shift+BracketLeft"] { assert!(parse(value).is_ok(), "{value}"); }
         for value in ["KeyF", "Digit7", "Slash", "F0", "F13", "Ctrl+Ctrl+Alt+Shift+F12", "Ctrl+Alt+Numpad7", "Ctrl+Ctrl+KeyF", "Meta+Ctrl+KeyF", "Alt+Ctrl+KeyF"] { assert!(parse(value).is_err(), "{value}"); }
     }
 }

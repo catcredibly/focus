@@ -425,7 +425,7 @@ const en = {
   "Auto-hide delay in seconds": "Auto-hide delay in seconds",
   "Seconds before the popout hides after you leave it.": "Seconds before the popout hides after you leave it.",
   "Auto-hide tab size": "Auto-hide tab size",
-  "Show accent indicator on auto-hide tab": "Show accent indicator on auto-hide tab",
+  "Show accent dot on reveal tab": "Show accent dot on reveal tab",
   "Enter zero or a positive number.": "Enter zero or a positive number.",
   "HH": "HH",
   "MM": "MM",

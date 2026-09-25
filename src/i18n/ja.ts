@@ -427,7 +427,7 @@ const ja: Record<keyof typeof en, string> = {
   "Auto-hide delay in seconds": "自動非表示の遅延（秒）",
   "Seconds before the popout hides after you leave it.": "ポインターが離れてからポップアウトを隠すまでの秒数です。",
   "Auto-hide tab size": "自動非表示タブのサイズ",
-  "Show accent indicator on auto-hide tab": "自動非表示タブにアクセント表示を表示する",
+  "Show accent dot on reveal tab": "表示タブにアクセントカラーの点を表示",
   "Enter zero or a positive number.": "0 または正の数を入力してください。",
   "HH": "時",
   "MM": "分",

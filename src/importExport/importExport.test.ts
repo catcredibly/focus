@@ -37,3 +37,21 @@ describe("Focus CSV",()=>{
   it("maps generic duration CSV and reports invalid rows",async()=>{const target=database();await target.academicYears.add({id:"year",name:"University Year 1",archived:false});const csv="Year,Course,Date,Time,Minutes\nUniversity Year 1,ELECTENG 101,2026-09-21,09:00,60\nUniversity Year 1,ELECTENG 101,bad,09:00,-5";const preview=await previewCsv(csv,{academicYear:"Year",subject:"Course",startDate:"Date",startTime:"Time",focusedMinutes:"Minutes"},undefined,target);expect(preview.subjectsToCreate).toEqual([{academicYearName:"University Year 1",subjectName:"ELECTENG 101"}]);expect(preview.rows.filter((row)=>row.errors.length)).toHaveLength(1);const result=await importCsvPreview(preview,target);expect(result).toMatchObject({sessionsImported:1,invalidRowsSkipped:1});});
   it("skips fingerprint duplicates when generic CSV has no ID",async()=>{const target=await seeded();const session=(await target.sessions.toArray())[0] as FocusSession;const start=new Date(session.startTime),end=new Date(session.endTime);const pad=(n:number)=>String(n).padStart(2,"0");const date=(d:Date)=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`,time=(d:Date)=>`${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;const csv=`Year,Subject,Start Date,Start Time,End Date,End Time\nIB,"Japanese, Intermediate",${date(start)},${time(start)},${date(end)},${time(end)}`;const preview=await previewCsv(csv,{academicYear:"Year",subject:"Subject",startDate:"Start Date",startTime:"Start Time",endDate:"End Date",endTime:"End Time"},undefined,target);expect(preview.rows[0].duplicate).toBe(true);});
 });
+
+it("uses the release version without changing schema or rejecting older backup producers", async () => {
+  const source=await seeded();
+  await source.settings.put({key:"dateFormat",value:"standard"});
+  await source.settings.put({key:"language",value:"ja"});
+  const backup=await createBackup(source);
+  expect(backup.appVersion).toBe("2.0.1");
+  expect(backup.formatVersion).toBe(1);
+  for (const mode of ["replace","merge"] as const) {
+    const target=database();
+    await restoreBackup(validateBackup({...backup,appVersion:"1.2.0"}),mode,"use-imported",target);
+    expect((await loadSettings(target)).dateFormat).toBe("standard");
+    await target.settings.put({key:"language",value:"en"});
+    expect((await loadSettings(target)).dateFormat).toBe("standard");
+    await target.settings.put({key:"dateFormat",value:"compact"});
+    expect((await loadSettings(target)).dateFormat).toBe("compact");
+  }
+});

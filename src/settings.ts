@@ -188,7 +188,7 @@ export const DEFAULT_SETTINGS: FocusSettings = {
   popoutDockMonitor: "current",
   popoutDocked: false,
   popoutDockAutoHide: false,
-  popoutRevealShortcut: "F12",
+  popoutRevealShortcut: "Alt+Backquote",
   popoutAutoHideDelaySeconds: 0.4,
   popoutAutoHideTabSize: "medium",
   popoutAutoHideShowAccent: true,

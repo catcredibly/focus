@@ -427,7 +427,7 @@ const zhCN: Record<keyof typeof en, string> = {
   "Auto-hide delay in seconds": "自动隐藏延迟（秒）",
   "Seconds before the popout hides after you leave it.": "指针离开后，悬浮窗等待多少秒再隐藏。",
   "Auto-hide tab size": "自动隐藏标签大小",
-  "Show accent indicator on auto-hide tab": "在自动隐藏标签上显示强调色指示点",
+  "Show accent dot on reveal tab": "在显示标签上显示主题色圆点",
   "Enter zero or a positive number.": "请输入零或正数。",
   "HH": "时",
   "MM": "分",

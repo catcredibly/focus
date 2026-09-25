@@ -853,9 +853,24 @@ fieldset.setting-control { border: 0; padding: 0; margin: 0; min-width: 0; }
 .setting-row--disabled { color: var(--text-disabled); }
 .setting-row--disabled .setting-control { opacity: .5; }
 .setting-row--disabled :disabled { cursor: not-allowed; }
-.popout-settings-subheading { padding: 14px 22px; background: var(--surface-control); border-bottom: 1px solid var(--border-soft); }
-.about-body .update-controls { border-top: 0; }
+.settings-group-heading { padding: 14px 22px; background: var(--surface-control); border-bottom: 1px solid var(--border-soft); }
+.about-body .update-controls { border-top: 0; margin-top: 0; padding: 18px 0; }
 [data-theme="light"] .danger-action { background: #c84249 !important; border-color: #c84249 !important; color: #fff !important; }
 [data-theme="light"] .danger-action:hover { background: #b5353c !important; border-color: #b5353c !important; }
 [data-theme="light"] .danger-action:active { background: #a92f36 !important; }
 [data-theme="light"] .danger-action:focus-visible { outline: 2px solid #c84249; outline-offset: 3px; }
+
+/* Query units use the padded content box, excluding header/control reservations. */
+.popout-root[data-layout] .popout-content { container-type: size; padding: 32px 16px 42px; justify-content: center; }
+.popout-root[data-layout] .popout-time { width: 100%; font-size: min(17cqw, 60cqh); line-height: 1.05; margin: 0; gap: 3px; white-space: nowrap; font-variant-numeric: tabular-nums; transition: none; }
+.popout-root[data-layout] .popout-time span { min-width: 0; }
+.popout-root[data-layout] .popout-subject-row { position: absolute; top: 9px; left: 38px; right: 38px; width: auto; }
+.popout-root[data-layout] .popout-subject, .popout-root[data-layout] .popout-subject-row time { font-size: clamp(9px, 4cqw, 13px); }
+.popout-root[data-layout] .popout-labels { width: 100%; margin: 0; font-size: clamp(7px, 3cqw, 11px); }
+.popout-root[data-layout] .popout-status { font-size: clamp(9px, 3cqw, 12px); }
+.popout-root[data-layout="regular"] .popout-controls { position: absolute; left: 0; right: 0; bottom: 8px; }
+.popout-root[data-layout="compact"] .popout-content { padding: 5px 104px 5px 12px; }
+.popout-root[data-layout="compact"] .popout-subject-row { position: static; width: 100%; height: auto; }
+.popout-root[data-layout="compact"] .popout-subject, .popout-root[data-layout="compact"] .popout-subject-row time { font-size: clamp(8px, 4cqw, 11px); }
+.popout-root[data-layout="compact"] .popout-subject { min-height: 0; }
+.popout-root[data-layout="compact"] .popout-status { width: 100%; min-height: 0; line-height: 1.1; }

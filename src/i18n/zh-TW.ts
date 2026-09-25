@@ -427,7 +427,7 @@ const zhTW: Record<keyof typeof en, string> = {
   "Auto-hide delay in seconds": "自動隱藏延遲（秒）",
   "Seconds before the popout hides after you leave it.": "指標離開後，彈出視窗等待多少秒再隱藏。",
   "Auto-hide tab size": "自動隱藏標籤大小",
-  "Show accent indicator on auto-hide tab": "在自動隱藏標籤上顯示強調色指示點",
+  "Show accent dot on reveal tab": "在顯示標籤上顯示主題色圓點",
   "Enter zero or a positive number.": "請輸入零或正數。",
   "HH": "時",
   "MM": "分",

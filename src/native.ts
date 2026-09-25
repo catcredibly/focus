@@ -104,7 +104,14 @@ async function hide(settings: FocusSettings, geometry: TimerGeometry, generation
   await invoke("show_timer_auto_hide_tab", { edge, offset, tabSize: settings.popoutAutoHideTabSize, generation });
 }
 export async function hideTimerAutomatically() {
-  return withPopoutGeometry(async () => { await synchronizePopoutSession(); await hide(await loadSettings(), await timerGeometry()); });
+  if (!isTauri()) return;
+  return withPopoutGeometry(async () => {
+    // Re-read inside the queue: a timeout scheduled before Disable is obsolete.
+    const settings = await loadSettings();
+    if (!settings.popoutDockAutoHide) return;
+    await synchronizePopoutSession();
+    await hide(settings, await timerGeometry());
+  });
 }
 export async function revealTimerAutomatically() {
   return withPopoutGeometry(async () => {

@@ -12,6 +12,20 @@ export function captureShortcut(event: KeyInput): string | undefined {
 export function shortcutLabel(shortcut: string) {
   return shortcut.split("+").map(part => punctuation[part] ?? part.replace(/^Key|^Digit/, "")).join(" + ");
 }
+/** Capture at the window level so button blur does not interrupt recording. */
+export function listenForShortcut(onCapture: (shortcut: string) => void, onCancel: () => void, target: Window = window) {
+  const stop = () => target.removeEventListener("keydown", keydown, { capture: true });
+  const keydown = (event: KeyboardEvent) => {
+    if (event.repeat) { event.preventDefault(); event.stopPropagation(); return; }
+    if (event.key === "Tab") { stop(); onCancel(); return; }
+    event.preventDefault(); event.stopPropagation();
+    if (event.key === "Escape") { stop(); onCancel(); return; }
+    const next = captureShortcut(event);
+    if (next) { stop(); onCapture(next); }
+  };
+  target.addEventListener("keydown", keydown, { capture: true });
+  return stop;
+}
 let operation = Promise.resolve();
 /** Serialize startup and recorder changes; persist only a registered combination. */
 export function registerRevealShortcut(shortcut: string, persist = false) {

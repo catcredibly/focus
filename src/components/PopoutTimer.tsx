@@ -28,6 +28,8 @@ export function PopoutTimer() {
   const [menuWindowOpen, setMenuWindowOpen] = useState(false);
   const [now, setNow] = useState(() => new Date());
   const [nativeError, setNativeError] = useState(false);
+  const autoHideSettings = useRef(settings);
+  autoHideSettings.current = settings;
   const draggingRef = useRef(false);
   const pointerInsideRef = useRef(false);
   const closedRef = useRef(false);
@@ -51,11 +53,13 @@ export function PopoutTimer() {
   }, [interacting, menu, menuWindowOpen, stopping, voiding]);
   const scheduleHide = useCallback(() => {
     clearHideTimer();
-    if (!closedRef.current && !pointerInsideRef.current && settings.popoutDockAutoHide && !interacting && !menu && !menuWindowOpen && !stopping && !voiding && !draggingRef.current) {
-      hideTimerRef.current = window.setTimeout(() => void report(hide()), settings.popoutAutoHideDelaySeconds * 1000);
+    if (!closedRef.current && !pointerInsideRef.current && autoHideSettings.current.popoutDockAutoHide && !interacting && !menu && !menuWindowOpen && !stopping && !voiding && !draggingRef.current) {
+      hideTimerRef.current = window.setTimeout(() => void report(hide()), autoHideSettings.current.popoutAutoHideDelaySeconds * 1000);
     }
-  }, [clearHideTimer, hide, interacting, menu, menuWindowOpen, stopping, voiding, settings.popoutDockAutoHide, settings.popoutAutoHideDelaySeconds]);
+  }, [clearHideTimer, hide, interacting, menu, menuWindowOpen, stopping, voiding]);
   useEffect(() => { scheduleHide(); return clearHideTimer; }, [scheduleHide, clearHideTimer]);
+  // A preference change cancels pending hides but never requests a new hide/reveal.
+  useEffect(() => { clearHideTimer(); }, [settings.popoutDockAutoHide, clearHideTimer]);
   const runInteraction = async (operation: () => Promise<unknown>) => {
     clearHideTimer(); setInteracting(true);
     try { await operation(); } finally { setInteracting(false); }
@@ -83,7 +87,7 @@ export function PopoutTimer() {
     const resize = lastSize.current !== `${settings.popoutLayout}:${settings.popoutSize}`;
     lastSize.current = `${settings.popoutLayout}:${settings.popoutSize}`;
     void report(syncPopoutLayout(resize));
-  }, [loaded, settings.popoutLayout, settings.popoutSize, settings.popoutDocked, settings.popoutDockingEnabled, settings.popoutDockCorner, settings.popoutDockMonitor, settings.popoutAutoHideEdge, settings.popoutAutoHideOffset, settings.popoutAutoHideTabSize, settings.popoutDockAutoHide, settings.popoutAlwaysOnTop, settings.popoutShowInTaskbar]);
+  }, [loaded, settings.popoutLayout, settings.popoutSize, settings.popoutDocked, settings.popoutDockingEnabled, settings.popoutDockCorner, settings.popoutDockMonitor, settings.popoutAutoHideEdge, settings.popoutAutoHideOffset, settings.popoutAutoHideTabSize, settings.popoutAlwaysOnTop, settings.popoutShowInTaskbar]);
   useEffect(() => {
     if (!isTauri()) return;
     let timeout = 0;

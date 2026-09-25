@@ -1,3 +1,4 @@
+import packageMetadata from "../../package.json";
 import { db, type FocusDatabase } from "../db";
 import { loadSettings, SETTINGS_KEYS, type FocusSettings } from "../settings";
 import type { AcademicYear, AppSetting, FocusSession, Subject } from "../types";
@@ -5,7 +6,7 @@ import type { BackupAnalysis, ConflictPolicy, FocusBackup, ImportSummary, Restor
 
 export const BACKUP_FORMAT = "focus-backup" as const;
 export const BACKUP_VERSION = 1 as const;
-export const APP_VERSION = "1.2.0";
+export const APP_VERSION = packageMetadata.version;
 
 const isObject = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === "object" && !Array.isArray(value);
 const isBoolean = (value: unknown) => typeof value === "boolean";
