@@ -1,3 +1,4 @@
+import { edgesForCorner, dockEdgeOffset } from "../popoutPlacement";
 import { setPopoutDocked } from "../native";
 import { ShortcutRecorder } from "./ShortcutRecorder";
 import { Bell, Clock3, Database, Download, Info, MonitorCog, Palette, Play, RotateCcw, Trash2, Volume2 } from "lucide-react";
@@ -8,7 +9,7 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 import { getVersion } from "@tauri-apps/api/app";
 import { exportFullBackup } from "../importExport/exportBackup";
 import { useSettings } from "../hooks/useSettings";
-import { clearAllFocusData, formatLastBackup, hasActiveTimer, normaliseDuration, restoreSettingDefaults, type AccentColour, type FocusSettings } from "../settings";
+import { clearAllFocusData, formatLastBackup, hasActiveTimer, normaliseDuration, goalDurationSeconds, normalizeGoalPart, restoreSettingDefaults, type AccentColour, type FocusSettings } from "../settings";
 import { previewCompletionSound, testCompletionNotification } from "../timerCompletion";
 import { focusLogoForAccent } from "../branding";
 import { useLiveQuery } from "dexie-react-hooks";
@@ -74,12 +75,12 @@ function GoalDurationEditor({ value, onChange }: { value: number; onChange: (sec
   useEffect(() => setDraft(format(value)), [value]);
   const commit = () => {
     const hours = Number(draft.hours), minutes = Number(draft.minutes);
-    const total = (Number.isFinite(hours) ? Math.max(0, Math.floor(hours)) : Math.floor(value / 3600)) * 3600 + (Number.isFinite(minutes) ? Math.min(59, Math.max(0, Math.floor(minutes))) : 0) * 60;
+    const total = goalDurationSeconds(hours, minutes);
     setDraft(format(total)); onChange(total);
   };
-  return <div className="goal-duration-editor">{(["hours", "minutes"] as const).map((part, index) => <span className="goal-duration-part" key={part}>{index > 0 && <b aria-hidden="true">:</b>}<label><input className="settings-value-input" type="text" inputMode="numeric" role="spinbutton" aria-label={t(part === "hours" ? "Hours" : "Minutes")} aria-valuemin={0} aria-valuemax={part === "minutes" ? 59 : undefined} aria-valuenow={Number(draft[part])} value={draft[part]} onChange={event => setDraft({ ...draft, [part]: event.target.value.replace(/\D/g, "") })} onBlur={commit} onKeyDown={event => {
+  return <div className="goal-duration-editor">{(["hours", "minutes"] as const).map((part, index) => <span className="goal-duration-part" key={part}>{index > 0 && <b aria-hidden="true">:</b>}<label><input className="settings-value-input" type="text" inputMode="numeric" role="spinbutton" aria-label={t(part === "hours" ? "Hours" : "Minutes")} aria-valuemin={0} aria-valuemax={part === "minutes" ? 59 : 24} aria-valuenow={Number(draft[part])} value={draft[part]} onChange={event => setDraft({ ...draft, [part]: event.target.value.replace(/\D/g, "") })} onBlur={commit} onKeyDown={event => {
     if (event.key === "Enter") event.currentTarget.blur();
-    if (event.key === "ArrowUp" || event.key === "ArrowDown") { event.preventDefault(); const next = Math.max(0, Math.min(part === "minutes" ? 59 : Number.MAX_SAFE_INTEGER, (Number(draft[part]) || 0) + (event.key === "ArrowUp" ? 1 : -1))); setDraft({ ...draft, [part]: String(next) }); }
+    if (event.key === "ArrowUp" || event.key === "ArrowDown") { event.preventDefault(); const next = normalizeGoalPart(part, (Number(draft[part]) || 0) + (event.key === "ArrowUp" ? 1 : -1)); setDraft({ ...draft, [part]: String(next) }); }
   }}/><small>{t(part === "hours" ? "HH" : "MM")}</small></label></span>)}</div>;
 }
 
@@ -140,20 +141,23 @@ function Popout({ settings, setSetting }: SettingsProps) {
   const { t } = useTranslation();
   const [displays, setDisplays] = useState<{ id: string; label: string }[]>([]);
   const [dockError, setDockError] = useState(false);
+  const docked = settings.popoutDockingEnabled && settings.popoutDocked;
   const changeMode = async (docked: boolean) => { setDockError(false); try { await setPopoutDocked(docked); } catch { setDockError(true); } };
   useEffect(() => { if (isTauri()) void invoke<{ id: string; label: string }[]>("list_monitor_work_areas").then(setDisplays).catch(() => setDisplays([])); }, []);
   return <><SettingsHeader title={t("Popout")}>{t("Configure the floating timer window.")}</SettingsHeader>
+    <Row label={t("Popout mode")} hint={dockError ? t("Unable to update the popout window. Try again.") : undefined}><div className="settings-segmented" role="group" aria-label={t("Popout mode")}>{[true, false].map(docked => <button key={String(docked)} aria-pressed={(settings.popoutDockingEnabled && settings.popoutDocked) === docked} className={(settings.popoutDockingEnabled && settings.popoutDocked) === docked ? "selected" : ""} onClick={() => void changeMode(docked)}>{t(docked ? "Docked" : "Floating")}</button>)}</div></Row>
+    {docked && <Row label={t("Dock position")}><select aria-label={t("Dock position")} value={settings.popoutDockCorner} onChange={(event) => { const corner = event.target.value as FocusSettings["popoutDockCorner"]; void setPopoutDocked(true, corner).catch(() => setDockError(true)); }}><option value="top-left">{t("Top Left")}</option><option value="top-right">{t("Top Right")}</option><option value="bottom-left">{t("Bottom Left")}</option><option value="bottom-right">{t("Bottom Right")}</option></select></Row>}
+    <Row label={t("Monitor")}><select aria-label={t("Monitor")} value={settings.popoutDockMonitor} disabled={!docked} onChange={(event) => void setSetting("popoutDockMonitor", event.target.value as FocusSettings["popoutDockMonitor"])}><option value="current">{t("Current monitor")}</option>{displays.map((display) => <option key={display.id} value={display.id}>{display.label}</option>)}</select></Row>
+    <Row label={t("Auto-hide")}><Toggle label={t("Auto-hide")} checked={settings.popoutDockAutoHide} onChange={(v) => void setSetting("popoutDockAutoHide", v)}/></Row>
+    {settings.popoutDockAutoHide && <>
+      {docked && <Row label={t("Reveal edge")}><select aria-label={t("Reveal edge")} value={settings.popoutAutoHideEdge} onChange={async event => { const edge = event.target.value as FocusSettings["popoutAutoHideEdge"]; await db.transaction("rw", db.settings, async () => { await setSetting("popoutAutoHideOffset", dockEdgeOffset(settings.popoutDockCorner, edge)); await setSetting("popoutAutoHideEdge", edge); }); }}>{edgesForCorner(settings.popoutDockCorner).map(edge => <option key={edge} value={edge}>{t({ top: "Top", right: "Right", bottom: "Bottom", left: "Left" }[edge])}</option>)}</select></Row>}
+      <Row label={t("Auto-hide delay")} hint={t("Seconds before the popout hides after you leave it.")}><AutoHideDelayEditor value={settings.popoutAutoHideDelaySeconds} onChange={value => void setSetting("popoutAutoHideDelaySeconds", value)}/></Row>
+      <Row label={t("Reveal tab size")}><select value={settings.popoutAutoHideTabSize} onChange={(event) => void setSetting("popoutAutoHideTabSize", event.target.value as FocusSettings["popoutAutoHideTabSize"])}><option value="small">{t("Small")}</option><option value="medium">{t("Medium")}</option><option value="large">{t("Large")}</option></select></Row>
+      <Row label={t("Reveal shortcut")}><ShortcutRecorder value={settings.popoutRevealShortcut}/></Row>
+      <Row label={t("Show accent indicator on auto-hide tab")}><Toggle label={t("Show accent indicator on auto-hide tab")} checked={settings.popoutAutoHideShowAccent} onChange={(value) => void setSetting("popoutAutoHideShowAccent", value)}/></Row>
+    </>}
     <Row label={t("Always on top by default")}><Toggle label={t("Always on top by default")} checked={settings.popoutAlwaysOnTop} onChange={(v) => void setSetting("popoutAlwaysOnTop", v)}/></Row>
     <Row label={t("Remember popout position")}><Toggle label={t("Remember popout position")} checked={settings.popoutRememberPosition} onChange={(v) => void setSetting("popoutRememberPosition", v)}/></Row>
-    <div className="settings-subheading"><strong>{t("Corner docking")}</strong><span>{t("Dock the popout to a screen corner, with optional edge auto-hide.")}</span></div>
-    <Row label={t("Popout mode")} hint={dockError ? t("Unable to update the popout window. Try again.") : undefined}><div className="settings-segmented" role="group" aria-label={t("Popout mode")}>{[true, false].map(docked => <button key={String(docked)} aria-pressed={(settings.popoutDockingEnabled && settings.popoutDocked) === docked} className={(settings.popoutDockingEnabled && settings.popoutDocked) === docked ? "selected" : ""} onClick={() => void changeMode(docked)}>{t(docked ? "Docked" : "Floating")}</button>)}</div></Row>
-    <Row label={t("Default corner")}><select value={settings.popoutDockCorner} disabled={!settings.popoutDockingEnabled} onChange={(event) => { const corner = event.target.value as FocusSettings["popoutDockCorner"]; void setPopoutDocked(true, corner).catch(() => setDockError(true)); }}><option value="top-left">{t("Top Left")}</option><option value="top-right">{t("Top Right")}</option><option value="bottom-left">{t("Bottom Left")}</option><option value="bottom-right">{t("Bottom Right")}</option></select></Row>
-    <Row label={t("Dock monitor")}><select value={settings.popoutDockMonitor} disabled={!settings.popoutDockingEnabled} onChange={(event) => void setSetting("popoutDockMonitor", event.target.value as FocusSettings["popoutDockMonitor"])}><option value="current">{t("Current monitor")}</option>{displays.map((display) => <option key={display.id} value={display.id}>{display.label}</option>)}</select></Row>
-    <Row label={t("Auto-hide popout")}><Toggle label={t("Auto-hide popout")} checked={settings.popoutDockAutoHide} onChange={(v) => void setSetting("popoutDockAutoHide", v)}/></Row>
-    <Row label={t("Reveal popout shortcut")}><ShortcutRecorder value={settings.popoutRevealShortcut}/></Row>
-    <Row label={t("Auto-hide delay")} hint={t("Seconds before the popout hides after you leave it.")}><AutoHideDelayEditor value={settings.popoutAutoHideDelaySeconds} onChange={value => void setSetting("popoutAutoHideDelaySeconds", value)}/></Row>
-    <Row label={t("Auto-hide tab size")}><select value={settings.popoutAutoHideTabSize} onChange={(event) => void setSetting("popoutAutoHideTabSize", event.target.value as FocusSettings["popoutAutoHideTabSize"])}><option value="small">{t("Small")}</option><option value="medium">{t("Medium")}</option><option value="large">{t("Large")}</option></select></Row>
-    <Row label={t("Show accent indicator on auto-hide tab")}><Toggle label={t("Show accent indicator on auto-hide tab")} checked={settings.popoutAutoHideShowAccent} onChange={(value) => void setSetting("popoutAutoHideShowAccent", value)}/></Row>
     <Row label={t("Show Subject")}><Toggle label={t("Show Subject")} checked={settings.popoutShowSubject} onChange={(v) => void setSetting("popoutShowSubject", v)}/></Row>
     <Row label={t("Show clock beside Subject")}><Toggle label={t("Show clock beside Subject")} checked={settings.popoutShowClock} onChange={(v) => void setSetting("popoutShowClock", v)}/></Row>
     <Row label={t("Popout layout")}><select value={settings.popoutLayout} onChange={async (event) => { const layout = event.target.value as FocusSettings["popoutLayout"]; await setSetting("popoutFloatingWidth", null); await setSetting("popoutFloatingHeight", null); await setSetting("popoutLayout", layout); }}><option value="regular">{t("Regular")}</option><option value="compact">{t("Compact")}</option></select></Row>

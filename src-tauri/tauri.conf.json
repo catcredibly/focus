@@ -81,7 +81,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDEyNzYxODY2QzA0MUE1OQpSV1JaR2dSc2htRW5BZkhWdjc0WWhqMlBiTlE0b2l6cWRua2FJbjcyNm1lbXl3Mm43cGhSbS9TQQo=",
       "endpoints": [
-        "https://github.com/qidanielqi/focus-app/releases/latest/download/latest.json"
+        "https://github.com/catcredibly/focus-app/releases/latest/download/latest.json"
       ]
     }
   }

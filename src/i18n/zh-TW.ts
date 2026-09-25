@@ -521,6 +521,15 @@ const zhTW: Record<keyof typeof en, string> = {
   "sec": "秒",
   "Popout layout": "懸浮視窗佈局",
   "Regular": "標準",
+  "Dock position": "停靠位置",
+  "Reveal edge": "顯示邊緣",
+  "Reveal tab size": "顯示標籤大小",
+  "Reveal shortcut": "顯示快捷鍵",
+  "Top": "頂部",
+  "Right": "右側",
+  "Bottom": "底部",
+  "Left": "左側",
+  "Average focus per active day": "每個學習日的平均專注時間",
 };
 
 export default zhTW;

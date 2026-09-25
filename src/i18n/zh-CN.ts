@@ -521,6 +521,15 @@ const zhCN: Record<keyof typeof en, string> = {
   "sec": "秒",
   "Popout layout": "悬浮窗布局",
   "Regular": "标准",
+  "Dock position": "停靠位置",
+  "Reveal edge": "显示边缘",
+  "Reveal tab size": "显示标签大小",
+  "Reveal shortcut": "显示快捷键",
+  "Top": "顶部",
+  "Right": "右侧",
+  "Bottom": "底部",
+  "Left": "左侧",
+  "Average focus per active day": "每个学习日的平均专注时长",
 };
 
 export default zhCN;

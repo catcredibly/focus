@@ -64,19 +64,17 @@ If signing is added later, keep PFX/P12 files and passwords outside Git and inje
 
 ## Future Distribution
 
-### Read-only updater audit — 24 September 2026
+### Canonical repository and update artifacts
 
-- Authenticated GitHub CLI access confirms `qidanielqi/focus-app` is private. Unauthenticated requests to both the repository and the configured `latest.json` endpoint return HTTP 404.
-- The latest release is `v1.2.0`. Its only asset is `Focus_1.2.0_x64-setup.exe`; there is no `latest.json` or updater signature asset. Making the repository accessible would therefore not, on its own, make this release updater-ready.
-- There is no `.github/workflows` directory on the remote default branch. The Actions inventory contains only GitHub's dynamic Dependabot workflow. An existing release workflow that signs and uploads updater artifacts could not be confirmed; the documented local NSIS release method remains unchanged.
-- Local Tauri configuration enables updater artifacts and contains the public verification key. Future publishing still needs real signed Windows artifacts, their signatures, and a valid `windows-x86_64` or `windows-x86_64-nsis` manifest entry. This audit does not confirm an upload/signing pipeline exists.
-- No repository visibility, release, tag, workflow, credential, or uploaded artifact was changed. No production build or installer was created.
+The canonical repository is `catcredibly/focus-app`. Project metadata and the updater use `https://github.com/catcredibly/focus-app/releases/latest/download/latest.json`.
+
+Before a separately authorized release, confirm the repository and manifest are publicly accessible, and that the release contains signed Windows updater artifacts, signatures, and a valid `windows-x86_64` or `windows-x86_64-nsis` manifest entry. Earlier observations about the former repository do not establish the current repository's visibility or assets. Preserve the established local NSIS release method; do not assume a remote signing workflow exists.
 
 The app distinguishes a confirmed missing manifest (public repository reachable, manifest HTTP 404) from an inaccessible repository. Both automatic failures remain silent. About shows the missing-information message only for a confirmed missing manifest; inaccessible/network/service failures retain the ordinary failure message. Development diagnostics record the category and sanitized transport details. Cryptographic verification remains with the official Tauri updater.
 
 ### Local TLS/startup correction — 25 September 2026
 
-`cargo tree -e features -i reqwest@0.13.5` identified `tauri-plugin-updater` 2.12.0's default `rustls-tls` feature as the source of `reqwest/rustls-no-provider`. Focus's direct diagnostic client could be created before any updater client had installed/configured a provider. Focus now explicitly enables Reqwest's normal `rustls` feature, which enables its AWS-LC provider path. No second TLS backend or per-request provider installation was added. This local configuration failure is separate from the private-repository/missing-manifest findings above.
+`cargo tree -e features -i reqwest@0.13.5` identified `tauri-plugin-updater` 2.12.0's default `rustls-tls` feature as the source of `reqwest/rustls-no-provider`. Focus's direct diagnostic client could be created before any updater client had installed/configured a provider. Focus now explicitly enables Reqwest's normal `rustls` feature, which enables its AWS-LC provider path. No second TLS backend or per-request provider installation was added. This local configuration failure is separate from the repository accessibility or missing release artifacts.
 
 The startup check is scheduled asynchronously after restored settings and two animation frames. React mounting, main-window creation, and Tauri setup do not wait for network results. Automatic checks keep their checking state out of the UI, while manual About checks retain progress/results. An early, theme-cached application surface and native background avoid the default white WebView flash. No runtime startup measurements or tests were run for this correction, at the user's request; Cargo feature inspection only.
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { POPOUT_SIZE, clampFreePosition, cornerPosition, defaultEdgeForCorner, edgeOffset, nearestDockCorner, nearestEdge, type WorkArea } from "./popoutPlacement";
+import { POPOUT_SIZE, clampFreePosition, cornerPosition, defaultEdgeForCorner, edgesForCorner, dockEdgeOffset, edgeOffset, nearestDockCorner, nearestEdge, type WorkArea } from "./popoutPlacement";
 
 const work: WorkArea = { x: 100, y: 50, width: 1200, height: 800 };
 
@@ -28,8 +28,27 @@ describe("popout placement", () => {
   });
 
   it("maps dock corners to their reveal-tab edge", () => {
-    expect(defaultEdgeForCorner("bottom-right")).toBe("right");
+    expect(defaultEdgeForCorner("bottom-right", "top")).toBe("bottom");
     expect(nearestEdge({ x: 100, y: 300 }, work, POPOUT_SIZE)).toBe("left");
     expect(edgeOffset({ x: 500, y: 365 }, work, POPOUT_SIZE, "right")).toBe(0.5);
+  });
+});
+
+
+describe("explicit dock reveal edges", () => {
+  it.each([
+    ["top-left", ["top", "left"]], ["top-right", ["top", "right"]],
+    ["bottom-left", ["bottom", "left"]], ["bottom-right", ["bottom", "right"]],
+  ] as const)("allows only adjacent edges for %s", (corner, edges) => {
+    expect(edgesForCorner(corner)).toEqual(edges);
+    for (const edge of edges) expect(defaultEdgeForCorner(corner,edge)).toBe(edge);
+  });
+  it("preserves the edge axis when switching corners", () => {
+    expect(defaultEdgeForCorner("bottom-right","right")).toBe("right");
+    expect(defaultEdgeForCorner("bottom-right","top")).toBe("bottom");
+    expect(defaultEdgeForCorner("top-left","right")).toBe("left");
+    expect(defaultEdgeForCorner("top-left","bottom")).toBe("top");
+    expect(dockEdgeOffset("top-right","top")).toBe(1);
+    expect(dockEdgeOffset("top-right","right")).toBe(0);
   });
 });

@@ -2,7 +2,7 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 import { activePopoutSession, synchronizePopoutSession } from "./popoutLifecycle";
 import { db } from "./db";
 import { loadSettings, saveSetting, type DockCorner, type DockEdge, type FocusSettings } from "./settings";
-import { cornerPosition, defaultEdgeForCorner, edgeOffset, nearestEdge, type WorkArea } from "./popoutPlacement";
+import { cornerPosition, defaultEdgeForCorner, dockEdgeOffset, edgeOffset, nearestEdge, type WorkArea } from "./popoutPlacement";
 
 export type TimerGeometry = { x: number; y: number; width: number; height: number; scale: number; visible: boolean; tabVisible: boolean; requested: boolean; generation: number; workArea: WorkArea };
 export const timerGeometry = (monitorId = "current") => invoke<TimerGeometry>("get_timer_geometry", { monitorId });
@@ -32,8 +32,10 @@ export async function setPopoutDocked(docked: boolean, corner?: DockCorner) {
   return withPopoutGeometry(async () => {
     const settings = await loadSettings();
     const next = { ...settings, popoutDocked: docked, popoutDockingEnabled: docked, popoutDockCorner: corner ?? settings.popoutDockCorner };
+    next.popoutAutoHideEdge = defaultEdgeForCorner(next.popoutDockCorner, settings.popoutAutoHideEdge);
+    if (next.popoutDockCorner !== settings.popoutDockCorner) next.popoutAutoHideOffset = dockEdgeOffset(next.popoutDockCorner, next.popoutAutoHideEdge);
     const changes: Partial<FocusSettings> = { popoutDocked: docked, popoutDockingEnabled: docked, popoutDockCorner: next.popoutDockCorner,
-      ...(docked ? { popoutAutoHideEdge: defaultEdgeForCorner(next.popoutDockCorner), popoutAutoHideOffset: next.popoutDockCorner.startsWith("top") ? 0 : 1 } : {}) };
+      ...(docked ? { popoutAutoHideEdge: next.popoutAutoHideEdge, popoutAutoHideOffset: next.popoutAutoHideOffset } : {}) };
     if (!isTauri()) { await persist(changes); return; }
     await synchronizePopoutSession();
     const previous = await timerGeometry();
@@ -65,10 +67,9 @@ export async function syncPopoutLayout(resize = false) {
     await invoke("set_timer_taskbar", { visible: settings.popoutShowInTaskbar });
     if (settings.popoutDockingEnabled && settings.popoutDocked) await placeDocked(settings);
     else if (resize) await invoke("set_timer_size", { size: settings.popoutSize, layout: settings.popoutLayout });
-    if (geometry.tabVisible) {
-      if (settings.popoutDockAutoHide) await hide(settings, await timerGeometry(), geometry.generation);
-      else await invoke("cancel_timer_auto_hide", { generation: geometry.generation });
-    }
+    // Disabling future auto-hide must not reveal a currently hidden window.
+    // Its existing tab remains the explicit way to reveal it once more.
+    if (geometry.tabVisible) await hide(settings, await timerGeometry(), geometry.generation);
   });
 }
 export async function openTimerPopout(_settings?: FocusSettings) {
@@ -94,10 +95,11 @@ export async function openTimerPopout(_settings?: FocusSettings) {
   });
 }
 async function hide(settings: FocusSettings, geometry: TimerGeometry, generation = geometry.generation) {
-  if (!settings.popoutDockAutoHide || !geometry.requested || (!geometry.visible && !geometry.tabVisible)) return;
+  if ((!settings.popoutDockAutoHide && !geometry.tabVisible) || !geometry.requested || (!geometry.visible && !geometry.tabVisible)) return;
   const docked = settings.popoutDockingEnabled && settings.popoutDocked;
   const edge = docked ? settings.popoutAutoHideEdge : nearestEdge(geometry, geometry.workArea, geometry, lastFloatingEdge, geometry.scale);
   if (!docked) lastFloatingEdge = edge;
+  if (import.meta.env.DEV) console.debug("[popout geometry]", { bounds: { x: geometry.x, y: geometry.y, width: geometry.width, height: geometry.height }, scale: geometry.scale, workArea: geometry.workArea, corner: docked ? settings.popoutDockCorner : null, edge, generation });
   const offset = docked ? settings.popoutAutoHideOffset : edgeOffset(geometry, geometry.workArea, geometry, edge);
   await invoke("show_timer_auto_hide_tab", { edge, offset, tabSize: settings.popoutAutoHideTabSize, generation });
 }

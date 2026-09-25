@@ -519,6 +519,15 @@ const en = {
   "sec": "sec",
   "Popout layout": "Popout layout",
   "Regular": "Regular",
+  "Dock position": "Dock position",
+  "Reveal edge": "Reveal edge",
+  "Reveal tab size": "Reveal tab size",
+  "Reveal shortcut": "Reveal shortcut",
+  "Top": "Top",
+  "Right": "Right",
+  "Bottom": "Bottom",
+  "Left": "Left",
+  "Average focus per active day": "Average focus per active day",
 } as const;
 
 export default en;

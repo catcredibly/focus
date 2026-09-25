@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { FocusSession } from "../types";
-import { activeDayCount, averageActiveDaySeconds, calendarDailySeries, calendarMonthlySeries, cleanHeatmapStep, cumulativeTotals, dailyTotals, filterSessions, heatmapLevel, heatmapScale, localDayKey, longestStreak, medianSessionSeconds, monthlyTotals, rollingAverage, sessionLengthBuckets, startOfLocalWeek, subjectTotals, weeklyTotals } from "./analytics";
+import { academicYearTotals, activeDayCount, averageActiveDaySeconds, calendarDailySeries, calendarMonthlySeries, cleanHeatmapStep, cumulativeTotals, dailyTotals, filterSessions, heatmapLevel, heatmapScale, localDayKey, longestStreak, medianSessionSeconds, monthlyTotals, rollingAverage, sessionLengthBuckets, startOfLocalWeek, subjectTotals, weeklyTotals } from "./analytics";
 
 const at=(y:number,m:number,d:number,h=12)=>new Date(y,m-1,d,h).getTime();
 const session=(id:string,startTime:number,seconds:number,overrides:Partial<FocusSession>={}):FocusSession=>({id,subjectId:"math",subjectName:"Mathematics",academicYearId:"ib",academicYearName:"IB",startTime,endTime:startTime+seconds*1000,focusedDurationSeconds:seconds,archived:false,...overrides});
@@ -29,4 +29,18 @@ describe("adaptive heatmap scale",()=>{
   it("excludes zero-study days from P90",()=>{const rows=[session("a",at(2026,1,1),3600),session("b",at(2026,1,3),7200)];const scale=heatmapScale(rows);expect(scale.p90).toBeGreaterThan(3600);expect(scale.p90).toBeLessThanOrEqual(7200);});
   it("caps days above level four at maximum intensity",()=>{expect(heatmapLevel(99_999,900)).toBe(4);expect(heatmapLevel(0,900)).toBe(0);});
   it("includes legacy archived Sessions after effective status filtering",()=>{const rows=[session("a",at(2026,1,1),3600),session("b",at(2026,1,2),99_000,{archived:true})];const active=filterSessions(rows);expect(dailyTotals(active)).toHaveLength(2);expect(heatmapScale(active).p90).toBeGreaterThan(3600);});
+});
+
+
+describe("Academic Year comparison", () => {
+  const years = ["ib","empty"].map(id => ({id,name:id,startDate:"2026-01-01",endDate:"2026-12-31",archived:false}));
+  const rows = [session("a",at(2026,1,1),3600),session("b",at(2026,1,1,14),1800),session("c",at(2026,1,2),1800)];
+  it("uses the same Sessions for totals, counts and active-day average", () => {
+    expect(academicYearTotals(rows,years,[])).toMatchObject([{academicYearId:"ib",seconds:7200,sessions:3,activeDays:2,averageActiveDaySeconds:3600}]);
+  });
+  it("applies range filtering to both metrics and omits empty years", () => {
+    const filtered = filterSessions(rows,{start:at(2026,1,2,0),end:at(2026,1,3,0)});
+    expect(academicYearTotals(filtered,years,[])).toMatchObject([{academicYearId:"ib",seconds:1800,sessions:1,averageActiveDaySeconds:1800}]);
+    expect(academicYearTotals([],years,[])).toEqual([]);
+  });
 });

@@ -70,3 +70,23 @@ pub fn prepare_timer_popout(app: tauri::AppHandle, session_id: Option<String>, d
     let state = lock(&managed)?;
     Ok(state.generation)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn closed_and_stale_generations_cannot_reveal_but_paused_sessions_can() {
+        let mut state = PopoutState { session_id: Some("test".into()), deadline: None, requested: true, generation: 5 };
+        assert!(state.allows(5));
+        assert!(!state.allows(4));
+        state.requested = false;
+        state.generation += 1;
+        assert!(!state.allows(5));
+        assert!(!state.allows(6));
+        state.requested = true;
+        assert!(!state.allows(5));
+        assert!(state.allows(6));
+        state.session_id = None;
+        assert!(!state.allows(6));
+    }
+}

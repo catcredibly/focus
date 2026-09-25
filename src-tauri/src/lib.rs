@@ -1,6 +1,7 @@
 use serde::Serialize;
 use tauri::{Emitter, Manager};
 mod window_constraints;
+mod display_geometry;
 mod reveal_shortcut;
 mod update_probe;
 mod popout_lifecycle;
@@ -272,6 +273,22 @@ fn restore_timer_bounds(app: tauri::AppHandle, x: i32, y: i32, width: u32, heigh
     ensure_timer_on_screen(&timer)
 }
 
+fn reveal_tab_position(area: &WorkArea, width: u32, height: u32, inset: i32, edge: &str, offset: f64) -> (i32, i32) {
+    let normalized = if offset.is_finite() { offset.clamp(0.0, 1.0) } else { 0.0 };
+    let free_x = area.width.saturating_sub(width) as i32;
+    let free_y = area.height.saturating_sub(height) as i32;
+    let inset_x = inset.min(free_x / 2).max(0);
+    let inset_y = inset.min(free_y / 2).max(0);
+    let along_x = (area.x + (normalized * area.width as f64).round() as i32 - width as i32 / 2).clamp(area.x + inset_x, area.x + free_x - inset_x);
+    let along_y = (area.y + (normalized * area.height as f64).round() as i32 - height as i32 / 2).clamp(area.y + inset_y, area.y + free_y - inset_y);
+    match edge {
+        "left" => (area.x, along_y),
+        "right" => (area.x + free_x, along_y),
+        "top" => (along_x, area.y),
+        _ => (along_x, area.y + free_y),
+    }
+}
+
 #[tauri::command]
 fn show_timer_auto_hide_tab(app: tauri::AppHandle, edge: String, offset: f64, tab_size: String, generation: u64) -> Result<(), String> {
     let managed = app.state::<popout_lifecycle::PopoutLifecycle>();
@@ -291,15 +308,10 @@ fn show_timer_auto_hide_tab(app: tauri::AppHandle, edge: String, offset: f64, ta
     tab.set_size(tauri::LogicalSize::new(width, height)).map_err(|e| e.to_string())?;
     let size = tab.outer_size().map_err(|e| e.to_string())?;
     let inset = (10.0 * tab.scale_factor().map_err(|e| e.to_string())?).round() as i32;
-    let normalized = offset.clamp(0.0, 1.0);
-    let along_x = (area.x + (normalized * area.width as f64).round() as i32 - size.width as i32 / 2).clamp(area.x + inset, (area.x + area.width as i32 - size.width as i32 - inset).max(area.x + inset));
-    let along_y = (area.y + (normalized * area.height as f64).round() as i32 - size.height as i32 / 2).clamp(area.y + inset, (area.y + area.height as i32 - size.height as i32 - inset).max(area.y + inset));
-    let position = match edge.as_str() {
-        "left" => tauri::PhysicalPosition::new(area.x, along_y),
-        "right" => tauri::PhysicalPosition::new(area.x + area.width as i32 - size.width as i32, along_y),
-        "top" => tauri::PhysicalPosition::new(along_x, area.y),
-        _ => tauri::PhysicalPosition::new(along_x, area.y + area.height as i32 - size.height as i32),
-    };
+    let (x, y) = reveal_tab_position(&area, size.width, size.height, inset, &edge, offset);
+    let position = tauri::PhysicalPosition::new(x, y);
+    #[cfg(debug_assertions)]
+    eprintln!("[popout tab] edge={} physical=({}, {}) size={}x{} scale={}", edge, x, y, size.width, size.height, tab.scale_factor().unwrap_or(1.0));
     tab.set_position(position).map_err(|e| e.to_string())?;
     tab.emit("focus://auto-hide-tab-edge", edge).map_err(|e| e.to_string())?;
     show_without_focus(&tab)?;
@@ -496,6 +508,7 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .setup(|app| {
             window_constraints::install(app.handle())?;
+            display_geometry::install(app.handle())?;
             #[cfg(desktop)]
             app.handle().plugin(tauri_plugin_autostart::init(
                 tauri_plugin_autostart::MacosLauncher::LaunchAgent,
@@ -542,6 +555,9 @@ pub fn run() {
             is_main_fullscreen
         ])
         .on_window_event(|window, event| {
+            if window.label() == "timer" && matches!(event, tauri::WindowEvent::Moved(_) | tauri::WindowEvent::Resized(_) | tauri::WindowEvent::ScaleFactorChanged { .. }) {
+                let _ = window.emit("focus://display-geometry-changed", "timer-geometry-change");
+            }
             if window.label() == "main" {
                 match event {
                     tauri::WindowEvent::CloseRequested { api, .. } => {
@@ -576,4 +592,28 @@ pub fn run() {
                 }
             }
         });
+}
+
+#[cfg(test)]
+mod tab_geometry_tests {
+    use super::*;
+    #[test]
+    fn clamps_all_edges_on_negative_displays_and_resized_work_areas() {
+        for (width, height) in [(1920, 1080), (1280, 720)] {
+            let area = WorkArea { x: -1920, y: -1080, width, height };
+            for edge in ["top", "right", "bottom", "left"] {
+                for offset in [-1.0, 0.5, 2.0] {
+                    let (x,y) = reveal_tab_position(&area, 90, 18, 15, edge, offset);
+                    assert!(x >= area.x && x + 90 <= area.x + width as i32);
+                    assert!(y >= area.y && y + 18 <= area.y + height as i32);
+                    match edge {
+                        "top" => assert_eq!(y, area.y),
+                        "bottom" => assert_eq!(y + 18, area.y + height as i32),
+                        "left" => assert_eq!(x, area.x),
+                        _ => assert_eq!(x + 90, area.x + width as i32),
+                    }
+                }
+            }
+        }
+    }
 }

@@ -36,8 +36,17 @@ export function clampFreePosition(position: Point, workArea: WorkArea, size: Siz
   };
 }
 
-export function defaultEdgeForCorner(corner: DockCorner): DockEdge {
-  return corner.endsWith("left") ? "left" : "right";
+export function edgesForCorner(corner: DockCorner): DockEdge[] {
+  return [corner.startsWith("top") ? "top" : "bottom", corner.endsWith("left") ? "left" : "right"];
+}
+
+export function defaultEdgeForCorner(corner: DockCorner, previous: DockEdge = "right"): DockEdge {
+  const edges = edgesForCorner(corner);
+  return edges.includes(previous) ? previous : edges[previous === "top" || previous === "bottom" ? 0 : 1];
+}
+
+export function dockEdgeOffset(corner: DockCorner, edge: DockEdge): number {
+  return edge === "top" || edge === "bottom" ? (corner.endsWith("left") ? 0 : 1) : (corner.startsWith("top") ? 0 : 1);
 }
 
 /** Inputs are physical pixels; only the ambiguity threshold starts in logical px. */

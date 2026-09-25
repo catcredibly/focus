@@ -521,6 +521,15 @@ const ja: Record<keyof typeof en, string> = {
   "sec": "秒",
   "Popout layout": "ポップアウトのレイアウト",
   "Regular": "標準",
+  "Dock position": "ドッキング位置",
+  "Reveal edge": "表示する辺",
+  "Reveal tab size": "表示タブのサイズ",
+  "Reveal shortcut": "表示ショートカット",
+  "Top": "上",
+  "Right": "右",
+  "Bottom": "下",
+  "Left": "左",
+  "Average focus per active day": "学習日あたりの平均集中時間",
 };
 
 export default ja;

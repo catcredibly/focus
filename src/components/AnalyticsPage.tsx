@@ -138,8 +138,11 @@ function SubjectsAnalytics({ sessions, subjects, years }: DataProps) {
 function YearsAnalytics({ sessions, years, subjects }: DataProps) {
   const { t } = useTranslation();
   const rows = academicYearTotals(sessions, years, subjects);
-  return <div className="analytics-content years-layout"><Panel title={t("Academic Years")}><div className="analytics-list-scroll">{rows.map(row => <div className="year-summary" key={row.academicYearId}><strong>{row.name}</strong><span>{formatDuration(row.seconds)} · {t("{{count}} Sessions", { count: row.sessions })} · {t("{{count}} active days", { count: row.activeDays })}</span></div>)}</div>{!rows.length && <Empty/>}</Panel>
-    <Panel title={t("Focus time by Academic Year")}><div className="analytics-list-scroll">{rows.map((row, index) => <div className="breakdown-row" key={row.academicYearId} title={`${row.name}: ${formatDuration(row.seconds)}`} tabIndex={0}><span>{row.name}</span><strong>{formatDuration(row.seconds)}</strong><i style={{ width: `${row.seconds / rows[0].seconds * 100}%`, background: COLORS[index % COLORS.length] }}/></div>)}</div></Panel></div>;
+  const averageMaximum = Math.max(1, ...rows.map(row => row.averageActiveDaySeconds));
+  return <div className="analytics-content years-layout">
+    <Panel title={t("Focus time by Academic Year")}><div className="analytics-list-scroll">{rows.map((row, index) => <div className="breakdown-row year-comparison-row" key={row.academicYearId} title={`${row.name}: ${formatDuration(row.seconds)}, ${t("{{count}} Sessions", { count: row.sessions })}`} tabIndex={0}><span>{row.name}</span><strong>{formatDuration(row.seconds)}</strong><small>{t("{{count}} Sessions", { count: row.sessions })}</small><i style={{ width: `${row.seconds / Math.max(1, rows[0].seconds) * 100}%`, background: COLORS[index % COLORS.length] }}/></div>)}</div>{!rows.length && <Empty/>}</Panel>
+    <Panel title={t("Average focus per active day")}><div className="analytics-list-scroll">{rows.map((row, index) => <div className="breakdown-row" key={row.academicYearId} title={`${row.name}: ${formatDuration(row.averageActiveDaySeconds)}`} tabIndex={0}><span>{row.name}</span><strong>{formatDuration(row.averageActiveDaySeconds)}</strong><i style={{ width: `${row.averageActiveDaySeconds / averageMaximum * 100}%`, background: COLORS[index % COLORS.length] }}/></div>)}</div>{!rows.length && <Empty/>}</Panel>
+  </div>;
 }
 
 function TimeTrends({ sessions, history, period, range }: TimelineProps) {

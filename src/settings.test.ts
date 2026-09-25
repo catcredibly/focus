@@ -3,7 +3,7 @@ import Dexie from "dexie";
 import { afterEach, describe, expect, it } from "vitest";
 import { FocusDatabase } from "./db";
 import { ACTIVE_TIMER_STORAGE_KEY } from "./timerState";
-import { clearAllFocusData, DEFAULT_SETTINGS, formatLastBackup, greeting, hasActiveTimer, loadSettings, normaliseDuration, saveSetting, timerDefaultDuration } from "./settings";
+import { clearAllFocusData, DEFAULT_SETTINGS, formatLastBackup, greeting, hasActiveTimer, loadSettings, normaliseDuration, normalizeGoalSeconds, normalizeGoalPart, goalDurationSeconds, saveSetting, timerDefaultDuration } from "./settings";
 
 const opened: Dexie[] = [];
 const database = () => { const value = new FocusDatabase(`focus-settings-test-${crypto.randomUUID()}`); opened.push(value); return value; };
@@ -81,5 +81,32 @@ describe("application settings", () => {
     expect(formatLastBackup(null)).toBe("Never");
     expect(formatLastBackup("not-a-date")).toBe("Never");
     expect(formatLastBackup("2026-09-22T07:45:00.000Z", "en-NZ")).toContain("2026");
+  });
+});
+
+
+describe("goal duration limits", () => {
+  it.each([[23,59,86340],[24,0,86400],[24,1,86400],[25,0,86400],[-1,-1,0],[2,80,10740]])("normalizes %i:%i", (hours,minutes,expected) => {
+    expect(goalDurationSeconds(hours,minutes)).toBe(expected);
+  });
+  it("clamps keyboard increments and malformed values", () => {
+    expect(normalizeGoalPart("hours",24+1)).toBe(24);
+    expect(normalizeGoalPart("hours",0-1)).toBe(0);
+    expect(normalizeGoalPart("minutes",60)).toBe(59);
+    expect(normalizeGoalPart("minutes",-1)).toBe(0);
+    for (const value of [NaN,Infinity,null,"garbage",""]) expect(normalizeGoalSeconds(value)).toBe(0);
+  });
+  it("enforces limits at save and legacy decode boundaries", async () => {
+    const testDb = database();
+    for (const key of ["dailyGoalSeconds", "weeklyGoalSeconds"] as const) {
+      await saveSetting(key,999999,testDb);
+      expect((await testDb.settings.get(key))?.value).toBe("86400");
+      await testDb.settings.put({key,value:"90000"});
+      expect((await loadSettings(testDb))[key]).toBe(86400);
+      for (const value of ["null","NaN","garbage",""]) {
+        await testDb.settings.put({key,value});
+        expect((await loadSettings(testDb))[key]).toBe(DEFAULT_SETTINGS[key]);
+      }
+    }
   });
 });

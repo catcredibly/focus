@@ -284,3 +284,11 @@ The newer `reference/analytics-all-years.png` supersedes every Analytics design 
 - With controls-on-hover enabled, the timer shrinks to make room for a two-row control group on its right. Keyboard focus also reveals controls.
 - Extend and Stop use the separate popout menu window so their forms and confirmations remain usable within the shallow layout.
 - Both layouts share docking, auto-hide, transparency, session lifecycle, and timer controls.
+
+### Docking and Academic Year refinements
+
+- Popout settings show Mode, conditional Dock position, Monitor, Auto-hide, conditional Reveal edge, delay, tab size, and shortcut in that order. Corner and edge selections use standard dropdowns.
+- Docked reveal edges are explicit adjacent choices. Corner changes preserve the selected axis; floating mode retains automatic nearest-edge selection.
+- Daily and Weekly goal inputs remain HH : MM and normalize centrally to a maximum of 24:00.
+- Academic Years contains two full-width, internally scrolling comparison panels: total focus with secondary Session counts, and average focus per active day. Existing global range filtering is shared by both.
+- Native Windows validation is documented in `../WINDOWS_POPOUT_CHECKLIST.md`.

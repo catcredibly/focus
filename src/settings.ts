@@ -1,3 +1,4 @@
+import { defaultEdgeForCorner } from "./popoutPlacement";
 import { db, type FocusDatabase } from "./db";
 import { ACTIVE_TIMER_STORAGE_KEY, LAST_TIMER_DURATION_KEY, type TimerState } from "./timerState";
 
@@ -197,8 +198,21 @@ export const DEFAULT_SETTINGS: FocusSettings = {
 const booleans = new Set<keyof FocusSettings>(["startMaximized", "launchAtStartup", "showDate", "showWeekday", "showClock", "dailyGoalEnabled", "weeklyGoalEnabled", "completionSound", "completionNotification", "popoutAlwaysOnTop", "popoutRememberPosition", "popoutShowSubject", "popoutShowClock", "popoutHideControls", "popoutAutoOpen", "popoutShowInTaskbar", "popoutCloseOnCompletion", "popoutDockingEnabled", "popoutDocked", "popoutDockAutoHide", "popoutAutoHideShowAccent", "allowDirectActiveDeletion"]);
 const numbers = new Set<keyof FocusSettings>(["lastTimerDurationSeconds", "fixedTimerDurationSeconds", "dailyGoalSeconds", "weeklyGoalSeconds", "completionSoundVolume", "popoutTransparency", "popoutPositionX", "popoutPositionY", "popoutFloatingWidth", "popoutFloatingHeight", "popoutAutoHideOffset", "popoutAutoHideDelaySeconds"]);
 
+export const MAX_GOAL_SECONDS = 24 * 60 * 60;
+export function normalizeGoalSeconds(value: unknown, fallback = 0): number {
+  const parsed = typeof value === "number" || typeof value === "string" && value.trim() !== "" ? Number(value) : NaN;
+  return Number.isFinite(parsed) ? Math.min(MAX_GOAL_SECONDS, Math.max(0, Math.floor(parsed))) : fallback;
+}
+export function normalizeGoalPart(part: "hours" | "minutes", value: number): number {
+  return Math.min(part === "hours" ? 24 : 59, Math.max(0, Math.floor(Number.isFinite(value) ? value : 0)));
+}
+export function goalDurationSeconds(hours: number, minutes: number): number {
+  return normalizeGoalSeconds(normalizeGoalPart("hours", hours) * 3600 + normalizeGoalPart("minutes", minutes) * 60);
+}
+
 function decode<K extends keyof FocusSettings>(key: K, raw: string | undefined): FocusSettings[K] {
   if (raw === undefined) return DEFAULT_SETTINGS[key];
+  if (key === "dailyGoalSeconds" || key === "weeklyGoalSeconds") return normalizeGoalSeconds(raw, Number(DEFAULT_SETTINGS[key])) as FocusSettings[K];
   if (booleans.has(key)) return (raw === "true") as FocusSettings[K];
   if (numbers.has(key)) {
     if (raw === "null") return null as FocusSettings[K];
@@ -224,11 +238,14 @@ function decode<K extends keyof FocusSettings>(key: K, raw: string | undefined):
 
 export async function loadSettings(database: FocusDatabase = db): Promise<FocusSettings> {
   const rows = new Map((await database.settings.toArray()).map((row) => [row.key, row.value]));
-  return Object.fromEntries((Object.keys(DEFAULT_SETTINGS) as (keyof FocusSettings)[]).map((key) => [key, decode(key, rows.get(SETTINGS_KEYS[key]))])) as FocusSettings;
+  const settings = Object.fromEntries((Object.keys(DEFAULT_SETTINGS) as (keyof FocusSettings)[]).map((key) => [key, decode(key, rows.get(SETTINGS_KEYS[key]))])) as FocusSettings;
+  settings.popoutAutoHideEdge = defaultEdgeForCorner(settings.popoutDockCorner, settings.popoutAutoHideEdge);
+  return settings;
 }
 
 export async function saveSetting<K extends keyof FocusSettings>(key: K, value: FocusSettings[K], database: FocusDatabase = db) {
-  await database.settings.put({ key: SETTINGS_KEYS[key], value: String(value) });
+  const normalized = key === "dailyGoalSeconds" || key === "weeklyGoalSeconds" ? normalizeGoalSeconds(value, Number(DEFAULT_SETTINGS[key])) : value;
+  await database.settings.put({ key: SETTINGS_KEYS[key], value: String(normalized) });
 }
 
 export async function restoreSettingDefaults(keys: (keyof FocusSettings)[], database: FocusDatabase = db) {

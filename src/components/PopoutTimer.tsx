@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import { useTimer } from "../hooks/useTimer";
 import { useSettings } from "../hooks/useSettings";
 import { nearestDockCorner } from "../popoutPlacement";
-import { hideTimerAutomatically, revealTimerAutomatically, toggleTimerAutoHide, syncPopoutLayout, setPopoutDocked, timerGeometry, rememberFloatingPosition, resetPopoutTransientState } from "../native";
+import { hideTimerAutomatically, revealTimerAutomatically, toggleTimerAutoHide, syncPopoutLayout, setPopoutDocked, timerGeometry, rememberFloatingPosition, resetPopoutTransientState, refreshTimerAutoHideTab } from "../native";
 import { TimerExtendMenu } from "./TimerExtendMenu";
 import { formatTimerClock } from "../dateTime";
 
@@ -54,6 +54,7 @@ export function PopoutTimer() {
   const settleDrag = async () => {
     const geometry = await timerGeometry();
     await rememberFloatingPosition();
+    await refreshTimerAutoHideTab();
     const corner = settings.popoutDockingEnabled ? nearestDockCorner(geometry, geometry.workArea, geometry, 52 * geometry.scale) : null;
     if (corner) await setPopoutDocked(true, corner);
   };
@@ -73,7 +74,20 @@ export function PopoutTimer() {
     const resize = lastSize.current !== `${settings.popoutLayout}:${settings.popoutSize}`;
     lastSize.current = `${settings.popoutLayout}:${settings.popoutSize}`;
     void report(syncPopoutLayout(resize));
-  }, [loaded, settings.popoutLayout, settings.popoutSize, settings.popoutDocked, settings.popoutDockingEnabled, settings.popoutDockCorner, settings.popoutDockMonitor, settings.popoutDockAutoHide, settings.popoutAlwaysOnTop, settings.popoutShowInTaskbar]);
+  }, [loaded, settings.popoutLayout, settings.popoutSize, settings.popoutDocked, settings.popoutDockingEnabled, settings.popoutDockCorner, settings.popoutDockMonitor, settings.popoutAutoHideEdge, settings.popoutAutoHideOffset, settings.popoutAutoHideTabSize, settings.popoutDockAutoHide, settings.popoutAlwaysOnTop, settings.popoutShowInTaskbar]);
+  useEffect(() => {
+    if (!isTauri()) return;
+    let timeout = 0;
+    const subscription = getCurrentWindow().listen<string>("focus://display-geometry-changed", ({ payload }) => {
+      window.clearTimeout(timeout);
+      timeout = window.setTimeout(() => {
+        if (draggingRef.current) return;
+        if (import.meta.env.DEV) console.debug("[popout geometry refresh]", payload);
+        void report(refreshTimerAutoHideTab());
+      }, 150);
+    });
+    return () => { window.clearTimeout(timeout); void subscription.then(stop => stop()); };
+  }, []);
   useEffect(() => { const id = window.setInterval(() => setNow(new Date()), 10_000); return () => window.clearInterval(id); }, []);
   useEffect(() => {
     if (!isTauri()) return;

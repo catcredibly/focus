@@ -2,14 +2,14 @@ import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "./db";
 import { loadSettings, saveSetting } from "./settings";
-import { setPopoutDocked, syncPopoutLayout, toggleTimerAutoHide } from "./native";
+import { setPopoutDocked, syncPopoutLayout, toggleTimerAutoHide, refreshTimerAutoHideTab } from "./native";
 
 const native = vi.hoisted(() => ({ invoke: vi.fn(), geometry: { x: 250, y: 300, width: 400, height: 200, scale: 1, visible: true, tabVisible: false, requested: true, generation: 0, workArea: { x: 0, y: 0, width: 1920, height: 1040 } }, failPosition: false }));
 vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => true, invoke: native.invoke }));
 beforeEach(async () => {
   await db.settings.clear(); native.failPosition = false;
   vi.stubGlobal("localStorage", { getItem: () => JSON.stringify({ running: true, paused: false, sessionId: "live-session", targetEnd: Date.now() + 3600000 }) });
-  Object.assign(native.geometry, { x: 250, y: 300, width: 400, height: 200, visible: true, tabVisible: false, requested: true });
+  Object.assign(native.geometry, { x: 250, y: 300, width: 400, height: 200, visible: true, tabVisible: false, requested: true, workArea: { x: 0, y: 0, width: 1920, height: 1040 } });
   let tail = Promise.resolve();
   vi.stubGlobal("navigator", { locks: { request: (_name: string, operation: () => Promise<void>) => { const result = tail.catch(() => undefined).then(operation); tail = result; return result; } } });
   native.invoke.mockReset().mockImplementation(async (command: string, args: Record<string, unknown> = {}) => {
@@ -22,6 +22,40 @@ beforeEach(async () => {
   });
 });
 describe("serialized native popout transitions", () => {
+  it("geometry refresh cannot reopen a closed popout", async () => {
+    Object.assign(native.geometry, { requested: false, visible: false, tabVisible: true });
+    await refreshTimerAutoHideTab();
+    expect(native.invoke.mock.calls.map(([command]) => command)).toEqual(["sync_popout_session", "get_timer_geometry"]);
+  });
+  it.each(["popoutAutoHideEdge", "popoutDockMonitor", "popoutAutoHideTabSize", "popoutDockAutoHide"] as const)("keeps hidden state after changing %s", async key => {
+    await saveSetting("popoutDockAutoHide", true);
+    await saveSetting("popoutDockingEnabled", true);
+    await saveSetting("popoutDocked", true);
+    Object.assign(native.geometry, { visible: false, tabVisible: true });
+    if (key === "popoutDockAutoHide") await saveSetting(key,false);
+    if (key === "popoutAutoHideEdge") await saveSetting(key,"top");
+    if (key === "popoutDockMonitor") await saveSetting(key,"display:1");
+    if (key === "popoutAutoHideTabSize") await saveSetting(key,"large");
+    await syncPopoutLayout();
+    expect(native.geometry).toMatchObject({ visible: false, tabVisible: true });
+    expect(native.invoke.mock.calls.some(([command]) => ["open_timer_popout", "cancel_timer_auto_hide"].includes(command))).toBe(false);
+    if (key === "popoutAutoHideEdge") expect(native.invoke).toHaveBeenCalledWith("show_timer_auto_hide_tab", expect.objectContaining({edge:"top"}));
+  });
+  it("preserves hidden state and edge axis through a corner change", async () => {
+    await saveSetting("popoutDockAutoHide",true);
+    await saveSetting("popoutAutoHideEdge","top");
+    Object.assign(native.geometry, { visible:false,tabVisible:true });
+    await setPopoutDocked(true,"bottom-right");
+    expect((await loadSettings()).popoutAutoHideEdge).toBe("bottom");
+    expect(native.geometry).toMatchObject({visible:false,tabVisible:true});
+  });
+  it("refreshes using the actual current monitor and its resized work area", async () => {
+    await saveSetting("popoutDockAutoHide",true);
+    Object.assign(native.geometry, { visible:false,tabVisible:true,x:-1500,y:-900,workArea:{x:-1600,y:-1000,width:1600,height:900} });
+    await refreshTimerAutoHideTab();
+    expect(native.invoke).toHaveBeenCalledWith("get_timer_geometry", {monitorId:"current"});
+    expect(native.invoke).toHaveBeenCalledWith("show_timer_auto_hide_tab",expect.objectContaining({edge:"left",generation:0}));
+  });
   it("resizes compact while preserving an auto-hidden window", async () => {
     await saveSetting("popoutLayout", "compact");
     await saveSetting("popoutDockAutoHide", true);
@@ -52,7 +86,7 @@ describe("serialized native popout transitions", () => {
     await toggleTimerAutoHide();
     expect(native.geometry).toMatchObject({ visible: false, tabVisible: true });
     await toggleTimerAutoHide();
-    expect(native.geometry).toMatchObject({ x: 250, y: 300, width: 400, height: 200, visible: true, tabVisible: false, requested: true });
+    expect(native.geometry).toMatchObject({ x: 250, y: 300, width: 400, height: 200, visible: true, tabVisible: false, requested: true, workArea: { x: 0, y: 0, width: 1920, height: 1040 } });
     expect((await loadSettings()).popoutDocked).toBe(false);
     expect(native.invoke.mock.calls.some(([command]) => command === "set_timer_position")).toBe(false);
   });

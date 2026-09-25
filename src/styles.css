@@ -756,7 +756,8 @@ select, input { color-scheme: dark; }
 .analytics-page .patterns-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .analytics-page .full-row { grid-column: 1 / -1; }
 .analytics-page .subjects-layout { grid-template-columns: minmax(0, 1.45fr) minmax(280px, 1fr); }
-.analytics-page .years-layout { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.analytics-page .years-layout { grid-template-columns: minmax(0, 1fr); }
+.year-comparison-row small { grid-column: 1 / -1; color: var(--text-muted, #8fa5b8); font-size: 11px; }
 .analytics-page .donut-wrap { grid-template-columns: 1fr; }
 .chart-legend { max-height: 180px; overflow-y: auto; }
 .analytics-list-scroll { max-height: 520px; overflow-y: auto; }
