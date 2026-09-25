@@ -1,6 +1,6 @@
 import packageMetadata from "../../package.json";
 import { db, type FocusDatabase } from "../db";
-import { loadSettings, SETTINGS_KEYS, type FocusSettings } from "../settings";
+import { loadSettings, normalizeLegacyRevealShortcut, SETTINGS_KEYS, type FocusSettings } from "../settings";
 import type { AcademicYear, AppSetting, FocusSession, Subject } from "../types";
 import type { BackupAnalysis, ConflictPolicy, FocusBackup, ImportSummary, RestoreMode } from "./types";
 
@@ -85,7 +85,7 @@ export async function restoreBackup(backup: FocusBackup, mode: RestoreMode, poli
     await apply(database.academicYears, backup.data.academicYears, "academicYearsCreated");
     await apply(database.subjects, backup.data.subjects, "subjectsCreated");
     await apply(database.sessions, backup.data.sessions, "sessionsImported");
-    for (const setting of backup.data.settings) { const existing = await database.settings.get(setting.key); if (!existing || policy === "use-imported" || mode === "replace") await database.settings.put(setting); else if (equivalent(existing, setting)) summary.duplicatesSkipped++; else summary.conflicts++; }
+    for (const setting of backup.data.settings) { const existing = await database.settings.get(setting.key); if (!existing || policy === "use-imported" || mode === "replace") await database.settings.put(setting.key === SETTINGS_KEYS.popoutRevealShortcut ? { ...setting, value: normalizeLegacyRevealShortcut(setting.value) } : setting); else if (equivalent(existing, setting)) summary.duplicatesSkipped++; else summary.conflicts++; }
   });
   return summary;
 }

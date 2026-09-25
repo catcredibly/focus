@@ -538,6 +538,14 @@ const zhTW: Record<keyof typeof en, string> = {
   "Appearance & behavior": "外觀與行為",
   "Auto-hide edge": "自動隱藏邊緣",
   "Automatic": "自動",
+  "Reset": "重設",
+  "Reset all settings": "重設所有設定",
+  "Restore every Focus preference to its default without deleting Sessions, Subjects, Academic Years, or study history.": "將所有 Focus 偏好設定恢復為預設值，不會刪除專注紀錄、科目、學年或學習歷史。",
+  "Reset all settings?": "重設所有設定？",
+  "This will restore all Focus preferences to their defaults. Your Sessions, Subjects, Academic Years, and study history will not be deleted.": "這將恢復所有 Focus 預設偏好設定。您的專注紀錄、科目、學年和學習歷史不會被刪除。",
+  "Type RESET to continue.": "輸入 RESET 以繼續。",
+  "Unable to reset settings. Please try again.": "無法重設設定，請再試一次。",
+  "Used when Auto-hide is enabled.": "啟用自動隱藏時使用。",
 };
 
 export default zhTW;

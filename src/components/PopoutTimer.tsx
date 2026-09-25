@@ -143,9 +143,10 @@ export function PopoutTimer() {
     <div className="popout-content">
       {nativeError && <button data-no-drag className="field-error" onClick={() => setNativeError(false)}>{t("Unable to update the popout window. Try again.")}</button>}
       {(settings.popoutShowSubject || settings.popoutShowClock) && <div className="popout-subject-row">{settings.popoutShowSubject && <div className="popout-subject subject-overflow" tabIndex={0} title={timer.state.subject || t("No Subject")}><span className="subject-dot" style={{ background: timer.state.subjectColor }}/>{timer.state.subject || t("No Subject")}</div>}{settings.popoutShowClock && <time>{formatTimerClock(now, settings.language, settings.clockFormat)}</time>}</div>}
-      <div className="popout-time"><span>{time[0]}</span><b>:</b><span>{time[1]}</span><b>:</b><span>{time[2]}</span></div>
+      <div className="popout-timer-block"><div className="popout-time"><span>{time[0]}</span><b>:</b><span>{time[1]}</span><b>:</b><span>{time[2]}</span></div>
       <div className="popout-labels"><span>{t("Hours")}</span><span>{t("Minutes")}</span><span>{t("Seconds")}</span></div>
       <div className="popout-status">{timer.state.finished ? t("Finished") : timer.state.paused ? t("Paused") : ""}</div>
+      </div>
       <div className="popout-actions">
       <button data-no-drag className="popout-close tooltip-button" aria-label={t("Close popout")} data-tooltip={t("Close popout")} onClick={() => { clearHideTimer(); void report(closeTimerPopout()); }}><X/></button>
       <button data-no-drag className="popout-pin tooltip-button" aria-label={t(dockedActive ? "Undock" : "Dock")} data-tooltip={t(dockedActive ? "Undock" : "Dock")} onClick={() => void report(runInteraction(toggleDock))}><Pin fill={dockedActive ? "currentColor" : "none"}/></button>

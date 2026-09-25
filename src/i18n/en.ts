@@ -536,6 +536,14 @@ const en = {
   "Appearance & behavior": "Appearance & behavior",
   "Auto-hide edge": "Auto-hide edge",
   "Automatic": "Automatic",
+  "Reset": "Reset",
+  "Reset all settings": "Reset all settings",
+  "Restore every Focus preference to its default without deleting Sessions, Subjects, Academic Years, or study history.": "Restore every Focus preference to its default without deleting Sessions, Subjects, Academic Years, or study history.",
+  "Reset all settings?": "Reset all settings?",
+  "This will restore all Focus preferences to their defaults. Your Sessions, Subjects, Academic Years, and study history will not be deleted.": "This will restore all Focus preferences to their defaults. Your Sessions, Subjects, Academic Years, and study history will not be deleted.",
+  "Type RESET to continue.": "Type RESET to continue.",
+  "Unable to reset settings. Please try again.": "Unable to reset settings. Please try again.",
+  "Used when Auto-hide is enabled.": "Used when Auto-hide is enabled.",
 } as const;
 
 export default en;

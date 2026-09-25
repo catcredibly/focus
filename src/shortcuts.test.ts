@@ -1,5 +1,5 @@
 import { expect, it, vi } from "vitest";
-import { captureShortcut, shortcutLabel, listenForShortcut } from "./shortcuts";
+import { captureShortcut, isRevealShortcut, shortcutLabel, listenForShortcut } from "./shortcuts";
 const input = { ctrlKey: true, altKey: true, shiftKey: false, metaKey: false };
 it("normalizes allowed combinations and rejects unsafe main keys", () => {
   expect(captureShortcut({ ...input, code: "KeyF" })).toBe("Ctrl+Alt+KeyF");
@@ -11,11 +11,11 @@ it("normalizes allowed combinations and rejects unsafe main keys", () => {
   expect(captureShortcut({ ...input, ctrlKey: false, shiftKey: true, code: "Digit7" })).toBe("Alt+Shift+Digit7");
 });
 
-it("supports F1-F12 with zero through three modifiers", () => {
+it("rejects F1-F12 with every modifier combination", () => {
   for (let key=1;key<=12;key++) for(let mask=0;mask<8;mask++) {
     const shortcut = captureShortcut({code:`F${key}`,ctrlKey:Boolean(mask&1),altKey:Boolean(mask&2),shiftKey:Boolean(mask&4),metaKey:false});
-    expect(shortcut).toBeDefined();
-    expect(shortcutLabel(shortcut!)).toContain(`F${key}`);
+    expect(shortcut).toBeUndefined();
+    expect(isRevealShortcut(`${mask ? "Ctrl+" : ""}F${key}`)).toBe(false);
   }
   expect(shortcutLabel("Ctrl+Alt+Shift+F7")).toBe("Ctrl + Alt + Shift + F7");
 });

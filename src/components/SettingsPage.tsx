@@ -1,3 +1,4 @@
+import { resetPreferences } from "../resetPreferences";
 import { formatTimerDate, effectiveTimerDateFormat, timerDateFormats } from "../dateTime";
 import { edgesForCorner, dockEdgeOffset } from "../popoutPlacement";
 import { setPopoutDocked } from "../native";
@@ -57,7 +58,32 @@ function General({ settings, setSetting }: SettingsProps) {
     <Row label={t("Start Focus maximized")}><Toggle label={t("Start Focus maximized")} checked={settings.startMaximized} onChange={(value) => void setSetting("startMaximized", value)}/></Row>
     <Row label={t("Launch Focus at Windows startup")}><Toggle label={t("Launch Focus at Windows startup")} checked={settings.launchAtStartup} onChange={(value) => void startup(value)}/></Row>
     <RestoreSection keys={["displayName", "sidebarSubtitle", "language", "startMaximized", "launchAtStartup"]}/>
+    <ResetAllSettings/>
   </>;
+}
+
+function ResetAllSettings() {
+  const { t } = useTranslation();
+  const [confirming, setConfirming] = useState(false);
+  const [typed, setTyped] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(false);
+  const dismiss = () => { if (!busy) setConfirming(false); };
+  const reset = async () => {
+    if (typed !== "RESET" || busy) return;
+    setBusy(true); setError(false);
+    try { await resetPreferences(); setConfirming(false); }
+    catch { setError(true); }
+    finally { setBusy(false); }
+  };
+  return <><div className="settings-subheading settings-group-heading"><strong>{t("Reset")}</strong></div>
+    <Row label={t("Reset all settings")} hint={t("Restore every Focus preference to its default without deleting Sessions, Subjects, Academic Years, or study history.")}><button className="secondary-action" onClick={() => { setTyped(""); setError(false); setConfirming(true); }}><RotateCcw/>{t("Reset all settings")}</button></Row>
+    {confirming && <div className="modal-backdrop" onMouseDown={dismiss} onKeyDown={event => { if (event.key === "Escape") dismiss(); }}><section className="modal" role="dialog" aria-modal="true" aria-labelledby="reset-settings-title" onMouseDown={event => event.stopPropagation()}>
+      <h2 id="reset-settings-title">{t("Reset all settings?")}</h2><p>{t("This will restore all Focus preferences to their defaults. Your Sessions, Subjects, Academic Years, and study history will not be deleted.")}</p><p>{t("Type RESET to continue.")}</p>
+      <input autoFocus disabled={busy} aria-label={t("Type RESET to continue.")} value={typed} onChange={event => setTyped(event.target.value)}/>
+      {error && <p role="alert">{t("Unable to reset settings. Please try again.")}</p>}
+      <div className="modal-actions"><button disabled={busy} onClick={dismiss}>{t("Cancel")}</button><button className="secondary-action" disabled={busy || typed !== "RESET"} onClick={() => void reset()}>{t("Reset all settings")}</button></div>
+    </section></div>}</>;
 }
 
 function DurationEditor({ value, onChange }: { value: number; onChange: (seconds: number) => void }) {
@@ -173,7 +199,7 @@ function Popout({ settings, setSetting }: SettingsProps) {
     <Row disabled={!docked || !autoHideEnabled} label={t("Auto-hide edge")}><select aria-label={t("Auto-hide edge")} value={docked ? settings.popoutAutoHideEdge : "automatic"} onChange={async event => { const edge = event.target.value as FocusSettings["popoutAutoHideEdge"]; await db.transaction("rw", db.settings, async () => { await setSetting("popoutAutoHideOffset", dockEdgeOffset(settings.popoutDockCorner, edge)); await setSetting("popoutAutoHideEdge", edge); }); }}>{!docked && <option value="automatic">{t("Automatic")}</option>}{edgesForCorner(settings.popoutDockCorner).map(edge => <option key={edge} value={edge}>{t({ top: "Top", right: "Right", bottom: "Bottom", left: "Left" }[edge])}</option>)}</select></Row>
     <Row disabled={!autoHideEnabled} label={t("Auto-hide delay")} hint={t("Seconds before the popout hides after you leave it.")}><AutoHideDelayEditor value={settings.popoutAutoHideDelaySeconds} onChange={value => void setSetting("popoutAutoHideDelaySeconds", value)}/></Row>
     <Row disabled={!autoHideEnabled} label={t("Reveal tab size")}><select value={settings.popoutAutoHideTabSize} onChange={(event) => void setSetting("popoutAutoHideTabSize", event.target.value as FocusSettings["popoutAutoHideTabSize"])}><option value="small">{t("Small")}</option><option value="medium">{t("Medium")}</option><option value="large">{t("Large")}</option></select></Row>
-    <Row disabled={!autoHideEnabled} label={t("Reveal shortcut")}><ShortcutRecorder disabled={!autoHideEnabled} value={settings.popoutRevealShortcut}/></Row>
+    <Row label={t("Reveal shortcut")} hint={t("Used when Auto-hide is enabled.")}><ShortcutRecorder value={settings.popoutRevealShortcut}/></Row>
     <Row disabled={!autoHideEnabled} label={t("Show accent dot on reveal tab")}><Toggle label={t("Show accent dot on reveal tab")} checked={settings.popoutAutoHideShowAccent} onChange={(value) => void setSetting("popoutAutoHideShowAccent", value)}/></Row>
     <div className="settings-subheading settings-group-heading"><strong>{t("Appearance & behavior")}</strong></div>
     <Row label={t("Always on top by default")}><Toggle label={t("Always on top by default")} checked={settings.popoutAlwaysOnTop} onChange={(v) => void setSetting("popoutAlwaysOnTop", v)}/></Row>

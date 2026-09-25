@@ -538,6 +538,14 @@ const zhCN: Record<keyof typeof en, string> = {
   "Appearance & behavior": "外观与行为",
   "Auto-hide edge": "自动隐藏边缘",
   "Automatic": "自动",
+  "Reset": "重置",
+  "Reset all settings": "重置所有设置",
+  "Restore every Focus preference to its default without deleting Sessions, Subjects, Academic Years, or study history.": "将所有 Focus 偏好设置恢复为默认值，不会删除专注记录、科目、学年或学习历史。",
+  "Reset all settings?": "重置所有设置？",
+  "This will restore all Focus preferences to their defaults. Your Sessions, Subjects, Academic Years, and study history will not be deleted.": "这将恢复所有 Focus 默认偏好设置。您的专注记录、科目、学年和学习历史不会被删除。",
+  "Type RESET to continue.": "输入 RESET 以继续。",
+  "Unable to reset settings. Please try again.": "无法重置设置，请重试。",
+  "Used when Auto-hide is enabled.": "启用自动隐藏时使用。",
 };
 
 export default zhCN;

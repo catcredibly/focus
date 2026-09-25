@@ -241,9 +241,19 @@ function decode<K extends keyof FocusSettings>(key: K, raw: string | undefined):
   return ((allowed[key] && !allowed[key]?.includes(raw)) ? DEFAULT_SETTINGS[key] : raw) as FocusSettings[K];
 }
 
-export async function loadSettings(database: FocusDatabase = db): Promise<FocusSettings> {
+/** Compatibility with releases that allowed function-key reveal shortcuts. */
+export function normalizeLegacyRevealShortcut(value: string): string {
+  return /^(?:(?:Ctrl|Alt|Shift)\+)*F(?:[1-9]|1[0-2])$/.test(value) ? DEFAULT_SETTINGS.popoutRevealShortcut : value;
+}
+
+export async function loadSettings(database: FocusDatabase = db, migrate = true): Promise<FocusSettings> {
+  if (migrate) await database.transaction("rw", database.settings, async () => {
+    const row = await database.settings.get(SETTINGS_KEYS.popoutRevealShortcut);
+    if (row && normalizeLegacyRevealShortcut(row.value) !== row.value) await database.settings.put({ ...row, value: normalizeLegacyRevealShortcut(row.value) });
+  });
   const rows = new Map((await database.settings.toArray()).map((row) => [row.key, row.value]));
   const settings = Object.fromEntries((Object.keys(DEFAULT_SETTINGS) as (keyof FocusSettings)[]).map((key) => [key, decode(key, rows.get(SETTINGS_KEYS[key]))])) as FocusSettings;
+  settings.popoutRevealShortcut = normalizeLegacyRevealShortcut(settings.popoutRevealShortcut);
   settings.popoutAutoHideEdge = defaultEdgeForCorner(settings.popoutDockCorner, settings.popoutAutoHideEdge);
   return settings;
 }
@@ -293,4 +303,9 @@ export function formatLastBackup(value: string | null, locale?: string) {
   if (!value) return "Never";
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? "Never" : date.toLocaleString(locale, { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+/** Reset preferences only; unknown/runtime keys and backup metadata are retained. */
+export async function resetAllSettings(database: FocusDatabase = db) {
+  await restoreSettingDefaults((Object.keys(DEFAULT_SETTINGS) as (keyof FocusSettings)[]).filter(key => key !== "lastBackupAt"), database);
 }

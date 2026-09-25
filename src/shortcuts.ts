@@ -5,9 +5,14 @@ const punctuation: Record<string, string> = { Minus: "-", Equal: "=", BracketLef
 type KeyInput = Pick<KeyboardEvent, "code" | "ctrlKey" | "altKey" | "shiftKey" | "metaKey">;
 export function captureShortcut(event: KeyInput): string | undefined {
   const modifiers = [event.ctrlKey && "Ctrl", event.altKey && "Alt", event.shiftKey && "Shift"].filter(Boolean);
-  const functionKey = /^F([1-9]|1[0-2])$/.test(event.code);
-  if (event.metaKey || (!functionKey && (modifiers.length < 1 || !(/^Key[A-Z]$|^Digit[0-9]$/.test(event.code) || event.code in punctuation)))) return;
+  if (event.metaKey || (modifiers.length < 1 || !(/^Key[A-Z]$|^Digit[0-9]$/.test(event.code) || event.code in punctuation))) return;
   return [...modifiers, event.code].join("+");
+}
+export function isRevealShortcut(shortcut: string): boolean {
+  if (shortcut === "") return true;
+  const parts = shortcut.split("+");
+  const code = parts.pop()!;
+  return captureShortcut({code,ctrlKey:parts.includes("Ctrl"),altKey:parts.includes("Alt"),shiftKey:parts.includes("Shift"),metaKey:false}) === shortcut;
 }
 export function shortcutLabel(shortcut: string) {
   return shortcut.split("+").map(part => punctuation[part] ?? part.replace(/^Key|^Digit/, "")).join(" + ");
@@ -28,13 +33,14 @@ export function listenForShortcut(onCapture: (shortcut: string) => void, onCance
 }
 let operation = Promise.resolve();
 /** Serialize startup and recorder changes; persist only a registered combination. */
-export function registerRevealShortcut(shortcut: string, persist = false) {
+export function registerRevealShortcut(shortcut: string, persist: boolean | (() => Promise<void>) = false) {
   const next = operation.catch(() => undefined).then(async () => {
+    if (!isRevealShortcut(shortcut)) throw new Error("Invalid reveal shortcut.");
     if (!isTauri()) throw new Error("Global shortcuts require the desktop app.");
     const previous = (await loadSettings()).popoutRevealShortcut;
     await invoke("set_reveal_shortcut", { shortcut });
     if (persist) {
-      try { await saveSetting("popoutRevealShortcut", shortcut); }
+      try { await (typeof persist === "function" ? persist() : saveSetting("popoutRevealShortcut", shortcut)); }
       catch (error) { await invoke("set_reveal_shortcut", { shortcut: previous }); throw error; }
     }
   });

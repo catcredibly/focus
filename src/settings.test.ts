@@ -3,7 +3,7 @@ import Dexie from "dexie";
 import { afterEach, describe, expect, it } from "vitest";
 import { FocusDatabase } from "./db";
 import { ACTIVE_TIMER_STORAGE_KEY } from "./timerState";
-import { clearAllFocusData, DEFAULT_SETTINGS, GOAL_MAX_HOURS, formatLastBackup, greeting, hasActiveTimer, loadSettings, normaliseDuration, normalizeGoalSeconds, normalizeGoalPart, goalDurationSeconds, saveSetting, timerDefaultDuration } from "./settings";
+import { resetAllSettings, clearAllFocusData, DEFAULT_SETTINGS, GOAL_MAX_HOURS, formatLastBackup, greeting, hasActiveTimer, loadSettings, normaliseDuration, normalizeGoalSeconds, normalizeGoalPart, goalDurationSeconds, saveSetting, timerDefaultDuration } from "./settings";
 
 const opened: Dexie[] = [];
 const database = () => { const value = new FocusDatabase(`focus-settings-test-${crypto.randomUUID()}`); opened.push(value); return value; };
@@ -130,4 +130,40 @@ it("applies new defaults only to missing values and preserves saved preferences"
   await saveSetting("showWeekday",false,testDb);
   await saveSetting("dateFormat","numeric",testDb);
   expect(await loadSettings(testDb)).toMatchObject({dailyGoalEnabled:false,weeklyGoalEnabled:false,popoutCloseOnCompletion:false,popoutRevealShortcut:"Ctrl+Alt+KeyF",weekdayStyle:"full"});
+});
+
+it.each(["F12", "Ctrl+F8", "Alt+Shift+F11"])("persistently migrates legacy %s", async shortcut => {
+  const testDb = database();
+  await testDb.settings.put({key:"popoutRevealShortcut",value:shortcut});
+  expect((await loadSettings(testDb)).popoutRevealShortcut).toBe("Alt+Backquote");
+  expect((await testDb.settings.get("popoutRevealShortcut"))?.value).toBe("Alt+Backquote");
+  expect((await loadSettings(testDb)).popoutRevealShortcut).toBe("Alt+Backquote");
+});
+it.each(["", "Ctrl+KeyF", "Alt+Slash"])("preserves supported or cleared shortcut %s", async shortcut => {
+  const testDb = database();
+  await testDb.settings.bulkPut([{key:"popoutRevealShortcut",value:shortcut},{key:"popoutDockAutoHide",value:"true"}]);
+  expect(await loadSettings(testDb)).toMatchObject({popoutRevealShortcut:shortcut,popoutDockAutoHide:true});
+});
+it("resets only preferences and preserves backup metadata and study/runtime records", async () => {
+  const testDb = database();
+  await testDb.academicYears.put({id:"year",name:"Year",archived:false});
+  await testDb.subjects.put({id:"subject",name:"Subject",academicYearId:"year",color:"orange",archived:false});
+  await testDb.settings.bulkPut([{key:"lastBackupAt",value:"2026-09-26"},{key:"activeTimer",value:"running"},{key:"language",value:"ja"},{key:"popoutDockAutoHide",value:"true"},{key:"popoutRevealShortcut",value:"Ctrl+KeyF"}]);
+  await testDb.sessions.put({id:"session",subjectId:"subject",subjectName:"Subject",academicYearId:"year",academicYearName:"Year",startTime:1000,endTime:61000,focusedDurationSeconds:60,archived:false});
+  const years=await testDb.academicYears.toArray(), subjects=await testDb.subjects.toArray(), sessions=await testDb.sessions.toArray();
+  await resetAllSettings(testDb);
+  expect(await loadSettings(testDb)).toEqual({...DEFAULT_SETTINGS,lastBackupAt:"2026-09-26"});
+  expect(await testDb.academicYears.toArray()).toEqual(years);
+  expect(await testDb.subjects.toArray()).toEqual(subjects);
+  expect(await testDb.sessions.toArray()).toEqual(sessions);
+  expect((await testDb.settings.get("activeTimer"))?.value).toBe("running");
+  expect(DEFAULT_SETTINGS.popoutDockAutoHide).toBe(false);
+});
+
+it("supports read-only settings consumption after migration", async () => {
+ const testDb=database();
+ await testDb.settings.put({key:"popoutRevealShortcut",value:"F12"});
+ await loadSettings(testDb);
+ const settings=await testDb.transaction("r",testDb.settings,()=>loadSettings(testDb,false));
+ expect(settings.popoutRevealShortcut).toBe("Alt+Backquote");
 });

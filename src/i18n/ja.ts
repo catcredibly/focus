@@ -538,6 +538,14 @@ const ja: Record<keyof typeof en, string> = {
   "Appearance & behavior": "外観と動作",
   "Auto-hide edge": "自動非表示の辺",
   "Automatic": "自動",
+  "Reset": "リセット",
+  "Reset all settings": "すべての設定をリセット",
+  "Restore every Focus preference to its default without deleting Sessions, Subjects, Academic Years, or study history.": "セッション、科目、学年度、学習履歴を削除せずに、すべての Focus 設定を初期値に戻します。",
+  "Reset all settings?": "すべての設定をリセットしますか？",
+  "This will restore all Focus preferences to their defaults. Your Sessions, Subjects, Academic Years, and study history will not be deleted.": "すべての Focus 設定が初期値に戻ります。セッション、科目、学年度、学習履歴は削除されません。",
+  "Type RESET to continue.": "続行するには RESET と入力してください。",
+  "Unable to reset settings. Please try again.": "設定をリセットできませんでした。もう一度お試しください。",
+  "Used when Auto-hide is enabled.": "自動非表示が有効なときに使用します。",
 };
 
 export default ja;
