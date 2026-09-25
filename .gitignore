@@ -43,6 +43,9 @@ Desktop.ini
 *.lnk
 .DS_Store
 
+# Local agent instructions
+/AGENTS.md
+
 # IDE-local state
 .idea/
 .vscode/
