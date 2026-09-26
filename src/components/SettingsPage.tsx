@@ -4,7 +4,7 @@ import { edgesForCorner, dockEdgeOffset } from "../popoutPlacement";
 import { setPopoutDocked } from "../native";
 import { ShortcutRecorder } from "./ShortcutRecorder";
 import { Bell, Clock3, Database, Download, Info, MonitorCog, Palette, Play, RotateCcw, Trash2, Volume2 } from "lucide-react";
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { disable, enable } from "@tauri-apps/plugin-autostart";
 import { isPermissionGranted, requestPermission } from "@tauri-apps/plugin-notification";
 import { invoke, isTauri } from "@tauri-apps/api/core";
@@ -13,7 +13,7 @@ import { exportFullBackup } from "../importExport/exportBackup";
 import { useSettings } from "../hooks/useSettings";
 import { clearAllFocusData, formatLastBackup, hasActiveTimer, normaliseDuration, goalDurationSeconds, normalizeGoalPart, GOAL_MAX_HOURS, DEFAULT_SIDEBAR_SUBTITLE, restoreSettingDefaults, type AccentColour, type FocusSettings } from "../settings";
 import { previewCompletionSound, testCompletionNotification } from "../timerCompletion";
-import { focusLogoForAccent } from "../branding";
+import { FocusLeaf } from "./FocusLeaf";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../db";
 import packageMetadata from "../../package.json";
@@ -72,13 +72,13 @@ function ResetAllSettings() {
   const reset = async () => {
     if (typed !== "RESET" || busy) return;
     setBusy(true); setError(false);
-    try { await resetPreferences(); setConfirming(false); }
+    try { await resetPreferences(); setConfirming(false); setTyped(""); setError(false); }
     catch { setError(true); }
     finally { setBusy(false); }
   };
   return <><div className="settings-subheading settings-group-heading"><strong>{t("Reset")}</strong></div>
     <Row label={t("Reset all settings")} hint={t("Restore every Focus preference to its default without deleting Sessions, Subjects, Academic Years, or study history.")}><button className="secondary-action" onClick={() => { setTyped(""); setError(false); setConfirming(true); }}><RotateCcw/>{t("Reset all settings")}</button></Row>
-    {confirming && <div className="modal-backdrop" onMouseDown={dismiss} onKeyDown={event => { if (event.key === "Escape") dismiss(); }}><section className="modal" role="dialog" aria-modal="true" aria-labelledby="reset-settings-title" onMouseDown={event => event.stopPropagation()}>
+    {confirming && <div className="modal-backdrop" onMouseDown={dismiss} onKeyDown={event => { if (event.key === "Escape") dismiss(); if (event.key === "Enter" && typed === "RESET" && !busy) { event.preventDefault(); void reset(); } }}><section className="modal typed-confirmation-modal" role="dialog" aria-modal="true" aria-labelledby="reset-settings-title" onMouseDown={event => event.stopPropagation()}>
       <h2 id="reset-settings-title">{t("Reset all settings?")}</h2><p>{t("This will restore all Focus preferences to their defaults. Your Sessions, Subjects, Academic Years, and study history will not be deleted.")}</p><p>{t("Type RESET to continue.")}</p>
       <input autoFocus disabled={busy} aria-label={t("Type RESET to continue.")} value={typed} onChange={event => setTyped(event.target.value)}/>
       {error && <p role="alert">{t("Unable to reset settings. Please try again.")}</p>}
@@ -199,7 +199,7 @@ function Popout({ settings, setSetting }: SettingsProps) {
     <Row disabled={!docked || !autoHideEnabled} label={t("Auto-hide edge")}><select aria-label={t("Auto-hide edge")} value={docked ? settings.popoutAutoHideEdge : "automatic"} onChange={async event => { const edge = event.target.value as FocusSettings["popoutAutoHideEdge"]; await db.transaction("rw", db.settings, async () => { await setSetting("popoutAutoHideOffset", dockEdgeOffset(settings.popoutDockCorner, edge)); await setSetting("popoutAutoHideEdge", edge); }); }}>{!docked && <option value="automatic">{t("Automatic")}</option>}{edgesForCorner(settings.popoutDockCorner).map(edge => <option key={edge} value={edge}>{t({ top: "Top", right: "Right", bottom: "Bottom", left: "Left" }[edge])}</option>)}</select></Row>
     <Row disabled={!autoHideEnabled} label={t("Auto-hide delay")} hint={t("Seconds before the popout hides after you leave it.")}><AutoHideDelayEditor value={settings.popoutAutoHideDelaySeconds} onChange={value => void setSetting("popoutAutoHideDelaySeconds", value)}/></Row>
     <Row disabled={!autoHideEnabled} label={t("Reveal tab size")}><select value={settings.popoutAutoHideTabSize} onChange={(event) => void setSetting("popoutAutoHideTabSize", event.target.value as FocusSettings["popoutAutoHideTabSize"])}><option value="small">{t("Small")}</option><option value="medium">{t("Medium")}</option><option value="large">{t("Large")}</option></select></Row>
-    <Row label={t("Reveal shortcut")} hint={t("Used when Auto-hide is enabled.")}><ShortcutRecorder value={settings.popoutRevealShortcut}/></Row>
+    <Row label={t("Reveal shortcut")} ><ShortcutRecorder value={settings.popoutRevealShortcut}/></Row>
     <Row disabled={!autoHideEnabled} label={t("Show accent dot on reveal tab")}><Toggle label={t("Show accent dot on reveal tab")} checked={settings.popoutAutoHideShowAccent} onChange={(value) => void setSetting("popoutAutoHideShowAccent", value)}/></Row>
     <div className="settings-subheading settings-group-heading"><strong>{t("Appearance & behavior")}</strong></div>
     <Row label={t("Always on top by default")}><Toggle label={t("Always on top by default")} checked={settings.popoutAlwaysOnTop} onChange={(v) => void setSetting("popoutAlwaysOnTop", v)}/></Row>
@@ -218,12 +218,12 @@ function Popout({ settings, setSetting }: SettingsProps) {
   </>;
 }
 
-const accents: { name: string; value: AccentColour; color: string }[] = [{ name:"Coral Red",value:"coral",color:"#f06464"},{name:"Orange",value:"orange",color:"#ff922b"},{name:"Cherry Blossom Pink",value:"pink",color:"#e98aaa"},{name:"Muted Miku Blue",value:"miku",color:"#58aeb8"},{name:"Green",value:"green",color:"#4da778"},{name:"Cappuccino",value:"cappuccino",color:"#ad8466"}];
+const accents: { name: string; value: AccentColour }[] = [{ name:"Coral Red",value:"coral"},{name:"Orange",value:"orange"},{name:"Cherry Blossom Pink",value:"pink"},{name:"Muted Miku Blue",value:"miku"},{name:"Green",value:"green"},{name:"Cappuccino",value:"cappuccino"}];
 function Appearance({ settings, setSetting }: SettingsProps) {
   const { t } = useTranslation();
   return <><SettingsHeader title={t("Appearance")}>{t("Customize the Focus interface.")}</SettingsHeader>
     <Row label={t("Theme")}><select value={settings.theme} onChange={(event) => void setSetting("theme", event.target.value as FocusSettings["theme"])}><option value="dark">{t("Dark")}</option><option value="light">{t("Light")}</option></select></Row>
-    <Row label={t("Accent color")}><div className="accent-options">{accents.map((accent) => <button key={accent.value} title={t(accent.name)} aria-label={t(accent.name)} className={settings.accentColour === accent.value ? "active" : ""} style={{ "--swatch": accent.color } as CSSProperties} onClick={() => void setSetting("accentColour", accent.value)}><span/></button>)}</div></Row>
+    <Row label={t("Accent color")}><div className="accent-options">{accents.map((accent) => <button key={accent.value} title={t(accent.name)} aria-label={t(accent.name)} className={settings.accentColour === accent.value ? "active" : ""} data-accent={accent.value} onClick={() => void setSetting("accentColour", accent.value)}><span/></button>)}</div></Row>
     <Row label={t("UI scale")}><select value={settings.uiScale} onChange={(event) => void setSetting("uiScale", event.target.value as FocusSettings["uiScale"])}><option value="small">{t("Small")}</option><option value="medium">{t("Medium")}</option><option value="large">{t("Large")}</option><option value="extra-large">{t("Extra large")}</option></select></Row>
     <RestoreSection keys={["theme", "accentColour", "uiScale"]}/>
   </>;
@@ -243,7 +243,7 @@ function Data({ settings, setSetting, onNavigate }: SettingsProps & { onNavigate
     <RestoreSection keys={["allowDirectActiveDeletion"]}/>
     <Row label={t("Clear all data")} hint={t("Permanently remove all local Focus data.")}><button className="danger-outline" onClick={startClear}><Trash2/> {t("Clear all data")}</button></Row>
     {error && <div className="notice notice--error">{error}</div>}
-    {confirming && <div className="modal-backdrop" onMouseDown={() => setConfirming(false)}><section className="modal clear-data-modal" onMouseDown={(event) => event.stopPropagation()}><h2>{t("Clear all Focus data?")}</h2><p>{t("This permanently deletes all study history, Subjects, Academic Years, and Settings stored on this device.")}</p><p>{t("This cannot be undone without a backup. Type DELETE to continue.")}</p><input autoFocus value={typed} onChange={(event) => setTyped(event.target.value)} aria-label={t("Type DELETE to confirm")}/><div className="modal-actions"><button onClick={() => setConfirming(false)}>{t("Cancel")}</button><button className="danger-action" disabled={typed !== "DELETE" || busy} onClick={() => void clear()}>{busy ? t("Clearing...") : t("Clear all data")}</button></div></section></div>}
+    {confirming && <div className="modal-backdrop" onMouseDown={() => setConfirming(false)}><section className="modal clear-data-modal typed-confirmation-modal" onMouseDown={(event) => event.stopPropagation()}><h2>{t("Clear all Focus data?")}</h2><p>{t("This permanently deletes all study history, Subjects, Academic Years, and Settings stored on this device.")}</p><p>{t("This cannot be undone without a backup. Type DELETE to continue.")}</p><input autoFocus value={typed} onChange={(event) => setTyped(event.target.value)} aria-label={t("Type DELETE to confirm")}/><div className="modal-actions"><button onClick={() => setConfirming(false)}>{t("Cancel")}</button><button className="danger-action" disabled={typed !== "DELETE" || busy} onClick={() => void clear()}>{busy ? t("Clearing...") : t("Clear all data")}</button></div></section></div>}
   </>;
 }
 
@@ -253,7 +253,7 @@ function About() {
   const [version, setVersion] = useState(packageMetadata.version);
   useEffect(() => { if (isTauri()) void getVersion().then(setVersion).catch(() => undefined); }, []);
   return <div className="about-settings"><SettingsHeader title={t("About")}>{t("Application information.")}</SettingsHeader><div className="about-body">
-    <div className="about-identity"><img src={focusLogoForAccent(settings.accentColour)} alt="Focus"/><div><h3>Focus</h3><p>{t("Time well spent.")}</p><span>V{version}</span></div></div>
+    <div className="about-identity"><FocusLeaf className="about-leaf"/><div><h3>Focus</h3><p>{t("Time well spent.")}</p><span>V{version}</span></div></div>
     <section><h3>{t("About Focus")}</h3><p>{t("Focus is a local-first study timer and analytics app designed for long-term study tracking.")}</p></section>
     <section><h3>{t("Your data")}</h3><p>{t("Focus stores your study data locally on this device. Your data is not uploaded to a Focus account or cloud service.")}</p></section>
     <section><h3>{t("Application")}</h3><dl><div><dt>{t("Version")}</dt><dd>{version}</dd></div><div><dt>{t("Platform")}</dt><dd>Windows</dd></div><div><dt>{t("Data storage")}</dt><dd>{t("Local device")}</dd></div></dl></section>

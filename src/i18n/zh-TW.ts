@@ -546,6 +546,9 @@ const zhTW: Record<keyof typeof en, string> = {
   "Type RESET to continue.": "輸入 RESET 以繼續。",
   "Unable to reset settings. Please try again.": "無法重設設定，請再試一次。",
   "Used when Auto-hide is enabled.": "啟用自動隱藏時使用。",
+  "What's new": "更新內容",
+  "A new version of Focus is ready to install.": "Focus 新版本已準備好安裝。",
+  "Reveal shortcut is unavailable on this device.": "此裝置無法使用顯示浮動視窗快捷鍵。",
 };
 
 export default zhTW;

@@ -1,3 +1,5 @@
+import { meaningfulReleaseNotes } from "../releaseNotes";
+import { ReleaseNotes } from "./ReleaseNotes";
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import { localeCode } from "../i18n";
@@ -35,12 +37,13 @@ export function UpdatePrompt({ ready = true }: { ready?: boolean }) {
     if (state.promptOpen && !dialog.current?.open) dialog.current?.showModal();
     if (!state.promptOpen && dialog.current?.open) dialog.current?.close();
   }, [state.promptOpen]);
+  const notes = meaningfulReleaseNotes(state.notes);
   const progress = state.contentLength ? Math.min(1, state.downloaded / state.contentLength) : undefined;
   return <dialog ref={dialog} className="modal update-dialog" aria-labelledby="update-title" onCancel={event => { event.preventDefault(); if (!busy(state)) updater.later(); }}>
     <h2 id="update-title">{t("Update available")}</h2>
     <dl className="update-versions"><div><dt>{t("Current version")}</dt><dd>{state.currentVersion}</dd></div><div><dt>{t("Available version")}</dt><dd>{state.availableVersion}</dd></div></dl>
-    {state.notes && <section className="update-notes"><h3>{t("Release notes")}</h3><p>{state.notes}</p></section>}
-    <p role="status">{t(statusKey(state))}</p>
+    {notes ? <section className="update-notes" tabIndex={0} aria-label={t("What's new")}><h3>{t("What's new")}</h3><ReleaseNotes notes={notes}/></section> : <p>{t("A new version of Focus is ready to install.")}</p>}
+    <p role="status">{state.phase === "available" ? "" : t(statusKey(state))}</p>
     {state.phase === "downloading" && <><progress aria-label={t("Downloading update…")} max={1} value={progress}/><small>{progress === undefined ? new Intl.NumberFormat(localeCode(), { style: "unit", unit: "megabyte", maximumFractionDigits: 1 }).format(state.downloaded / 1_000_000) : progress.toLocaleString(localeCode(), { style: "percent", maximumFractionDigits: 0 })}</small></>}
     <div className="modal-actions"><button disabled={busy(state)} onClick={() => updater.later()}>{t("Later")}</button><button className="primary-action" disabled={busy(state)} onClick={() => void updater.install()}>{t(state.error === "restart" ? "Restart Focus" : "Update now")}</button></div>
   </dialog>;

@@ -132,7 +132,7 @@ it("applies new defaults only to missing values and preserves saved preferences"
   expect(await loadSettings(testDb)).toMatchObject({dailyGoalEnabled:false,weeklyGoalEnabled:false,popoutCloseOnCompletion:false,popoutRevealShortcut:"Ctrl+Alt+KeyF",weekdayStyle:"full"});
 });
 
-it.each(["F12", "Ctrl+F8", "Alt+Shift+F11"])("persistently migrates legacy %s", async shortcut => {
+it.each(["F12", "Ctrl+F8", "Alt+Shift+F11", "Alt+`"])("persistently migrates legacy %s", async shortcut => {
   const testDb = database();
   await testDb.settings.put({key:"popoutRevealShortcut",value:shortcut});
   expect((await loadSettings(testDb)).popoutRevealShortcut).toBe("Alt+Backquote");

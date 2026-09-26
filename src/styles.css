@@ -37,7 +37,8 @@ button, input, select { font: inherit; }
 button { color: inherit; }
 
 [data-accent="coral"] { --accent: #f06464; --accent-strong: #dc4f55; --accent-soft: rgba(240,100,100,.18); --accent-text: #111820; }
-[data-accent="orange"] { --accent: #ff922b; --accent-strong: #e9781f; --accent-soft: rgba(255,146,43,.18); --accent-text: #111820; }
+/* #fa6b3e is the most frequent opaque RGB in the original Orange branding PNG. */
+[data-accent="orange"] { --accent: #fa6b3e; --accent-strong: color-mix(in srgb, var(--accent) 88%, black); --accent-soft: color-mix(in srgb, var(--accent) 18%, transparent); --accent-text: #111820; }
 [data-accent="pink"] { --accent: #e98aaa; --accent-strong: #d56f94; --accent-soft: rgba(233,138,170,.2); --accent-text: #151016; }
 [data-accent="miku"] { --accent: #58aeb8; --accent-strong: #3f929d; --accent-soft: rgba(88,174,184,.2); --accent-text: #07121d; }
 [data-accent="green"] { --accent: #4da778; --accent-strong: #37875e; --accent-soft: rgba(77,167,120,.2); --accent-text: #07150e; }
@@ -68,7 +69,9 @@ button { color: inherit; }
   transition: width 220ms ease;
 }
 .brand-row { display: flex; align-items: center; gap: 10px; min-height: 46px; }
-.brand-mark { width: 34px; height: 34px; flex: 0 0 34px; background: var(--accent,#ff922b); mask: url("./assets/focus-logo-orange.png") center / contain no-repeat; }
+.focus-leaf { display: inline-block; background: var(--accent); mask: url("./assets/focus-leaf-mask.svg") center / contain no-repeat; -webkit-mask: url("./assets/focus-leaf-mask.svg") center / contain no-repeat; }
+.brand-mark { width: 34px; height: 34px; flex: 0 0 34px; }
+.about-leaf { width: 58px; height: 58px; flex: 0 0 58px; }
 .brand-name { font-size: 20px; font-weight: 700; }
 .brand-subtitle { color: #7890a4; font-size: 11px; margin-top: 2px; }
 .sidebar-toggle { margin-left: auto; }
@@ -408,7 +411,7 @@ select, input { color-scheme: dark; }
 .setting-row span { color: #8197aa; font-size: 11px; line-height: 1.4; }
 .setting-control { display: flex; justify-content: flex-end; align-items: center; }
 .setting-control select, .settings-input { width: 220px; height: var(--ui-control-height,40px); padding: 0 10px; border: 1px solid #29465b; border-radius: 6px; background: #0c1b28; color: #eef5fb; }
-.settings-input:focus, .setting-control select:focus, .clear-data-modal input:focus { outline: 2px solid var(--accent, #ff922b); outline-offset: 1px; }
+.settings-input:focus, .setting-control select:focus, .typed-confirmation-modal input:focus { outline: 2px solid var(--accent, #ff922b); outline-offset: 1px; }
 .settings-toggle { width: 38px; height: 22px; padding: 2px; border: 1px solid #38536a; border-radius: 12px; background: #142737; cursor: pointer; transition: background 150ms ease, border-color 150ms ease; }
 .settings-toggle span { display: block; width: 16px; height: 16px; border-radius: 50%; background: #a9b7c3; transition: transform 150ms ease, background 150ms ease; }
 .settings-toggle.on { border-color: var(--accent, #ff922b); background: var(--accent, #ff922b); }
@@ -420,7 +423,7 @@ select, input { color-scheme: dark; }
 .duration-editor b { padding-top: 7px; color: #7990a4; }
 .accent-options { display: flex; gap: 9px; }
 .accent-options button { width: 32px; height: 32px; display: grid; place-items: center; padding: 0; border: 1px solid transparent; border-radius: 6px; background: transparent; cursor: pointer; }
-.accent-options button span { width: 18px; height: 18px; border-radius: 50%; background: var(--swatch); }
+.accent-options button span { width: 18px; height: 18px; border-radius: 50%; background: var(--accent); }
 .accent-options button.active { border-color: #6d8294; background: #142737; }
 .setting-control input[type="range"] { width: 220px; accent-color: var(--accent, #ff922b); }
 .settings-subheading { display: flex; flex-direction: column; gap: 4px; padding: 18px 22px 8px; color: #dce7f0; }
@@ -430,10 +433,10 @@ select, input { color-scheme: dark; }
 .storage-value { color: #cbd8e3 !important; font-size: 12px !important; }
 .danger-outline { min-height: 38px; display: inline-flex; align-items: center; gap: 8px; padding: 0 12px; border: 1px solid #783c45; border-radius: 6px; background: transparent; color: #ff9299; cursor: pointer; }
 .danger-outline svg { width: 16px; }
-.clear-data-modal p { color: #9db0c0; line-height: 1.55; }
-.clear-data-modal input { width: 100%; height: 40px; margin: 6px 0 10px; padding: 0 10px; border: 1px solid #29465b; border-radius: 6px; background: #071521; }
+.typed-confirmation-modal p { color: #9db0c0; line-height: 1.55; }
+.typed-confirmation-modal input { width: 100%; height: 40px; margin: 6px 0 10px; padding: 0 10px; border: 1px solid #29465b; border-radius: 6px; background: #071521; }
 .danger-action:disabled { opacity: .45; cursor: not-allowed; }
-.about-body { max-width: 620px; padding: 24px 28px 30px; }
+.about-body { width: 100%; padding: 24px 28px 30px; }
 .about-identity { display: flex; align-items: center; gap: 17px; padding-bottom: 22px; border-bottom: 1px solid #173044; }
 .about-identity img { width: 58px; height: 58px; border-radius: 10px; }
 .about-identity h3 { margin: 0; font-size: 21px; }
@@ -442,7 +445,7 @@ select, input { color-scheme: dark; }
 .about-body section { padding: 18px 0; border-bottom: 1px solid #142d40; }
 .about-body section:last-child { border-bottom: 0; }
 .about-body section h3 { margin: 0 0 7px; font-size: 13px; }
-.about-body section p { max-width: 520px; margin: 0; color: #91a5b7; font-size: 12px; line-height: 1.6; }
+.about-body section p { max-width: none; margin: 0; color: #91a5b7; font-size: 12px; line-height: 1.6; }
 .about-body dl { margin: 0; }
 .about-body dl div { display: grid; grid-template-columns: 150px 1fr; padding: 6px 0; font-size: 12px; }
 .about-body dt { color: #8197aa; }.about-body dd { margin: 0; color: #dce7f0; }
@@ -889,3 +892,22 @@ fieldset.setting-control { border: 0; padding: 0; margin: 0; min-width: 0; }
 .popout-root[data-layout].popout-root--hover-controls:not(:hover):not(:focus-within) .popout-timer-block { transform: none; transition-delay: var(--controls-hide-delay,1s); }
 .popout-root[data-layout="regular"] .popout-time { font-size: min(17cqw, 48cqh); }
 @media (prefers-reduced-motion: reduce) { .popout-timer-block { transition: none; } }
+
+/* Shared semantic colors for settings and both Extend menu hosts. */
+.settings-subheading { color: var(--text); }
+.settings-subheading span { color: var(--text-muted); }
+.extend-menu { background: var(--surface-panel); color: var(--text); border-color: var(--border); }
+.extend-menu button, .popout-menu-window .extend-menu button { color: var(--text); }
+.extend-menu button:hover, .popout-menu-window .extend-menu button:hover { background: var(--surface-raised); }
+.custom-extend { background: var(--surface-panel); color: var(--text); }
+.custom-duration input { color: var(--text); background: var(--surface-control); border-color: var(--border); }
+.custom-duration label span, .custom-duration b { color: var(--text-muted); }
+.custom-extend-actions button { border-color: var(--border); }
+.extend-menu .custom-add, .popout-menu-window .extend-menu .custom-add { color: var(--accent-text); background: var(--accent); border-color: var(--accent); }
+.extend-menu .custom-add:hover { background: var(--accent-strong); }
+.tabs button.active { color: var(--text); border-color: var(--accent); }
+.about-body .update-controls > button { justify-self: end; }
+.update-notes :is(p, ul, ol) { font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.update-notes ul { list-style: disc; padding-left: 20px; }
+.update-notes ol { list-style: decimal; padding-left: 20px; }
+.update-notes a { color: var(--text); text-decoration: underline; }

@@ -69,9 +69,10 @@ export async function syncPopoutLayout(resize = false) {
     await invoke("set_timer_taskbar", { visible: settings.popoutShowInTaskbar });
     if (settings.popoutDockingEnabled && settings.popoutDocked) await placeDocked(settings);
     else if (resize) await invoke("set_timer_size", { size: settings.popoutSize, layout: settings.popoutLayout });
-    // Disabling future auto-hide must not reveal a currently hidden window.
-    // Its existing tab remains the explicit way to reveal it once more.
-    if (geometry.tabVisible) await hide(settings, await timerGeometry(), geometry.generation);
+    if (geometry.tabVisible) {
+      if (settings.popoutDockAutoHide) await hide(settings, await timerGeometry(), geometry.generation);
+      else await invoke("cancel_timer_auto_hide", { generation: geometry.generation });
+    }
   });
 }
 export async function openTimerPopout(_settings?: FocusSettings) {
@@ -128,7 +129,11 @@ export async function refreshTimerAutoHideTab() {
   return withPopoutGeometry(async () => {
     await synchronizePopoutSession();
     const geometry = await timerGeometry();
-    if (geometry.requested && geometry.tabVisible) await hide(await loadSettings(), geometry);
+    if (geometry.requested && geometry.tabVisible) {
+      const settings = await loadSettings();
+      if (settings.popoutDockAutoHide) await hide(settings, geometry);
+      else await invoke("cancel_timer_auto_hide", { generation: geometry.generation });
+    }
   });
 }
 export async function toggleTimerAutoHide() {
@@ -148,4 +153,28 @@ export async function rememberFloatingPosition() {
     if (geometry.positioningSupported === false) return;
     await persist({ popoutPositionX: geometry.x, popoutPositionY: geometry.y, popoutFloatingWidth: geometry.width, popoutFloatingHeight: geometry.height });
   });
+}
+
+/** A settings change may reveal an already requested window, never open a closed one. */
+export async function reconcileAutoHideSetting() {
+  if (!isTauri()) return;
+  return withPopoutGeometry(async () => {
+    if ((await loadSettings()).popoutDockAutoHide) return;
+    await synchronizePopoutSession();
+    const geometry = await timerGeometry();
+    if (geometry.requested && geometry.tabVisible) await invoke("cancel_timer_auto_hide", { generation: geometry.generation });
+  });
+}
+
+/** Explicit user shortcut: reveal idempotently, or open for an active session. */
+export async function revealTimerFromShortcut() {
+  if (!isTauri() || !activePopoutSession()) return;
+  const shouldOpen = await withPopoutGeometry(async () => {
+    await synchronizePopoutSession();
+    const geometry = await timerGeometry();
+    if (!geometry.requested) return true;
+    if (geometry.tabVisible || !geometry.visible) await invoke("cancel_timer_auto_hide", { generation: geometry.generation });
+    return false;
+  });
+  if (shouldOpen) await openTimerPopout();
 }

@@ -1,3 +1,4 @@
+import { FocusLeaf } from "./FocusLeaf";
 import { DEFAULT_SIDEBAR_SUBTITLE } from "../settings";
 import {
   BarChart3,
@@ -38,7 +39,7 @@ export function Sidebar({ collapsed, onToggle, active, onNavigate }: Props) {
   return (
     <aside className={`sidebar ${collapsed ? "sidebar--collapsed" : ""}`}>
       <div className="brand-row">
-        <span className="brand-mark" aria-hidden="true"/>
+        <FocusLeaf className="brand-mark"/>
         {!collapsed && (
           <div>
             <div className="brand-name">Focus</div>

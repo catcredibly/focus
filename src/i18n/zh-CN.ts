@@ -546,6 +546,9 @@ const zhCN: Record<keyof typeof en, string> = {
   "Type RESET to continue.": "输入 RESET 以继续。",
   "Unable to reset settings. Please try again.": "无法重置设置，请重试。",
   "Used when Auto-hide is enabled.": "启用自动隐藏时使用。",
+  "What's new": "更新内容",
+  "A new version of Focus is ready to install.": "Focus 新版本已准备好安装。",
+  "Reveal shortcut is unavailable on this device.": "此设备无法使用显示悬浮窗快捷键。",
 };
 
 export default zhCN;

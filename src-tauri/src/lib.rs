@@ -566,6 +566,7 @@ pub fn run() {
             supports_window_positioning,
             window_constraints::set_main_minimum_width,
             reveal_shortcut::set_reveal_shortcut,
+            reveal_shortcut::reveal_shortcut_available,
             get_timer_geometry,
             restore_timer_bounds,
             update_probe::probe_update_manifest,

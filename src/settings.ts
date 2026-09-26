@@ -243,7 +243,7 @@ function decode<K extends keyof FocusSettings>(key: K, raw: string | undefined):
 
 /** Compatibility with releases that allowed function-key reveal shortcuts. */
 export function normalizeLegacyRevealShortcut(value: string): string {
-  return /^(?:(?:Ctrl|Alt|Shift)\+)*F(?:[1-9]|1[0-2])$/.test(value) ? DEFAULT_SETTINGS.popoutRevealShortcut : value;
+  return /^(?:(?:Ctrl|Alt|Shift)\+)*F(?:[1-9]|1[0-2])$/.test(value) ? DEFAULT_SETTINGS.popoutRevealShortcut : value.replace(/\+`$/, "+Backquote");
 }
 
 export async function loadSettings(database: FocusDatabase = db, migrate = true): Promise<FocusSettings> {

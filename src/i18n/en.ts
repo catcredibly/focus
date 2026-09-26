@@ -544,6 +544,9 @@ const en = {
   "Type RESET to continue.": "Type RESET to continue.",
   "Unable to reset settings. Please try again.": "Unable to reset settings. Please try again.",
   "Used when Auto-hide is enabled.": "Used when Auto-hide is enabled.",
+  "What's new": "What's new",
+  "A new version of Focus is ready to install.": "A new version of Focus is ready to install.",
+  "Reveal shortcut is unavailable on this device.": "Reveal shortcut is unavailable on this device.",
 } as const;
 
 export default en;

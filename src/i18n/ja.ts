@@ -546,6 +546,9 @@ const ja: Record<keyof typeof en, string> = {
   "Type RESET to continue.": "続行するには RESET と入力してください。",
   "Unable to reset settings. Please try again.": "設定をリセットできませんでした。もう一度お試しください。",
   "Used when Auto-hide is enabled.": "自動非表示が有効なときに使用します。",
+  "What's new": "更新内容",
+  "A new version of Focus is ready to install.": "Focus の新しいバージョンをインストールできます。",
+  "Reveal shortcut is unavailable on this device.": "このデバイスでは表示ショートカットを使用できません。",
 };
 
 export default ja;

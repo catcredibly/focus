@@ -1,3 +1,4 @@
+import { reconcileAutoHideSetting, revealTimerFromShortcut } from "./native";
 import { registerRevealShortcut } from "./shortcuts";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -43,6 +44,15 @@ export default function App() {
   useEffect(() => {
     if (isTauri() && !isPopout && loaded) void registerRevealShortcut(settings.popoutRevealShortcut).catch(() => undefined);
   }, [isPopout, loaded, settings.popoutRevealShortcut]);
+
+  useEffect(() => {
+    if (!isPopout && loaded) void reconcileAutoHideSetting().catch(console.error);
+  }, [isPopout, loaded, settings.popoutDockAutoHide]);
+  useEffect(() => {
+    if (!isTauri() || isPopout) return;
+    const subscription = listen("focus://reveal-shortcut", () => { void revealTimerFromShortcut().catch(console.error); });
+    return () => { void subscription.then(stop => stop()); };
+  }, [isPopout]);
 
   useEffect(() => { void i18n.changeLanguage(settings.language); }, [settings.language]);
   useEffect(() => {

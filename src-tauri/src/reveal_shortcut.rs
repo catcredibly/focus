@@ -19,6 +19,14 @@ fn parse(value: &str) -> Result<Option<Shortcut>, String> {
     Shortcut::from_str(value).map(Some).map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+pub fn reveal_shortcut_available(app: tauri::AppHandle) -> bool {
+    #[cfg(target_os = "linux")]
+    { app.try_state::<tauri_plugin_global_shortcut::GlobalShortcut<tauri::Wry>>().is_some() }
+    #[cfg(not(target_os = "linux"))]
+    { let _ = app; true }
+}
+
 // Async commands run away from the event-loop thread; the plugin dispatches its
 // OS registration back onto that thread and waits for the actual result.
 #[tauri::command]
@@ -38,7 +46,7 @@ pub async fn set_reveal_shortcut(window: tauri::WebviewWindow, shortcut: String)
     if let Some(next) = next {
         app.global_shortcut().on_shortcut(next, |app, _, event| {
             if event.state() == ShortcutState::Pressed {
-                let _ = app.emit_to("timer", "focus://toggle-auto-hide", ());
+                let _ = app.emit_to("main", "focus://reveal-shortcut", ());
             }
         }).map_err(|e| e.to_string())?;
     }
@@ -55,6 +63,11 @@ pub async fn set_reveal_shortcut(window: tauri::WebviewWindow, shortcut: String)
 #[cfg(test)]
 mod tests {
     use super::parse;
+    #[test]
+    fn backquote_matches_the_native_grave_key() {
+        use std::str::FromStr;
+        assert_eq!(parse("Alt+Backquote").unwrap(), Some(tauri_plugin_global_shortcut::Shortcut::from_str("Alt+`").unwrap()));
+    }
     #[test]
     fn accepts_only_constrained_shortcuts() {
         for value in ["Alt+Backquote", "Ctrl+KeyF", "Alt+Digit7", "Shift+Slash", "Ctrl+Alt+Shift+BracketLeft"] { assert!(parse(value).is_ok(), "{value}"); }

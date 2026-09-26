@@ -141,3 +141,67 @@ src-tauri/
   icons/            Packaged Windows/application icons
   tauri.conf.json   Application and window configuration
 ```
+
+
+## Release notes and updater metadata
+
+Use one UTF-8 Markdown notes file for the GitHub Release body and updater manifest.
+After the existing signed release build, run (with the actual current-version artifact):
+
+```powershell
+node tools/generate-updater-manifest.mjs --notes RELEASE_NOTES.md --artifact "src-tauri/target/release/bundle/nsis/Focus_<version>_x64-setup.exe" --repository catcredibly/study-app
+gh release create "v<version>" --repo catcredibly/study-app --notes-file RELEASE_NOTES.md <installer> <installer.sig> <latest.json>
+```
+
+The helper reads the authoritative package version and existing matching `.sig`;
+it does not build, sign, upload, or change the embedded updater endpoint/public key.
+Use `--platform linux-x86_64 --artifact <signed AppImage>` to add Linux updater
+metadata to the same output with `--output <latest.json>`. Only same-version platform
+entries are retained, preventing stale signatures from carrying into another release.
+Never commit generated manifests, signatures or bundles. JSON serialization preserves
+quotes/newlines in notes. The frontend escapes all text and supports only headings,
+paragraphs, lists, bold, inline code and HTTP(S) links; it never renders raw HTML.
+
+## Experimental desktop capabilities
+
+One React application and Tauri project serve Windows and Linux. Windows native
+window constraints and display-message handling remain target-gated. Linux uses
+GTK's selected backend and monitor signals behind Rust capability queries, not UI
+OS checks. X11/XWayland supports placement where the window manager permits it.
+Native Wayland uses compositor placement and keeps popouts visible instead of hiding
+them behind an unplaceable reveal tab; global shortcuts are unavailable without an
+appropriate backend. Existing preferences remain saved. Real Linux desktop testing
+is still needed for mixed-DPI monitors, docking, autostart and notifications. The
+Linux workflow is manually run by the maintainer; headless checks do not establish
+native desktop parity.
+
+## Platform architecture
+
+Keep Focus as one shared Tauri/React codebase. Do not create separate Windows and Linux application implementations.
+
+For platform differences, use this order of preference:
+
+1. Use Tauri's cross-platform API when it provides the required behavior.
+2. For small OS-specific differences, use narrowly scoped Rust `#[cfg(...)]` branches.
+3. For substantial native behavior that differs between Windows and Linux, isolate it behind a shared interface with platform-specific Rust implementations/modules.
+4. If exact parity is not available, especially under Wayland, use a graceful fallback rather than forcing Windows-specific behavior or allowing the feature to fail.
+
+Keep React/UI code platform-neutral wherever practical. The frontend should request capabilities such as reveal, dock, or determine work area without needing to know the OS-specific implementation.
+
+Where behavior genuinely depends on environment capabilities rather than simply the OS, prefer capability-based handling over scattered checks such as `platform === "linux"`.
+
+Keep Windows-specific dependencies and imports target-gated so they are not unnecessarily compiled/imported on Linux. Add Linux-specific native dependencies only when Tauri/cross-platform APIs are insufficient.
+
+Do not refactor working Windows-native implementations merely for architectural symmetry. Introduce platform abstraction where it meaningfully isolates substantial platform differences.
+
+For Linux, account for both X11 and Wayland. If a feature such as precise window positioning/docking cannot be implemented reliably under a particular environment, degrade gracefully and document the limitation rather than treating it as a build/runtime failure.
+
+The goal is:
+
+- one repository
+- one shared React application
+- one Tauri project
+- shared behavior by default
+- small `#[cfg]` branches for small differences
+- platform modules/adapters for substantial native differences
+- graceful capability-based fallbacks where exact parity is impossible

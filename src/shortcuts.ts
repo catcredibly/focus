@@ -31,6 +31,14 @@ export function listenForShortcut(onCapture: (shortcut: string) => void, onCance
   target.addEventListener("keydown", keydown, { capture: true });
   return stop;
 }
+let registrationFailed = false;
+let activeShortcut: string | undefined;
+const registrationListeners = new Set<() => void>();
+export const shortcutRegistration = {
+  getSnapshot: () => registrationFailed,
+  subscribe: (listener: () => void) => { registrationListeners.add(listener); return () => { registrationListeners.delete(listener); }; },
+};
+function reportRegistration(failed: boolean) { registrationFailed = failed; registrationListeners.forEach(listener => listener()); }
 let operation = Promise.resolve();
 /** Serialize startup and recorder changes; persist only a registered combination. */
 export function registerRevealShortcut(shortcut: string, persist: boolean | (() => Promise<void>) = false) {
@@ -39,11 +47,17 @@ export function registerRevealShortcut(shortcut: string, persist: boolean | (() 
     if (!isTauri()) throw new Error("Global shortcuts require the desktop app.");
     const previous = (await loadSettings()).popoutRevealShortcut;
     await invoke("set_reveal_shortcut", { shortcut });
+    activeShortcut = shortcut;
     if (persist) {
       try { await (typeof persist === "function" ? persist() : saveSetting("popoutRevealShortcut", shortcut)); }
-      catch (error) { await invoke("set_reveal_shortcut", { shortcut: previous }); throw error; }
+      catch (error) {
+        try { await invoke("set_reveal_shortcut", { shortcut: previous }); activeShortcut = previous; }
+        catch (rollbackError) { activeShortcut = undefined; throw new AggregateError([error, rollbackError], "Shortcut rollback failed."); }
+        throw error;
+      }
     }
   });
-  operation = next;
-  return next;
+  const reported = next.then(() => { reportRegistration(false); }, error => { reportRegistration(activeShortcut === undefined); throw error; });
+  operation = reported;
+  return reported;
 }
